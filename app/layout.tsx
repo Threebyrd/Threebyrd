@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import "@fontsource/anton/latin-400.css";
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/source-serif-4/wght.css";
 import "./globals.css";
 import { siteUrl, withBasePath } from "./site-paths";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Threebyrd Meal Prep - Chicken and Beef Meal Prep",
@@ -46,7 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} antialiased`}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

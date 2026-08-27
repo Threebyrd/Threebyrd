@@ -30,43 +30,72 @@ test("server-renders the complete Threebyrd landing page", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>Threebyrd Meal Prep - Chicken and Beef Meal Prep<\/title>/i);
-  assert.match(html, /data-testid="meal-scene"/);
+  assert.doesNotMatch(html, /data-testid="meal-scene"/);
   assert.match(html, /Threebyrd Meal Prep/);
+  assert.match(html, /Online ordering opens soon/);
   assert.match(html, /Chicken or beef\. Little or Big\./);
-  assert.match(html, /Chicken protein/);
-  assert.match(html, /~60-70g/);
+  assert.match(html, /Sizes/);
+  assert.match(html, /Small \+ Big/);
+  assert.match(html, /Weekly plans/);
+  assert.match(html, /3–20 meals/);
+  for (const value of ["660", "46.5g", "77.5g", "17g", "970", "69g", "114g", "26g", "960", "66.5g", "41g"]) {
+    assert.match(html, new RegExp(value.replace(".", "\\.")));
+  }
+  for (const plan of [3, 5, 10, 20]) {
+    assert.match(html, new RegExp(`<strong>${plan}</strong><span>Meals / week`));
+  }
 
   for (const product of ["Little Chicken", "Big Chicken", "Little Beef", "Big Beef"]) {
     assert.match(html, new RegExp(product));
   }
+
+  for (const sectionCopy of [
+    "Pick your weekly rhythm.",
+    "Four boxes.",
+    "Two choices.",
+    "Protein, rice, broccoli.",
+    "Meals made for Ithaca.",
+    "From SBX Chicken",
+    "Three founders.",
+    "Be first at the table.",
+  ]) {
+    assert.match(html, new RegExp(sectionCopy.replace(".", "\\.")));
+  }
+
+  assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
+  assert.match(html, /Verified Beef macro set/);
+  assert.doesNotMatch(html, /MOST POPULAR|BEST VALUE|Order now|Shop now/i);
 
   assert.equal((html.match(/class="menuCard /g) ?? []).length, 4);
   assert.equal((html.match(/class="cardNutrition"/g) ?? []).length, 4);
   assert.equal((html.match(/class="cardIngredients"/g) ?? []).length, 4);
 });
 
-test("keeps the interactive scene isolated and motion-aware", async () => {
-  const [scene, page, css, packageJson] = await Promise.all([
-    readFile(new URL("../app/components/MealScene.tsx", import.meta.url), "utf8"),
+test("keeps the hero free of a 3D chicken scene and interactive selectors accessible", async () => {
+  const [page, css, packageJson, plans, ingredients, layout] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/WeeklyPlans.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/IngredientStory.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(scene, /^"use client";/);
-  assert.match(scene, /from "three"/);
-  assert.match(scene, /RoundedBoxGeometry/);
-  assert.match(scene, /hero-chicken-texture\.jpg/);
-  assert.match(scene, /MeshPhysicalMaterial/);
-  assert.match(scene, /pointerdown/);
-  assert.match(scene, /prefers-reduced-motion/);
-  assert.match(scene, /data-testid="meal-scene"/);
-  assert.match(scene, /dataset\.pixelCheck/);
-  assert.match(page, /<MealScene \/>/);
+  assert.doesNotMatch(page, /MealScene|heroCubeLabel|low-poly chicken/i);
   assert.match(css, /\.menuGrid\s*\{/);
   assert.match(css, /grid-template-columns:\s*repeat\(4/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(packageJson, /"three"/);
+  assert.match(css, /--tb-paper:/);
+  assert.match(css, /font-family:\s*var\(--font-display\)/);
+  assert.match(css, /@media \(max-width: 1024px\)/);
+  assert.match(css, /@media \(max-width: 640px\)/);
+  assert.doesNotMatch(packageJson, /"three"/);
+  assert.match(plans, /useState/);
+  assert.match(plans, /aria-pressed/);
+  assert.match(ingredients, /useState/);
+  assert.match(ingredients, /aria-pressed/);
+  assert.match(layout, /@fontsource\/anton/);
+  assert.match(layout, /@fontsource-variable\/inter/);
   assert.doesNotMatch(page, /&nearr;/);
-  assert.doesNotMatch(`${page}\n${scene}`, /chili powder|paprika|cumin|oregano|onion flakes/i);
+  assert.doesNotMatch(page, /chili powder|paprika|cumin|oregano|onion flakes/i);
 });

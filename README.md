@@ -26,9 +26,9 @@ npm run lint
 
 - `app/page.tsx`: page sections, menu products, macros, ingredients, founders, and press links.
 - `app/globals.css`: all layout, color, responsive, and interaction styling.
-- `app/components/MealScene.tsx`: interactive 3D chicken-cube hero, textured from original Threebyrd photography.
 - `app/gold-options/page.tsx`: private design comparison route for the four gold palette options.
 - `public/assets/`: food photography, founder headshots, wordmark, social preview, and hero chicken asset.
+
 - `docs/SPEC.md`: product, brand, content, and design decisions gathered during planning.
 - `.openai/hosting.json`: existing OpenAI Sites project connection.
 

@@ -1,0 +1,1631 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #fff8e7;
+  --white: #fffdf6;
+  --ink: #29170f;
+  --muted: #6f5545;
+  --red: #8f1719;
+  --red-bright: #c83434;
+  --gold-deep: #9f681a;
+  --gold: #dca62f;
+  --gold-soft: #f2cf78;
+  --gold-pale: #fff0bf;
+  --night: #190c0b;
+  --night-soft: #2a1513;
+  --green: #2f6845;
+  --tomato: #df5a3c;
+  --pink: #f3aaa3;
+  --line: #42261b;
+  --radius: 8px;
+  --font-body: var(--font-geist-sans);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
+  line-height: 1.5;
+  margin: 0;
+}
+
+body::selection {
+  background: var(--gold-soft);
+  color: var(--red);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3,
+p {
+  letter-spacing: 0;
+}
+
+.siteHeader {
+  align-items: center;
+  background: var(--gold-soft);
+  border-bottom: 3px solid var(--line);
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(190px, 1fr) auto minmax(135px, 1fr);
+  min-height: 74px;
+  padding: 0.7rem 3.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.brandLockup {
+  display: inline-block;
+  width: 205px;
+}
+
+.brandLockup img,
+.siteFooter > img {
+  height: auto;
+  mix-blend-mode: multiply;
+  width: 100%;
+}
+
+.navLinks {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+.navLinks a,
+.siteFooter nav a {
+  border-bottom: 2px solid transparent;
+  font-size: 0.9rem;
+  font-weight: 850;
+  padding: 0.45rem 0.65rem;
+}
+
+.navLinks a:hover,
+.siteFooter nav a:hover {
+  border-bottom-color: var(--red);
+  color: var(--red);
+}
+
+.navCta {
+  background: var(--red);
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  color: var(--white);
+  font-size: 0.88rem;
+  font-weight: 850;
+  justify-self: end;
+  padding: 0.65rem 1rem;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.navCta:hover {
+  background: var(--red-bright);
+  transform: translateY(-2px);
+}
+
+.hero {
+  background: var(--night);
+  border-bottom: 3px solid var(--line);
+  isolation: isolate;
+  min-height: calc(100svh - 74px);
+  overflow: hidden;
+  position: relative;
+}
+
+.mealScene {
+  cursor: grab;
+  inset: 0;
+  position: absolute;
+  touch-action: none;
+  z-index: 1;
+}
+
+.mealScene[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+.mealScene canvas {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.sceneFallback {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.heroLines {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  inset: 0;
+  opacity: 0.17;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.heroLines span {
+  border-right: 1px solid var(--gold-soft);
+}
+
+.heroLines span:first-child {
+  border-left: 1px solid var(--gold-soft);
+}
+
+.heroCubeLabel {
+  align-items: center;
+  animation: labelDrift 4.8s ease-in-out infinite;
+  color: var(--gold-soft);
+  display: flex;
+  gap: 0.75rem;
+  position: absolute;
+  right: 3.5rem;
+  top: 2.4rem;
+  z-index: 3;
+}
+
+.heroCubeLabel::before {
+  background: var(--gold);
+  content: "";
+  height: 2px;
+  width: 72px;
+}
+
+.heroCubeLabel span {
+  align-items: center;
+  border: 1px solid var(--gold-soft);
+  display: flex;
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 0.72rem;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.heroCubeLabel strong {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+@keyframes labelDrift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(7px);
+  }
+}
+
+.heroContent {
+  color: var(--white);
+  max-width: 680px;
+  padding: clamp(5rem, 12vh, 8.5rem) 3.5rem 8rem;
+  pointer-events: none;
+  position: relative;
+  z-index: 3;
+}
+
+.heroKicker,
+.sectionLabel {
+  font-size: 0.78rem;
+  font-weight: 900;
+  margin: 0 0 0.7rem;
+  text-transform: uppercase;
+}
+
+.heroKicker {
+  color: var(--gold-soft);
+}
+
+.hero h1,
+.menuIntro h2,
+.howHeading h2,
+.storyCopy h2,
+.givingTop h2,
+.teamHeading h2,
+.joinContent h2 {
+  font-family: "Arial Black", "Trebuchet MS", Arial, sans-serif;
+  font-weight: 900;
+  line-height: 0.94;
+  margin: 0;
+}
+
+.hero h1 {
+  font-size: clamp(4.2rem, 6.3vw, 6.8rem);
+  max-width: 670px;
+  text-transform: uppercase;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.26);
+}
+
+.heroLead {
+  color: var(--white);
+  font-size: 1.45rem;
+  font-weight: 800;
+  margin: 1.4rem 0 0;
+}
+
+.heroNote {
+  color: rgba(255, 253, 246, 0.84);
+  font-size: 1.02rem;
+  margin: 0.45rem 0 0;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  pointer-events: auto;
+}
+
+.button {
+  align-items: center;
+  border: 2px solid var(--white);
+  border-radius: 999px;
+  display: inline-flex;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 50px;
+  padding: 0.78rem 1.2rem;
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.button:hover {
+  transform: translateY(-2px) rotate(-1deg);
+}
+
+.buttonGold {
+  background: var(--gold);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.buttonGold:hover {
+  background: var(--gold-deep);
+  color: var(--white);
+}
+
+.buttonOutline {
+  color: var(--white);
+}
+
+.buttonOutline:hover {
+  background: var(--white);
+  color: var(--red);
+}
+
+.heroReadout {
+  background: rgba(25, 12, 11, 0.84);
+  border: 1px solid rgba(234, 216, 172, 0.7);
+  bottom: 2.5rem;
+  color: var(--white);
+  min-width: 270px;
+  padding: 0.9rem 1rem 1rem;
+  position: absolute;
+  right: 3.5rem;
+  z-index: 3;
+}
+
+.heroReadout > span {
+  color: var(--gold-soft);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding-bottom: 0.55rem;
+  text-transform: uppercase;
+}
+
+.heroReadout > div {
+  border-top: 1px solid rgba(234, 216, 172, 0.38);
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-top: 0.7rem;
+}
+
+.heroReadout p {
+  margin: 0;
+}
+
+.heroReadout p + p {
+  border-left: 1px solid rgba(234, 216, 172, 0.38);
+  padding-left: 0.8rem;
+}
+
+.heroReadout small,
+.heroReadout strong {
+  display: block;
+}
+
+.heroReadout small {
+  color: rgba(255, 253, 246, 0.65);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.heroReadout strong {
+  color: var(--gold-soft);
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 1.45rem;
+  line-height: 1;
+  margin-top: 0.35rem;
+}
+
+.foodTicker {
+  background: var(--red);
+  border-block: 3px solid var(--line);
+  color: var(--gold-soft);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.tickerTrack {
+  align-items: center;
+  animation: ticker 24s linear infinite;
+  display: flex;
+  min-width: max-content;
+  padding: 0.8rem 0;
+  width: max-content;
+}
+
+.tickerTrack span {
+  align-items: center;
+  display: inline-flex;
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+}
+
+.tickerTrack b {
+  color: var(--pink);
+  font-size: 1.4rem;
+  margin: 0 1.5rem;
+}
+
+@keyframes ticker {
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+
+.nutritionRail {
+  background: var(--white);
+  border-bottom: 3px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0 3.5rem;
+}
+
+.nutritionRail > div {
+  min-height: 108px;
+  padding: 1.45rem 1.35rem;
+  transition: background 170ms ease, color 170ms ease;
+}
+
+.nutritionRail > div + div {
+  border-left: 2px solid var(--line);
+}
+
+.nutritionRail span,
+.nutritionRail strong {
+  display: block;
+}
+
+.nutritionRail > div:nth-child(2) {
+  background: var(--gold-pale);
+}
+
+.nutritionRail > div:nth-child(3) {
+  background: #f9c6bd;
+}
+
+.nutritionRail > div:nth-child(4) {
+  background: #cbe1c7;
+}
+
+.nutritionRail span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.nutritionRail strong {
+  color: var(--red);
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: clamp(1.1rem, 1.7vw, 1.55rem);
+  line-height: 1.05;
+  margin-top: 0.45rem;
+  text-transform: uppercase;
+}
+
+.menuSection,
+.howSection,
+.storySection,
+.givingSection,
+.teamSection,
+.joinSection {
+  scroll-margin-top: 90px;
+}
+
+.menuSection {
+  background: var(--gold-pale);
+  padding: 6rem 3.5rem;
+}
+
+.menuIntro {
+  max-width: 760px;
+}
+
+.sectionLabel {
+  color: var(--red);
+}
+
+.menuIntro h2,
+.howHeading h2,
+.storyCopy h2,
+.givingTop h2,
+.teamHeading h2,
+.joinContent h2 {
+  font-size: 3.6rem;
+  text-transform: uppercase;
+}
+
+.menuIntro > p:last-child,
+.storyCopy > p:not(.sectionLabel),
+.givingTop > p,
+.joinContent > p:not(.sectionLabel) {
+  font-size: 1.08rem;
+  margin: 1rem 0 0;
+  max-width: 680px;
+}
+
+.menuGrid {
+  display: grid;
+  gap: 1.1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 2.4rem;
+}
+
+.menuCard {
+  background: var(--white);
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  transition: box-shadow 170ms ease, transform 170ms ease;
+}
+
+.menuCard::before {
+  background: var(--gold);
+  content: "";
+  height: 5px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: scaleX(0.2);
+  transform-origin: left;
+  transition: transform 230ms ease;
+  z-index: 2;
+}
+
+.menuCard:nth-child(2)::before {
+  background: var(--red-bright);
+}
+
+.menuCard:nth-child(3)::before {
+  background: var(--green);
+}
+
+.menuCard:nth-child(4)::before {
+  background: var(--tomato);
+}
+
+.menuCard:hover {
+  box-shadow: 7px 8px 0 rgba(66, 38, 27, 0.18);
+  transform: translateY(-4px);
+}
+
+.menuCard:hover::before {
+  transform: scaleX(1);
+}
+
+.menuCardPhoto {
+  border-bottom: 3px solid var(--line);
+  overflow: hidden;
+  position: relative;
+}
+
+.menuCardPhoto img {
+  aspect-ratio: 4 / 5;
+  height: auto;
+  object-fit: cover;
+  transition: transform 220ms ease;
+  width: 100%;
+}
+
+.menuCard:hover .menuCardPhoto img {
+  transform: scale(1.025);
+}
+
+.menuCardPhoto span {
+  background: var(--gold-soft);
+  border: 2px solid var(--line);
+  bottom: 0.7rem;
+  color: var(--red);
+  font-size: 0.76rem;
+  font-weight: 900;
+  left: 0.7rem;
+  padding: 0.35rem 0.55rem;
+  position: absolute;
+  text-transform: uppercase;
+}
+
+.menuCardBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.menuCardHeading h3,
+.cardNutrition h4,
+.cardIngredients h4 {
+  margin: 0;
+}
+
+.menuCardHeading h3 {
+  color: var(--red);
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 1.45rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.menuCardHeading p {
+  color: var(--gold-deep);
+  font-size: 0.84rem;
+  font-weight: 900;
+  margin: 0.55rem 0 0;
+}
+
+.cardNutrition {
+  background: var(--night-soft);
+  border: 2px solid var(--line);
+  color: var(--white);
+  margin-top: 1rem;
+}
+
+.menuCard.beef .cardNutrition {
+  background: #153524;
+}
+
+.cardNutrition h4 {
+  border-bottom: 1px solid rgba(255, 253, 246, 0.4);
+  color: var(--gold-soft);
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.55rem 0.65rem;
+  text-transform: uppercase;
+}
+
+.macroGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.macroGrid div {
+  min-height: 82px;
+  padding: 0.65rem;
+  transition: background 150ms ease;
+}
+
+.macroGrid div:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.macroGrid div:nth-child(even) {
+  border-left: 1px solid rgba(255, 253, 246, 0.4);
+}
+
+.macroGrid div:nth-child(n + 3) {
+  border-top: 1px solid rgba(255, 253, 246, 0.4);
+}
+
+.macroGrid span,
+.macroGrid strong {
+  display: block;
+}
+
+.macroGrid span {
+  color: rgba(255, 253, 246, 0.72);
+  font-size: 0.69rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.macroGrid strong {
+  color: var(--gold-soft);
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 1.28rem;
+  line-height: 1.05;
+  margin-top: 0.35rem;
+}
+
+.cardIngredients {
+  background: var(--gold-pale);
+  border: 2px solid var(--line);
+  margin-top: 1rem;
+  padding: 0.75rem;
+}
+
+.menuCard.beef .cardIngredients {
+  background: #e0f0df;
+}
+
+.cardIngredients h4 {
+  color: var(--red);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cardIngredients p {
+  color: var(--ink);
+  font-weight: 750;
+  margin: 0.4rem 0 0;
+}
+
+.cardIngredients span {
+  color: var(--muted);
+  display: block;
+  font-size: 0.76rem;
+  margin-top: 0.55rem;
+}
+
+.menuCardBody > a {
+  align-self: flex-start;
+  border-bottom: 2px solid var(--gold-deep);
+  color: var(--red);
+  font-size: 0.84rem;
+  font-weight: 900;
+  margin-top: auto;
+  padding-top: 1.1rem;
+}
+
+.howSection {
+  background: var(--white);
+  border-bottom: 3px solid var(--line);
+  display: grid;
+  gap: 3rem;
+  grid-template-columns: minmax(260px, 0.75fr) minmax(0, 1.25fr);
+  padding: 5rem 3.5rem;
+}
+
+.howSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.howSteps li {
+  border-left: 3px solid var(--line);
+  padding: 0 1.3rem;
+}
+
+.howSteps span {
+  align-items: center;
+  background: var(--pink);
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  display: flex;
+  font-family: "Arial Black", Arial, sans-serif;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.howSteps strong {
+  color: var(--red);
+  display: block;
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 1.35rem;
+  margin-top: 1rem;
+  text-transform: uppercase;
+}
+
+.howSteps p {
+  color: var(--muted);
+  margin: 0.45rem 0 0;
+}
+
+.storySection {
+  background: var(--pink);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.85fr);
+  min-height: 660px;
+}
+
+.storyPhotos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.storyPhotos img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.storyPhotos img:first-child {
+  border-right: 3px solid var(--line);
+  object-position: 54% center;
+}
+
+.storyCopy {
+  align-self: center;
+  padding: 4rem 3.5rem;
+}
+
+.storyCopy h2 {
+  color: var(--red);
+}
+
+.storyCopy > p:not(.sectionLabel) {
+  color: #4b2a20;
+}
+
+.givingSection {
+  background: var(--green);
+  color: var(--white);
+  padding: 6rem 3.5rem;
+}
+
+.givingTop {
+  align-items: end;
+  display: grid;
+  gap: 3rem;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+}
+
+.givingSection .sectionLabel,
+.givingTop h2,
+.pressBlock h3 {
+  color: var(--gold-soft);
+}
+
+.givingTop > p {
+  color: rgba(255, 253, 246, 0.82);
+}
+
+.impactRow {
+  border-block: 3px solid var(--gold);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 3.5rem;
+}
+
+.impactStat {
+  padding: 2rem 1.3rem;
+}
+
+.impactStat + .impactStat {
+  border-left: 3px solid var(--gold);
+}
+
+.impactStat strong,
+.impactStat span {
+  display: block;
+}
+
+.impactStat strong {
+  color: var(--gold-soft);
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 3.4rem;
+  line-height: 1;
+}
+
+.impactStat span {
+  font-weight: 850;
+  margin-top: 0.5rem;
+  text-transform: uppercase;
+}
+
+.pressBlock {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: 220px 1fr;
+  margin-top: 3.5rem;
+}
+
+.pressBlock h3 {
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 1.8rem;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.pressList {
+  border-top: 2px solid rgba(255, 253, 246, 0.45);
+}
+
+.pressList a {
+  align-items: center;
+  border-bottom: 2px solid rgba(255, 253, 246, 0.45);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 80px 1fr 110px;
+  min-height: 86px;
+  padding: 0.9rem 0;
+  transition: color 150ms ease, padding 150ms ease;
+}
+
+.pressList a:hover {
+  color: var(--gold-soft);
+  padding-left: 0.6rem;
+}
+
+.pressList span {
+  color: var(--gold-soft);
+  font-weight: 900;
+}
+
+.pressList small {
+  color: rgba(255, 253, 246, 0.65);
+}
+
+.teamSection {
+  background: var(--paper);
+  padding: 6rem 3.5rem 7rem;
+}
+
+.teamHeading {
+  max-width: 740px;
+}
+
+.teamHeading h2 {
+  color: var(--red);
+}
+
+.teamGrid {
+  display: grid;
+  gap: 1.4rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 2.6rem;
+}
+
+.founderCard {
+  background: var(--gold-soft);
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transform: rotate(-1deg);
+  transition: transform 180ms ease;
+}
+
+.founderCard:nth-child(2) {
+  background: var(--pink);
+  transform: rotate(1deg) translateY(18px);
+}
+
+.founderCard:nth-child(3) {
+  background: #9ac79f;
+  transform: rotate(-0.5deg);
+}
+
+.founderCard:hover,
+.founderCard:nth-child(2):hover,
+.founderCard:nth-child(3):hover {
+  transform: rotate(0) translateY(-5px);
+}
+
+.founderCard img {
+  aspect-ratio: 1 / 1;
+  border-bottom: 3px solid var(--line);
+  height: auto;
+  object-fit: cover;
+  width: 100%;
+}
+
+.founderCard div {
+  padding: 1.1rem;
+}
+
+.founderCard h3 {
+  color: var(--red);
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.founderCard p {
+  font-weight: 850;
+  margin: 0.45rem 0 0;
+}
+
+.joinSection {
+  align-items: center;
+  background: var(--red);
+  color: var(--white);
+  display: grid;
+  gap: 3rem;
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  padding: 5.5rem 3.5rem;
+}
+
+.joinSection .sectionLabel,
+.joinContent h2 {
+  color: var(--gold-soft);
+}
+
+.joinContent > p:not(.sectionLabel) {
+  color: rgba(255, 253, 246, 0.8);
+}
+
+.joinForm {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.joinForm > div {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.joinForm label {
+  color: var(--gold-soft);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.joinForm input {
+  background: var(--white);
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  min-height: 54px;
+  outline: none;
+  padding: 0.8rem 0.9rem;
+  width: 100%;
+}
+
+.joinForm input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(197, 154, 74, 0.25);
+}
+
+.joinForm button {
+  background: var(--gold-soft);
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-weight: 900;
+  min-height: 54px;
+}
+
+.joinForm button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.joinForm > p {
+  align-self: center;
+  color: rgba(255, 253, 246, 0.68);
+  font-size: 0.84rem;
+  margin: 0;
+}
+
+.siteFooter {
+  align-items: center;
+  background: var(--gold-soft);
+  border-top: 3px solid var(--line);
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 220px 1fr auto;
+  padding: 2.2rem 3.5rem;
+}
+
+.siteFooter nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+.siteFooter p {
+  color: #624221;
+  font-size: 0.82rem;
+  margin: 0;
+  max-width: 260px;
+  text-align: right;
+}
+
+.goldOptionsPage {
+  background: var(--paper);
+  min-height: 100svh;
+  padding: 3.5rem;
+}
+
+.goldOptionsHeader {
+  align-items: center;
+  border-bottom: 3px solid var(--line);
+  display: grid;
+  gap: 3rem;
+  grid-template-columns: 260px 1fr;
+  padding-bottom: 2.5rem;
+}
+
+.goldOptionsHeader > a {
+  background: var(--gold-soft);
+  border: 3px solid var(--line);
+  display: block;
+  padding: 1.1rem;
+}
+
+.goldOptionsHeader img {
+  height: auto;
+  mix-blend-mode: multiply;
+  width: 100%;
+}
+
+.goldOptionsHeader h1 {
+  color: var(--red);
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: clamp(2.8rem, 6vw, 5.4rem);
+  line-height: 0.92;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.goldOptionsHeader p:last-child {
+  color: var(--muted);
+  font-weight: 750;
+  margin: 0.9rem 0 0;
+}
+
+.goldOptionGrid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 2rem;
+}
+
+.goldOption {
+  background: var(--preview-pale);
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.goldOption > p {
+  color: var(--muted);
+  margin: 0;
+  min-height: 74px;
+  padding: 1rem 1.2rem;
+}
+
+.goldOptionTop {
+  align-items: end;
+  background: var(--preview-soft);
+  border-bottom: 3px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding: 1.25rem;
+}
+
+.goldOptionTop span {
+  color: var(--red);
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.goldOptionTop h2 {
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 2rem;
+  line-height: 1;
+  margin: 0.35rem 0 0;
+  text-transform: uppercase;
+}
+
+.goldOptionTop > strong {
+  color: var(--preview-deep);
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 2.7rem;
+  line-height: 0.85;
+}
+
+.goldSwatches {
+  border-block: 2px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.goldSwatches span {
+  align-items: center;
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.7rem;
+  font-weight: 900;
+  gap: 0.45rem;
+  padding: 0.75rem 0.4rem;
+  text-transform: uppercase;
+}
+
+.goldSwatches span + span {
+  border-left: 2px solid var(--line);
+}
+
+.goldSwatches i {
+  border: 2px solid var(--line);
+  display: block;
+  height: 34px;
+  width: 34px;
+}
+
+.swatchDeep {
+  background: var(--preview-deep);
+}
+
+.swatchGold {
+  background: var(--preview-gold);
+}
+
+.swatchSoft {
+  background: var(--preview-soft);
+}
+
+.swatchPale {
+  background: var(--preview-pale);
+}
+
+.goldOptionSample {
+  align-items: center;
+  background: var(--night);
+  color: var(--white);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1.2rem;
+}
+
+.goldOptionSample button {
+  background: var(--preview-gold);
+  border: 2px solid var(--preview-soft);
+  border-radius: 999px;
+  color: var(--ink);
+  font-weight: 900;
+  padding: 0.75rem 1rem;
+}
+
+.goldOptionSample span {
+  color: var(--preview-soft);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1050px) {
+  .siteHeader {
+    grid-template-columns: 190px 1fr auto;
+    padding-inline: 2rem;
+  }
+
+  .heroContent,
+  .nutritionRail,
+  .menuSection,
+  .howSection,
+  .givingSection,
+  .teamSection,
+  .joinSection,
+  .siteFooter {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  .hero h1 {
+    font-size: 4.35rem;
+  }
+
+  .heroReadout {
+    right: 2rem;
+  }
+
+  .heroCubeLabel {
+    right: 2rem;
+  }
+
+  .menuGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .storyCopy {
+    padding-inline: 2rem;
+  }
+}
+
+@media (max-width: 820px) {
+  .siteHeader {
+    gap: 0.7rem 1rem;
+    grid-template-columns: 1fr auto;
+    padding-block: 0.65rem;
+  }
+
+  .brandLockup {
+    width: 180px;
+  }
+
+  .navLinks {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+    white-space: nowrap;
+  }
+
+  .navCta {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .hero {
+    min-height: 820px;
+  }
+
+  .heroContent {
+    max-width: 570px;
+    padding-bottom: 17rem;
+    padding-top: 4.5rem;
+  }
+
+  .hero h1 {
+    font-size: 3.6rem;
+    max-width: 570px;
+  }
+
+  .heroLead {
+    font-size: 1.2rem;
+  }
+
+  .heroReadout {
+    bottom: 1.4rem;
+    right: 1.4rem;
+  }
+
+  .nutritionRail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nutritionRail > div:nth-child(3) {
+    border-left: 0;
+    border-top: 2px solid var(--line);
+  }
+
+  .nutritionRail > div:nth-child(4) {
+    border-top: 2px solid var(--line);
+  }
+
+  .menuIntro h2,
+  .howHeading h2,
+  .storyCopy h2,
+  .givingTop h2,
+  .teamHeading h2,
+  .joinContent h2 {
+    font-size: 2.65rem;
+  }
+
+  .menuGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .howSection,
+  .storySection,
+  .givingTop,
+  .pressBlock,
+  .joinSection {
+    grid-template-columns: 1fr;
+  }
+
+  .howSection {
+    gap: 2rem;
+  }
+
+  .storyPhotos {
+    min-height: 450px;
+  }
+
+  .storyCopy {
+    padding: 4rem 2rem;
+  }
+
+  .impactStat strong {
+    font-size: 2.6rem;
+  }
+
+  .pressBlock {
+    gap: 1rem;
+  }
+
+  .teamGrid {
+    grid-template-columns: 1fr;
+    margin-inline: auto;
+    max-width: 520px;
+  }
+
+  .founderCard:nth-child(2) {
+    transform: rotate(1deg);
+  }
+
+  .joinForm {
+    grid-template-columns: 1fr;
+  }
+
+  .goldOptionsPage {
+    padding: 2rem;
+  }
+
+  .goldOptionsHeader,
+  .goldOptionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .goldOptionsHeader > a {
+    width: 230px;
+  }
+
+  .siteFooter {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .siteFooter > img {
+    width: 210px;
+  }
+
+  .siteFooter p {
+    max-width: 420px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .siteHeader,
+  .heroContent,
+  .nutritionRail,
+  .menuSection,
+  .howSection,
+  .givingSection,
+  .teamSection,
+  .joinSection,
+  .siteFooter {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .siteHeader {
+    gap: 0.6rem;
+  }
+
+  .brandLockup {
+    width: 150px;
+  }
+
+  .navCta {
+    font-size: 0.78rem;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .navLinks a {
+    font-size: 0.82rem;
+    padding-inline: 0.45rem;
+  }
+
+  .hero {
+    min-height: calc(100svh - 155px);
+  }
+
+  .heroContent {
+    padding-bottom: 14.5rem;
+    padding-top: 3rem;
+  }
+
+  .hero h1 {
+    font-size: 2.7rem;
+  }
+
+  .heroActions {
+    align-items: stretch;
+    flex-direction: column;
+    max-width: 300px;
+  }
+
+  .heroReadout {
+    display: none;
+  }
+
+  .heroCubeLabel {
+    bottom: 1.2rem;
+    left: 1rem;
+    right: auto;
+    top: auto;
+  }
+
+  .heroCubeLabel::before {
+    width: 34px;
+  }
+
+  .nutritionRail {
+    grid-template-columns: 1fr;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .nutritionRail > div {
+    min-height: 88px;
+    padding: 1.15rem 0;
+  }
+
+  .nutritionRail > div + div,
+  .nutritionRail > div:nth-child(3),
+  .nutritionRail > div:nth-child(4) {
+    border-left: 0;
+    border-top: 2px solid var(--line);
+  }
+
+  .menuSection,
+  .givingSection,
+  .teamSection,
+  .joinSection {
+    padding-bottom: 4.5rem;
+    padding-top: 4.5rem;
+  }
+
+  .menuGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .howSteps {
+    grid-template-columns: 1fr;
+  }
+
+  .howSteps li {
+    border-left: 0;
+    border-top: 3px solid var(--line);
+    padding: 1.2rem 0;
+  }
+
+  .storyPhotos {
+    min-height: 330px;
+  }
+
+  .storyCopy {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .impactRow {
+    grid-template-columns: 1fr;
+  }
+
+  .impactStat + .impactStat {
+    border-left: 0;
+    border-top: 3px solid var(--gold);
+  }
+
+  .pressList a {
+    align-items: start;
+    gap: 0.35rem;
+    grid-template-columns: 1fr auto;
+    padding: 1rem 0;
+  }
+
+  .pressList a span,
+  .pressList a strong {
+    grid-column: 1;
+  }
+
+  .pressList a small {
+    grid-column: 1;
+  }
+
+  .teamGrid {
+    gap: 1rem;
+  }
+
+  .goldOptionsPage {
+    padding: 1rem;
+  }
+
+  .goldOptionsHeader {
+    gap: 1.5rem;
+  }
+
+  .goldOptionTop h2 {
+    font-size: 1.55rem;
+  }
+
+  .goldOptionTop > strong {
+    font-size: 2.15rem;
+  }
+
+  .goldOptionSample {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .tickerTrack {
+    animation: none;
+  }
+
+  .heroCubeLabel {
+    animation: none;
+  }
+
+  .menuCard,
+  .menuCard:hover,
+  .menuCard::before,
+  .menuCard:hover::before,
+  .menuCardPhoto img,
+  .menuCard:hover .menuCardPhoto img {
+    transform: none;
+  }
+}

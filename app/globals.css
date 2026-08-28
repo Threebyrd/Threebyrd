@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --tb-paper: #fff8e7;
-  --tb-surface: #fffdf6;
-  --tb-ink: #29170f;
-  --tb-line: #42261b;
-  --tb-muted: #6f5545;
-  --tb-red: #8f1719;
-  --tb-red-action: #c83434;
-  --tb-tomato: #df5a3c;
-  --tb-gold: #dca62f;
-  --tb-gold-deep: #9f681a;
-  --tb-gold-soft: #f2cf78;
-  --tb-gold-pale: #fff0bf;
-  --tb-green: #2f6845;
-  --tb-green-pale: #cfe2c9;
-  --tb-pink: #f3aaa3;
-  --tb-night: #190c0b;
+  --tb-paper: #fef9d9;
+  --tb-surface: #ffffff;
+  --tb-ink: #282828;
+  --tb-line: #282828;
+  --tb-muted: rgba(40, 40, 40, 0.75);
+  --tb-red: #ff5332;
+  --tb-red-action: #ff5332;
+  --tb-tomato: #ff5332;
+  --tb-gold: #ffc232;
+  --tb-gold-deep: #282828;
+  --tb-gold-soft: #ffcf5c;
+  --tb-gold-pale: #ffe5a6;
+  --tb-green: #282828;
+  --tb-green-pale: #ffba92;
+  --tb-pink: #ffba92;
+  --tb-night: #282828;
   --font-display: "Anton", "Arial Narrow", "Arial Black", sans-serif;
   --font-body: "Inter Variable", Inter, Arial, Helvetica, sans-serif;
   --font-accent: "Source Serif 4 Variable", Georgia, serif;
@@ -275,8 +275,46 @@ h3 {
   text-transform: uppercase;
 }
 
-.hero h1 {
+/* Major headings use the same outlined, hard-offset construction as the CTAs. */
+.hero h1,
+.plansIntro h2,
+.menuIntro h2,
+.processSection > .sectionShell > h2,
+.ingredientCopy h2,
+.givingTop h2,
+.storyHeading h2,
+.teamHeading h2,
+.joinContent h2 {
+  border: var(--border-major);
+  box-shadow: 7px 7px 0 var(--tb-line);
+  display: block;
+  padding: 0.13em 0.18em 0.16em;
+  transform: rotate(-0.3deg);
+  width: fit-content;
+}
+
+.hero h1,
+.ingredientCopy h2,
+.givingTop h2,
+.joinContent h2 {
+  background: var(--tb-gold-soft);
   color: var(--tb-ink);
+}
+
+.plansIntro h2,
+.processSection > .sectionShell > h2,
+.storyHeading h2 {
+  background: var(--tb-paper);
+  color: var(--tb-ink);
+}
+
+.menuIntro h2,
+.teamHeading h2 {
+  background: var(--tb-red-action);
+  color: var(--tb-paper);
+}
+
+.hero h1 {
   font-size: clamp(4.25rem, 7vw, 7.1rem);
   line-height: 0.88;
 }
@@ -535,7 +573,7 @@ h3 {
 }
 
 .nutritionRail > div:nth-child(2) { background: var(--tb-gold-pale); }
-.nutritionRail > div:nth-child(3) { background: #f9c6bd; }
+.nutritionRail > div:nth-child(3) { background: var(--tb-pink); }
 .nutritionRail > div:nth-child(4) { background: var(--tb-green-pale); }
 
 .nutritionRail span {
@@ -657,7 +695,7 @@ h3 {
 .ingredientCopy > p,
 .storyHeading > p:last-child,
 .joinContent > p:last-child {
-  color: #4b2a20;
+  color: var(--tb-muted);
   font-size: 1.05rem;
   margin: 1rem 0 0;
   max-width: 58ch;
@@ -683,7 +721,7 @@ h3 {
 }
 
 .planCard:nth-child(2) { background: var(--tb-gold-pale); }
-.planCard:nth-child(3) { background: #f9c6bd; }
+.planCard:nth-child(3) { background: var(--tb-pink); }
 .planCard:nth-child(4) { background: var(--tb-green-pale); }
 
 .planCard:hover {
@@ -776,7 +814,7 @@ h3 {
 
 .planCard.isSelected .planMealCount span,
 .planCard.isSelected .planPriceDetails span {
-  color: rgba(255, 253, 246, 0.72);
+  color: rgba(254, 249, 217, 0.72);
 }
 
 .planCard.isSelected .planPriceDetails {
@@ -916,12 +954,10 @@ h3 {
   margin-top: 0.9rem;
 }
 
-.menuCard.beef .cardNutrition {
-  background: #153524;
-}
+.menuCard.beef .cardNutrition { background: var(--tb-night); }
 
 .cardNutrition h4 {
-  border-bottom: 1px solid rgba(255, 253, 246, 0.42);
+  border-bottom: 1px solid rgba(254, 249, 217, 0.42);
   color: var(--tb-gold-soft);
   font-size: 0.67rem;
   font-weight: 900;
@@ -940,11 +976,11 @@ h3 {
 }
 
 .macroGrid div:nth-child(even) {
-  border-left: 1px solid rgba(255, 253, 246, 0.42);
+  border-left: 1px solid rgba(254, 249, 217, 0.42);
 }
 
 .macroGrid div:nth-child(n + 3) {
-  border-top: 1px solid rgba(255, 253, 246, 0.42);
+  border-top: 1px solid rgba(254, 249, 217, 0.42);
 }
 
 .macroGrid span,
@@ -953,7 +989,7 @@ h3 {
 }
 
 .macroGrid span {
-  color: rgba(255, 253, 246, 0.7);
+  color: rgba(254, 249, 217, 0.7);
   font-size: 0.59rem;
   font-weight: 850;
   text-transform: uppercase;
@@ -1036,6 +1072,7 @@ h3 {
 
 .processSection > .sectionShell > h2 {
   font-size: clamp(3.2rem, 5vw, 4.5rem);
+  margin-inline: auto;
   text-align: center;
 }
 
@@ -1212,7 +1249,7 @@ h3 {
 }
 
 .ingredientNote p {
-  color: #4b2a20;
+  color: var(--tb-muted);
   font-size: 0.82rem;
   margin: 0.6rem 0 0;
 }
@@ -1232,11 +1269,11 @@ h3 {
 }
 
 .givingTop h2 {
-  color: var(--tb-gold-soft);
+  color: var(--tb-ink);
 }
 
 .givingTop > p {
-  color: rgba(255, 253, 246, 0.82);
+  color: rgba(254, 249, 217, 0.82);
   font-size: 1rem;
   margin-bottom: 0.35rem;
 }
@@ -1299,12 +1336,12 @@ h3 {
 }
 
 .pressList {
-  border-top: 2px solid rgba(255, 253, 246, 0.5);
+  border-top: 2px solid rgba(254, 249, 217, 0.5);
 }
 
 .pressList a {
   align-items: center;
-  border-bottom: 2px solid rgba(255, 253, 246, 0.5);
+  border-bottom: 2px solid rgba(254, 249, 217, 0.5);
   display: grid;
   gap: 1.5rem;
   grid-template-columns: 70px minmax(0, 1fr) 120px;
@@ -1329,13 +1366,13 @@ h3 {
 }
 
 .pressList p {
-  color: rgba(255, 253, 246, 0.68);
+  color: rgba(254, 249, 217, 0.68);
   font-size: 0.79rem;
   margin: 0.35rem 0 0;
 }
 
 .pressList small {
-  color: rgba(255, 253, 246, 0.68);
+  color: rgba(254, 249, 217, 0.68);
   text-align: right;
 }
 
@@ -1381,7 +1418,7 @@ h3 {
 }
 
 .storyGrid article:nth-child(3) {
-  background: #f9c6bd;
+  background: var(--tb-pink);
 }
 
 .storyPhoto {
@@ -1431,7 +1468,7 @@ h3 {
 }
 
 .teamHeading h2 {
-  color: var(--tb-red);
+  color: var(--tb-paper);
 }
 
 .teamGrid {
@@ -1533,11 +1570,11 @@ h3 {
 }
 
 .joinContent h2 {
-  color: var(--tb-gold-soft);
+  color: var(--tb-ink);
 }
 
 .joinContent > p:last-child {
-  color: rgba(255, 253, 246, 0.78);
+  color: rgba(254, 249, 217, 0.78);
 }
 
 .joinForm {
@@ -1590,7 +1627,7 @@ h3 {
 
 .joinForm > p {
   align-self: center;
-  color: rgba(255, 253, 246, 0.68);
+  color: rgba(254, 249, 217, 0.68);
   font-size: 0.77rem;
   margin-bottom: 0;
 }
@@ -1894,7 +1931,7 @@ h3 {
   }
   .heroContent { text-align: center; }
   .heroKicker { flex-direction: column; font-size: 0.67rem; gap: 0.5rem; }
-  .hero h1 { font-size: clamp(3.6rem, 18vw, 4.8rem); line-height: 0.9; }
+  .hero h1 { font-size: clamp(3.35rem, 17vw, 4.8rem); line-height: 0.9; margin-inline: auto; }
   .heroLead { font-size: 1.08rem; margin-top: 1.4rem; }
   .heroNote { font-size: 0.92rem; margin-inline: auto; }
   .heroActions { flex-direction: column; gap: 0.9rem; margin-top: 1.6rem; }
@@ -1943,6 +1980,20 @@ h3 {
   .storyHeading h2,
   .teamHeading h2,
   .joinContent h2 { font-size: 2.35rem; line-height: 1.02; }
+
+  .hero h1,
+  .plansIntro h2,
+  .menuIntro h2,
+  .processSection > .sectionShell > h2,
+  .ingredientCopy h2,
+  .givingTop h2,
+  .storyHeading h2,
+  .teamHeading h2,
+  .joinContent h2 {
+    border-width: 2px;
+    box-shadow: 4px 4px 0 var(--tb-line);
+    padding: 0.14em 0.17em 0.17em;
+  }
 
   .plansIntro > p:last-child,
   .ingredientCopy > p,

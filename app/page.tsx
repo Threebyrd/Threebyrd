@@ -146,10 +146,10 @@ export default function Home() {
       <header className="siteHeader" aria-label="Threebyrd Meal Prep">
         <a className="brandLockup" href="#top" aria-label="Threebyrd Meal Prep home">
           <Image
-            src="/assets/threebyrd-wordmark-wide.png"
+            src="/assets/threebyrd-wordmark-wide.webp"
             alt="Threebyrd Meal Prep"
-            width={1254}
-            height={450}
+            width={650}
+            height={233}
             priority
           />
         </a>
@@ -407,7 +407,7 @@ export default function Home() {
 
       <footer className="siteFooter">
         <div className="footerTop">
-          <Image src="/assets/threebyrd-wordmark-wide.png" alt="Threebyrd Meal Prep" width={1254} height={450} />
+          <Image src="/assets/threebyrd-wordmark-wide.webp" alt="Threebyrd Meal Prep" width={650} height={233} />
           <nav aria-label="Footer navigation">
             {navigation.map((item) => <a href={item.href} key={item.href}>{item.label}</a>)}
             <a href="#join">Get Updates</a>

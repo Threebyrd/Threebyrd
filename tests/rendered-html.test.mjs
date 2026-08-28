@@ -86,7 +86,12 @@ test("keeps the hero free of a 3D chicken scene and interactive selectors access
   assert.match(css, /grid-template-columns:\s*repeat\(4/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /--tb-paper:/);
+  for (const color of ["#fef9d9", "#282828", "#ff5332", "#ffc232", "#ffcf5c", "#ffba92", "#ffe5a6"]) {
+    assert.match(css, new RegExp(color));
+  }
   assert.match(css, /font-family:\s*var\(--font-display\)/);
+  assert.match(css, /Major headings use the same outlined, hard-offset construction/);
+  assert.match(css, /box-shadow:\s*7px 7px 0 var\(--tb-line\)/);
   assert.match(css, /@media \(max-width: 1024px\)/);
   assert.match(css, /@media \(max-width: 640px\)/);
   assert.doesNotMatch(packageJson, /"three"/);

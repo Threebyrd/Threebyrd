@@ -1632,6 +1632,11 @@ h3 {
   margin-bottom: 0;
 }
 
+.joinForm > p.joinFormError {
+  color: var(--tb-paper);
+  font-weight: 800;
+}
+
 .siteFooter {
   background: var(--tb-gold-soft);
   border-top: var(--border-ui);

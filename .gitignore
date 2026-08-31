@@ -4,5 +4,7 @@ dist/
 .vinext/
 .wrangler/
 .playwright-mcp/
+.openai/
 .env*
 *.log
+.DS_Store

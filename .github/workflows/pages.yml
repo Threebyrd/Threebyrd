@@ -37,6 +37,7 @@ jobs:
         run: npm run build:pages
         env:
           GITHUB_PAGES_CUSTOM_DOMAIN: https://threebyrd.com
+          NEXT_PUBLIC_APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

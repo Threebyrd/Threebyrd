@@ -1,11 +1,7 @@
 import Image from "next/image";
 import IngredientStory from "./components/IngredientStory";
+import JoinForm from "./components/JoinForm";
 import WeeklyPlans from "./components/WeeklyPlans";
-
-const launchForm = {
-  provider: "pending",
-  action: "",
-};
 
 const menuItems = [
   {
@@ -395,12 +391,7 @@ export default function Home() {
               <h2 id="join-title">Be first at the table.</h2>
               <p>Leave your email, phone number, or both. We will send the menu and ordering details when they are ready.</p>
             </div>
-            <form className="joinForm" data-provider={launchForm.provider} data-action={launchForm.action}>
-              <div><label htmlFor="email">Email</label><input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" /></div>
-              <div><label htmlFor="phone">Phone</label><input id="phone" name="phone" type="tel" placeholder="(555) 555-5555" autoComplete="tel" /></div>
-              <button type="button" disabled>List opening soon</button>
-              <p>The sign-up connection will be added before online ordering opens.</p>
-            </form>
+            <JoinForm />
           </div>
         </section>
       </main>

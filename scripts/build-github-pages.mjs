@@ -9,8 +9,13 @@ const siteDir = join(root, "dist", "github-pages");
 const clientDir = join(root, "dist", "client");
 const prerenderedDir = join(root, "dist", "server", "prerendered-routes");
 const defaultBasePath = "/Threebyrd";
-const basePath = process.env.GITHUB_PAGES_BASE_PATH ?? defaultBasePath;
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `https://thor-bw.github.io${basePath}`;
+const customDomain = process.env.GITHUB_PAGES_CUSTOM_DOMAIN?.replace(/\/$/, "");
+const basePath = customDomain
+  ? ""
+  : process.env.GITHUB_PAGES_BASE_PATH ?? defaultBasePath;
+const siteUrl = customDomain
+  ?? process.env.NEXT_PUBLIC_SITE_URL
+  ?? `https://thor-bw.github.io${basePath}`;
 
 process.env.GITHUB_PAGES = "true";
 process.env.GITHUB_PAGES_BASE_PATH = basePath;
@@ -34,6 +39,7 @@ await cp(prerenderedDir, siteDir, { recursive: true });
 await createPrettyRouteIndexes(siteDir);
 await prefixStaticReferences(siteDir, basePath);
 await writeFile(join(siteDir, ".nojekyll"), "");
+await validateCustomDomainArtifact(siteDir, customDomain, defaultBasePath);
 
 console.log(`Prepared GitHub Pages artifact at ${relative(root, siteDir)}/`);
 
@@ -52,6 +58,26 @@ async function createPrettyRouteIndexes(directory) {
     const routeDirectory = join(directory, routeName);
     await mkdir(routeDirectory, { recursive: true });
     await cp(entryPath, join(routeDirectory, "index.html"));
+  }
+}
+
+async function validateCustomDomainArtifact(directory, domain, forbiddenPrefix) {
+  if (!domain) return;
+
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const entryPath = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await validateCustomDomainArtifact(entryPath, domain, forbiddenPrefix);
+      continue;
+    }
+    if (!shouldRewrite(entry.name)) continue;
+
+    const contents = await readFile(entryPath, "utf8");
+    if (contents.includes(`${forbiddenPrefix}/`)) {
+      throw new Error(
+        `Custom-domain artifact contains repository-prefixed URL ${forbiddenPrefix}/ in ${relative(root, entryPath)}.`,
+      );
+    }
   }
 }
 

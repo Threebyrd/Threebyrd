@@ -28,17 +28,15 @@ jobs:
           cache: npm
 
       - name: Setup Pages
-        id: pages
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build static site
+      - name: Build static site for custom domain
         run: npm run build:pages
         env:
-          GITHUB_PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-          NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.base_url }}
+          GITHUB_PAGES_CUSTOM_DOMAIN: https://threebyrd.com
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

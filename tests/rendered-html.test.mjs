@@ -1,106 +1,97 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
+async function render(path = "/", init = {}) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${path}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
+    new Request(`http://localhost${path}`, { headers: { accept: "text/html" }, ...init }),
     {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
+      ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
     },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
+    { waitUntil() {}, passThroughOnException() {} },
   );
 }
 
-test("server-renders the complete Threebyrd landing page", async () => {
+test("server-renders the updated ThreeByrd ordering experience", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Threebyrd Meal Prep - Chicken and Beef Meal Prep<\/title>/i);
-  assert.doesNotMatch(html, /data-testid="meal-scene"/);
-  assert.match(html, /Threebyrd Meal Prep/);
-  assert.match(html, /Online ordering opens soon/);
-  assert.match(html, /Chicken or beef\. Little or Big\./);
-  assert.match(html, /Sizes/);
-  assert.match(html, /Small \+ Big/);
-  assert.match(html, /Weekly plans/);
-  assert.match(html, /3–20 meals/);
-  for (const value of ["660", "46.5g", "77.5g", "17g", "970", "69g", "114g", "26g", "960", "66.5g", "41g"]) {
-    assert.match(html, new RegExp(value.replace(".", "\\.")));
-  }
-  for (const plan of [3, 5, 10, 20]) {
-    assert.match(html, new RegExp(`<strong>${plan}</strong><span>Meals / week`));
-  }
+  assert.match(html, /<title>ThreeByrd Meal Prep \| Chicken \+ Beef, Delivered<\/title>/i);
+  assert.match(html, /Choose<br\s*\/>\s*<em>your protein/);
+  assert.match(html, /delivered straight to your door/i);
+  assert.match(html, /Orders open until/);
+  assert.match(html, /Orders are currently closed/);
+  assert.match(html, /Ordering will be opening soon/);
+  assert.match(html, /Friday, September 11/);
+  assert.match(html, /Choose Meal Order/);
+  assert.match(html, /3-box minimum/);
+  assert.match(html, /Mix and match however you want/);
+  assert.match(html, /How ordering works/);
+  assert.match(html, /Pick your protein/);
+  assert.match(html, /Pick your quantity/);
+  assert.match(html, /Delivered to your door/);
+  assert.match(html, /threebyrd-logo\.png/);
+  assert.match(html, /favicon-16x16\.png/);
+  assert.match(html, /favicon-32x32\.png/);
+  assert.match(html, /favicon\.ico/);
+  assert.match(html, /apple-touch-icon\.png/);
+  assert.match(html, /site\.webmanifest/);
+  assert.match(html, /processImageThree/);
+  assert.match(html, /Big Beef meal prep boxes with rice and broccoli/);
+  assert.match(html, /founderImageThor/);
+  assert.doesNotMatch(html, /hero-chicken-thigh\.png/);
+  assert.equal((html.match(/class="tickerSequence"/g) ?? []).length, 2);
+  assert.equal((html.match(/class="nutritionRail"/g) ?? []).length, 0);
+  assert.match(html, /class="countUpValue"/);
 
   for (const product of ["Little Chicken", "Big Chicken", "Little Beef", "Big Beef"]) {
     assert.match(html, new RegExp(product));
   }
-
-  for (const sectionCopy of [
-    "Pick your weekly rhythm.",
-    "Four boxes.",
-    "Two choices.",
-    "Protein, rice, broccoli.",
-    "Meals made for Ithaca.",
-    "From SBX Chicken",
-    "Three founders.",
-    "Be first at the table.",
-  ]) {
-    assert.match(html, new RegExp(sectionCopy.replace(".", "\\.")));
-  }
-
+  const productCardOrder = [...html.matchAll(/<article class="productCard[^>]*>[\s\S]*?<h3>([^<]+)<\/h3>/g)].map((match) => match[1]);
+  assert.deepEqual(productCardOrder, ["Big Chicken", "Big Beef", "Little Chicken", "Little Beef"]);
+  assert.match(html, /Coming soon/);
+  assert.match(html, /\$8/);
+  assert.match(html, /\$10/);
+  assert.match(html, /\$12/);
+  assert.doesNotMatch(html, /Choose a weekly plan|Pick your weekly rhythm|Weekly Plans|3–20 meals|Small size|Big size|What Is In The Box|What.s in the Box/i);
+  assert.doesNotMatch(html, /Order now|Shop now/i);
+  assert.doesNotMatch(html, /threebyrd-wordmark-wide\.png/);
+  assert.doesNotMatch(html, /Little Beef nutrition information|Little Beef macros/i);
   assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
-  assert.match(html, /Verified Beef macro set/);
-  assert.doesNotMatch(html, /MOST POPULAR|BEST VALUE|Order now|Shop now/i);
-
-  assert.equal((html.match(/class="menuCard /g) ?? []).length, 4);
-  assert.equal((html.match(/class="cardNutrition"/g) ?? []).length, 4);
-  assert.equal((html.match(/class="cardIngredients"/g) ?? []).length, 4);
+  assert.equal((html.match(/class="productCard productCard/g) ?? []).length, 4);
+  assert.equal((html.match(/class="menuCard [^"]*"/g) ?? []).length, 4);
+  assert.equal((html.match(/class="founderCard/g) ?? []).length, 3);
 });
 
-test("keeps the hero free of a 3D chicken scene and interactive selectors accessible", async () => {
-  const [page, css, packageJson, plans, ingredients, layout] = await Promise.all([
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readFile(new URL("../app/components/WeeklyPlans.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/components/IngredientStory.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-  ]);
+test("keeps checkout closed at the server boundary", async () => {
+  const response = await render("/api/checkout", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ items: [{ productId: "big-chicken", quantity: 3 }] }),
+  });
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /Orders are currently closed/);
+});
 
-  assert.doesNotMatch(page, /MealScene|heroCubeLabel|low-poly chicken/i);
-  assert.match(css, /\.menuGrid\s*\{/);
-  assert.match(css, /grid-template-columns:\s*repeat\(4/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(css, /--tb-paper:/);
-  for (const color of ["#fef9d9", "#282828", "#ff5332", "#ffc232", "#ffcf5c", "#ffba92", "#ffe5a6"]) {
-    assert.match(css, new RegExp(color));
-  }
-  assert.match(css, /font-family:\s*var\(--font-display\)/);
-  assert.match(css, /Major headings use the same outlined, hard-offset construction/);
-  assert.match(css, /box-shadow:\s*7px 7px 0 var\(--tb-line\)/);
-  assert.match(css, /@media \(max-width: 1024px\)/);
-  assert.match(css, /@media \(max-width: 640px\)/);
-  assert.doesNotMatch(packageJson, /"three"/);
-  assert.match(plans, /useState/);
-  assert.match(plans, /aria-pressed/);
-  assert.match(ingredients, /useState/);
-  assert.match(ingredients, /aria-pressed/);
-  assert.match(layout, /@fontsource\/anton/);
-  assert.match(layout, /@fontsource-variable\/inter/);
-  assert.doesNotMatch(page, /&nearr;/);
-  assert.doesNotMatch(page, /chili powder|paprika|cumin|oregano|onion flakes/i);
+test("renders the order route and safe canceled-checkout state", async () => {
+  const response = await render("/order?checkout=canceled");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Checkout was canceled/);
+  assert.match(html, /Build your order/);
+  assert.match(html, /Little Beef/);
+});
+
+test("renders a confirmation route without requiring Stripe secrets", async () => {
+  const response = await render("/success");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Order received/);
+  assert.match(html, /Saturday delivery/);
+  assert.doesNotMatch(html, /sk_(?:test|live)_/i);
 });

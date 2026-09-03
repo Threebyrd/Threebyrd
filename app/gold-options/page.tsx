@@ -49,12 +49,12 @@ export default function GoldOptions() {
   return (
     <main className="goldOptionsPage">
       <header className="goldOptionsHeader">
-        <a href={withBasePath("/")} aria-label="Back to Threebyrd Meal Prep">
+        <a href={withBasePath("/")} aria-label="Back to ThreeByrd Meal Prep">
           <Image
-            src="/assets/threebyrd-wordmark-wide.png"
-            alt="Threebyrd Meal Prep"
-            width={1254}
-            height={450}
+            src="/assets/threebyrd-logo.png"
+            alt="ThreeByrd Meal Prep official logo"
+            width={3938}
+            height={2591}
             priority
           />
         </a>

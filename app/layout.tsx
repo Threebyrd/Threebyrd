@@ -6,34 +6,43 @@ import "./globals.css";
 import { siteUrl, withBasePath } from "./site-paths";
 
 export const metadata: Metadata = {
-  title: "Threebyrd Meal Prep - Chicken and Beef Meal Prep",
+  title: "ThreeByrd Meal Prep | Chicken + Beef, Delivered",
+  alternates: {
+    canonical: siteUrl("/"),
+  },
   description:
-    "Chicken and beef meal prep in two portion sizes, with rice and broccoli. Online ordering is coming soon.",
+    "Choose from ThreeByrd Chicken and Beef meal prep. Mix and match three or more boxes, delivered straight to your door.",
   openGraph: {
-    title: "Threebyrd Meal Prep",
+    title: "ThreeByrd Meal Prep | Chicken + Beef, Delivered",
     description:
-      "Chicken and beef meal prep in two portion sizes. Online ordering is coming soon.",
+      "Simple, high-protein meal prep with Chicken and Beef, delivered straight to your door.",
     type: "website",
     images: [
       {
         url: siteUrl("/og.png"),
         width: 1200,
         height: 630,
-        alt: "Threebyrd Meal Prep social preview",
+        alt: "ThreeByrd Meal Prep social preview",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Threebyrd Meal Prep",
+    title: "ThreeByrd Meal Prep | Chicken + Beef, Delivered",
     description:
-      "Chicken and beef meal prep in two portion sizes. Online ordering is coming soon.",
+      "Build a one-time order of Chicken and Beef meal prep. Mix and match three or more boxes.",
     images: [siteUrl("/og.png")],
   },
   icons: {
-    icon: withBasePath("/favicon.svg"),
-    shortcut: withBasePath("/favicon.svg"),
+    icon: [
+      { url: withBasePath("/favicon-16x16.png"), sizes: "16x16", type: "image/png" },
+      { url: withBasePath("/favicon-32x32.png"), sizes: "32x32", type: "image/png" },
+      { url: withBasePath("/favicon.ico"), type: "image/x-icon" },
+    ],
+    shortcut: withBasePath("/favicon.ico"),
+    apple: withBasePath("/apple-touch-icon.png"),
   },
+  manifest: withBasePath("/site.webmanifest"),
 };
 
 export default function RootLayout({

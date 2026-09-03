@@ -5,6 +5,9 @@ dist/
 .wrangler/
 .playwright-mcp/
 .openai/
+.agents/
+*.tsbuildinfo
+skills-lock.json
 .env*
 *.log
 .DS_Store

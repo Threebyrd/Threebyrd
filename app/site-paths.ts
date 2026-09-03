@@ -9,7 +9,7 @@ export function withBasePath(path: `/${string}`): string {
 }
 
 export function siteUrl(path: `/${string}`): string {
-  const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(
+  const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://threebyrd.com").replace(
     /\/$/,
     "",
   );

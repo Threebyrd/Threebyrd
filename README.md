@@ -1,8 +1,8 @@
-# Threebyrd Meal Prep Website
+# ThreeByrd Meal Prep
 
-Marketing website for Threebyrd Meal Prep, formerly SBX Chicken. The current site introduces the four-box menu, shows macros and ingredients, covers the founders and giving-back work, and includes a placeholder launch-list form.
+ThreeByrd is a delivery-only meal-prep site for one-time, customizable orders of Chicken and Beef boxes. Customers choose Little or Big portions, mix and match three or more purchasable boxes, and check out through Stripe-hosted Checkout.
 
-## Quick Start
+## Quick start
 
 Requirements: Node.js 22.13 or newer.
 
@@ -11,39 +11,44 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` in a browser.
+Open [http://localhost:3000/](http://localhost:3000/). Products and nutrition remain visible, but ordering is intentionally closed through the centralized `ORDERS_OPEN` flag until the founders finalize pricing.
 
-## Useful Commands
+## Useful commands
 
 ```bash
 npm run dev
-npm run build
-npm test
 npm run lint
+npx tsc --noEmit
+npm test
+npm run build
+npm run db:generate
 ```
 
-## Main Files
+## Main files
 
-- `app/page.tsx`: page sections, menu products, macros, ingredients, founders, and press links.
-- `app/globals.css`: all layout, color, responsive, and interaction styling.
-- `app/gold-options/page.tsx`: private design comparison route for the four gold palette options.
-- `public/assets/`: food photography, founder headshots, wordmark, social preview, and hero chicken asset.
+- `app/page.tsx`: homepage structure, delivery-first positioning, menu, process, story, founders, and launch list.
+- `app/components/OrderBuilder.tsx`: customizable cart UI, live summary, minimum-order state, and Checkout handoff.
+- `app/components/Countdown.tsx`: browser-safe countdown to the next Friday 3:00 PM Eastern cutoff.
+- `app/order-config.ts`: trusted product catalog, tiered pricing, quote validation, and cutoff recurrence.
+- `app/api/checkout/route.ts`: server-side quote validation and Stripe Checkout Session creation.
+- `app/api/webhooks/stripe/route.ts`: signature verification and idempotent D1 order confirmation.
+- `app/success/page.tsx`: post-checkout confirmation experience.
+- `db/schema.ts` and `drizzle/`: confirmed-order schema and D1 migration.
+- `docs/ORDERING.md`: operator and developer guide for pricing, Stripe, cutoff overrides, orders, refunds, and deployment.
+- `public/assets/threebyrd-logo.png`: supplied complete ThreeByrd logo used for full-logo placements.
+- `public/assets/threebyrd-logo.png`: complete ThreeByrd logo used in the website header and footer.
+- `public/assets/threebyrd-single-chicken-star.png`: transparent single chicken-and-star mark used for favicon and app-icon assets.
 
-- `docs/SPEC.md`: product, brand, content, and design decisions gathered during planning.
-- `.openai/hosting.json`: existing OpenAI Sites project connection.
+## Environment
 
-## Current Status
+Copy the needed values into `.env.local` for local development. Never commit that file.
 
-- Online ordering is not connected yet.
-- The email and phone form is visual only and intentionally disabled.
-- Prices are placeholders.
-- Some beef macros and allergen statements still need confirmation.
-- The four product records are grouped near the top of `app/page.tsx` for easy updates.
-- Shopify product IDs and checkout behavior can be added later without rebuilding the page design.
-- The live site currently uses Honey Gold; compare the other prepared palettes at `/gold-options`.
+- `STRIPE_SECRET_KEY`: Stripe test-mode secret or least-privilege restricted key for server-side Checkout and confirmation retrieval.
+- `STRIPE_WEBHOOK_SECRET`: signing secret for `/api/webhooks/stripe`.
+- `NEXT_PUBLIC_SITE_URL`: trusted site origin used in Stripe success/cancel URLs.
+- `THREEBYRD_CUTOFF_OVERRIDE`: optional business-local wall time such as `2026-09-11T15:00:00`; see `docs/ORDERING.md`.
+- `NEXT_PUBLIC_APPS_SCRIPT_URL`: existing optional launch-list endpoint.
 
-## Handoff Notes
+## Current scope
 
-Run `npm install` after receiving the project. The `node_modules`, build output, and local cache folders are intentionally not included in shared archives because they are regenerated from `package-lock.json`.
-
-Do not add proprietary recipe or seasoning ratios to public page copy or committed source files.
+The current customer experience is a closed ordering preview. Stripe payment code remains in place but is gated by `ORDERS_OPEN = false`; this update did not configure, connect, test, or modify Stripe. Stripe Billing and Invoicing remain future work.

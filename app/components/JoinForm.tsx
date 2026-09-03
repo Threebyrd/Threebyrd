@@ -6,11 +6,18 @@ const endpoint = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL ?? "";
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
 
-export default function JoinForm() {
+type JoinFormProps = {
+  idPrefix: string;
+  compact?: boolean;
+};
+
+export default function JoinForm({ idPrefix, compact = false }: JoinFormProps) {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const configured = endpoint !== "";
   const locked = !configured || status === "submitting" || status === "success";
+  const emailId = `${idPrefix}-email`;
+  const phoneId = `${idPrefix}-phone`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,15 +52,16 @@ export default function JoinForm() {
 
   return (
     <form
-      className="joinForm"
+      id={`${idPrefix}-form`}
+      className={`joinForm${compact ? " joinFormCompact" : ""}`}
       data-provider={configured ? "google-apps-script" : "pending"}
       data-action={endpoint}
       onSubmit={handleSubmit}
     >
       <div>
-        <label htmlFor="email">Email</label>
+        <label htmlFor={emailId}>Email</label>
         <input
-          id="email"
+          id={emailId}
           name="email"
           type="email"
           placeholder="you@example.com"
@@ -62,9 +70,9 @@ export default function JoinForm() {
         />
       </div>
       <div>
-        <label htmlFor="phone">Phone</label>
+        <label htmlFor={phoneId}>Phone</label>
         <input
-          id="phone"
+          id={phoneId}
           name="phone"
           type="tel"
           placeholder="(555) 555-5555"
@@ -83,7 +91,12 @@ export default function JoinForm() {
               ? "You are on the list"
               : "Get launch updates"}
       </button>
-      <p className={status === "error" ? "joinFormError" : undefined} role="status" aria-live="polite">
+      <p
+        className={status === "error" ? "joinFormError" : undefined}
+        role={status === "error" ? "alert" : "status"}
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {statusMessage ||
           (configured
             ? "We will only use your contact info to share launch updates."

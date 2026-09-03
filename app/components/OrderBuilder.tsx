@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import MacroSnapshot from "./MacroSnapshot";
 import {
   formatMoney,
   ORDERS_OPEN,
@@ -91,7 +92,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
         <div className="orderIntro">
           <div>
             <p className="sectionLabel">Build your order</p>
-            <h2 id="order-title">Chicken.<br />Beef.<br /><em>Your call.</em></h2>
+            <h2 className="majorHeading" id="order-title">Chicken.<br />Beef.<br /><em>Your call.</em></h2>
           </div>
           <div className="orderIntroCopy">
             <p>Choose Little or Big, mix and match across proteins, and send three or more boxes to your door.</p>
@@ -120,12 +121,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                       <strong>{disabled ? "—" : formatMoney(product.regularUnitAmountCents ?? 0)}</strong>
                     </div>
                     <p className="productDescription">{disabled ? "We are putting the finishing touches on this recipe." : product.description}</p>
-                    {product.calories && product.proteinGrams && (
-                      <div className="macroStrip" aria-label={`${product.name} macros`}>
-                        <span><b>{product.proteinGrams}</b> protein</span>
-                        <span><b>{product.calories}</b> cal</span>
-                      </div>
-                    )}
+                    <MacroSnapshot product={product} />
                     {disabled ? (
                       <p className="productAvailability">Not available for purchase yet.</p>
                     ) : (

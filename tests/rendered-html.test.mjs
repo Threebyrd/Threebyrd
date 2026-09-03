@@ -31,6 +31,22 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /Choose Meal Order/);
   assert.match(html, /3-box minimum/);
   assert.match(html, /Mix and match however you want/);
+  assert.match(html, /Be first to know when ordering opens/);
+  assert.equal((html.match(/class="joinForm/g) ?? []).length, 2);
+  assert.match(html, /id="upper-join-email"[^>]*name="email"/);
+  assert.match(html, /id="upper-join-phone"[^>]*name="phone"/);
+  assert.match(html, /id="bottom-join-email"[^>]*name="email"/);
+  assert.match(html, /id="bottom-join-phone"[^>]*name="phone"/);
+  assert.equal((html.match(/class="cardNutrition"/g) ?? []).length, 3);
+  assert.match(html, /Big Chicken Macro snapshot/);
+  assert.match(html, /Big Beef Macro snapshot/);
+  assert.match(html, /Little Chicken Macro snapshot/);
+  assert.doesNotMatch(html, /Little Beef Macro snapshot|Little Beef nutrition information|Little Beef macros/i);
+  assert.match(html, /Follow ThreeByrd on Instagram/);
+  assert.match(html, /https:\/\/www\.instagram\.com\/threebyrd\//);
+  assert.match(html, /Follow ThreeByrd on LinkedIn/);
+  assert.match(html, /https:\/\/www\.linkedin\.com\/company\/threebyrd\//);
+  assert.match(html, /For inquiries, contact <a href="mailto:thor@threebyrd\.com">thor@threebyrd\.com<\/a>/);
   assert.match(html, /How ordering works/);
   assert.match(html, /Pick your protein/);
   assert.match(html, /Pick your quantity/);
@@ -61,10 +77,9 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.doesNotMatch(html, /Choose a weekly plan|Pick your weekly rhythm|Weekly Plans|3–20 meals|Small size|Big size|What Is In The Box|What.s in the Box/i);
   assert.doesNotMatch(html, /Order now|Shop now/i);
   assert.doesNotMatch(html, /threebyrd-wordmark-wide\.png/);
-  assert.doesNotMatch(html, /Little Beef nutrition information|Little Beef macros/i);
+  assert.doesNotMatch(html, /id="menu"|id="menu-title"|href="#menu"|class="menuCard|macroStrip/i);
   assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
   assert.equal((html.match(/class="productCard productCard/g) ?? []).length, 4);
-  assert.equal((html.match(/class="menuCard [^"]*"/g) ?? []).length, 4);
   assert.equal((html.match(/class="founderCard/g) ?? []).length, 3);
 });
 

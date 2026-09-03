@@ -7,7 +7,6 @@ import {
   formatBusinessDateTime,
   getNextOrderCutoff,
   getSaturdayForCutoff,
-  products,
 } from "./order-config";
 
 const impactStats = [
@@ -62,7 +61,6 @@ const pressLinks = [
 
 const navigation = [
   { label: "Order", href: "#order" },
-  { label: "Menu", href: "#menu" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Giving Back", href: "#giving-back" },
   { label: "Team", href: "#team" },
@@ -106,7 +104,7 @@ export default function Home() {
           <div className="sectionShell heroLayout">
             <div className="heroContent">
               <p className="heroKicker"><span>ThreeByrd Meal Prep</span> Formerly SBX Chicken</p>
-              <h1 id="hero-title">Choose<br /><em>your protein.</em></h1>
+              <h1 className="majorHeading" id="hero-title">Choose<br /><em>your protein.</em></h1>
               <p className="heroLead">Chicken or Beef. Little or Big.</p>
               <p className="heroNote">Simple, high-protein meal prep with rice and broccoli, delivered straight to your door.</p>
               <div className="heroChoiceRow" aria-label="Protein choices">
@@ -153,58 +151,24 @@ export default function Home() {
           </div>
         </div>
 
-        <Countdown initialCutoffIso={cutoff.toISOString()} />
-        <OrderBuilder initialCutoffIso={cutoff.toISOString()} />
-
-        <section id="menu" className="menuSection" aria-labelledby="menu-title">
-          <div className="sectionShell">
-            <div className="menuIntro">
-              <div>
-                <p className="sectionLabel">The menu</p>
-                <h2 id="menu-title">Four boxes.<br />No guesswork.</h2>
-              </div>
-              <div className="menuIntroCopy">
-                <p>Chicken or Beef. Little or Big. Every current box comes with rice and broccoli.</p>
-              </div>
+        <section className="upperJoinSection" aria-labelledby="upper-join-title">
+          <div className="sectionShell upperJoinLayout">
+            <div className="upperJoinContent">
+              <p className="sectionLabel">Stay in the loop</p>
+              <h2 className="majorHeading" id="upper-join-title">Be first to know when ordering opens.</h2>
+              <p>Leave your email, phone number, or both for ordering and delivery updates.</p>
             </div>
-
-            <div className="menuGrid">
-              {products.map((item, index) => (
-                <article className={`menuCard ${item.protein}${item.purchasable ? "" : " isComingSoon"}`} key={item.id}>
-                  <div className="menuCardPhoto">
-                    <Image src={item.image} alt={item.alt} width={720} height={960} sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw" />
-                    <span>0{index + 1} / {item.size}</span>
-                    {!item.purchasable && <b className="menuComingSoon">Coming soon</b>}
-                  </div>
-                  <div className="menuCardBody">
-                    <div className="menuCardHeading">
-                      <div><p>{item.protein}</p><h3>{item.name}</h3></div>
-                      <strong>{item.purchasable ? `$${(item.regularUnitAmountCents ?? 0) / 100}` : "—"}</strong>
-                    </div>
-                    <p className="menuCardCopy">{item.purchasable ? item.description : "This box is coming soon."}</p>
-                    {item.calories && item.proteinGrams && item.carbs && item.fat && (
-                      <div className="cardNutrition" aria-label={`${item.name} nutrition information`}>
-                        <h4>Macro snapshot</h4>
-                        <div className="macroGrid">
-                          <div><span>Calories</span><strong>{item.calories}</strong></div>
-                          <div className="macroProtein"><span>Protein</span><strong>{item.proteinGrams}</strong></div>
-                          <div><span>Carbs</span><strong>{item.carbs}</strong></div>
-                          <div><span>Fat</span><strong>{item.fat}</strong></div>
-                        </div>
-                      </div>
-                    )}
-                    {item.purchasable ? <a className="cardCta" href="#order">Add to order <span aria-hidden="true">→</span></a> : <p className="cardUnavailable">No purchase controls yet.</p>}
-                  </div>
-                </article>
-              ))}
-            </div>
+            <JoinForm idPrefix="upper-join" compact />
           </div>
         </section>
+
+        <Countdown initialCutoffIso={cutoff.toISOString()} />
+        <OrderBuilder initialCutoffIso={cutoff.toISOString()} />
 
         <section id="how-it-works" className="processSection" aria-labelledby="process-title">
           <div className="sectionShell">
             <p className="sectionLabel sectionLabelLight">How ordering works</p>
-            <h2 id="process-title">Pick your build.<br />We handle the rest.</h2>
+            <h2 className="majorHeading" id="process-title">Pick your build.<br />We handle the rest.</h2>
             <div className="processGrid">
               <article className="processCard processCardOne">
                 <div className="processCopy"><span>01</span><h3>Pick your protein.</h3><p>Choose Chicken or Beef, then choose a Little or Big box.</p><a href="#order">Choose Chicken or Beef <span aria-hidden="true">→</span></a></div>
@@ -229,7 +193,7 @@ export default function Home() {
         <section id="giving-back" className="givingSection" aria-labelledby="giving-title">
           <div className="sectionShell">
             <div className="givingTop">
-              <div><p className="sectionLabel sectionLabelLight">Giving back</p><h2 id="giving-title">Meals made for Ithaca.</h2></div>
+              <div><p className="sectionLabel sectionLabelLight">Giving back</p><h2 className="majorHeading" id="giving-title">Meals made for Ithaca.</h2></div>
               <p>With support from two on-campus organizations at Cornell University, ThreeByrd held two large meal giveaways with Friendship Donations Network and Ithaca Catholic Worker House.</p>
             </div>
             <div className="impactRow">{impactStats.map((stat) => <div className="impactStat" key={stat.label}>{stat.countUp ? <CountUpTotal /> : <strong>{stat.value}</strong>}<span>{stat.label}</span></div>)}</div>
@@ -242,7 +206,7 @@ export default function Home() {
 
         <section id="story" className="storySection" aria-labelledby="story-title">
           <div className="sectionShell">
-            <div className="storyHeading"><p className="sectionLabel">Our story</p><h2 id="story-title">From SBX Chicken<br />to ThreeByrd.</h2><p>A student-founded meal-prep project becoming a broader brand for busy weeks, with delivery built in.</p></div>
+            <div className="storyHeading"><p className="sectionLabel">Our story</p><h2 className="majorHeading" id="story-title">From SBX Chicken<br />to ThreeByrd.</h2><p>A student-founded meal-prep project becoming a broader brand for busy weeks, with delivery built in.</p></div>
             <div className="storyGrid">
               <article><div className="storyPhoto"><Image src="/assets/big-chicken.webp" alt="Big Chicken meal prep boxes" width={720} height={960} /></div><span>Then / SBX Chicken</span><h3>Started with meal prep.</h3><p>Thor, Truman, and Luc began by cooking straightforward meal-prep boxes while they were students at Cornell.</p></article>
               <article><div className="storyPhoto"><Image src="/assets/hero-meal.webp" alt="Chicken and Beef meal prep boxes arranged on a table" width={1000} height={1333} /></div><span>The menu / kept simple</span><h3>Built around four choices.</h3><p>Chicken or Beef, two portion sizes, rice, and broccoli remain at the center of the menu.</p></article>
@@ -252,17 +216,17 @@ export default function Home() {
         </section>
 
         <section id="team" className="teamSection" aria-labelledby="team-title">
-          <div className="sectionShell"><div className="teamHeading"><p className="sectionLabel">Meet the team</p><h2 id="team-title">Three founders.<br />One ThreeByrd.</h2></div><div className="teamGrid">{founders.map((founder, index) => <article className="founderCard" key={founder.name}><span>0{index + 1}</span><Image className={founder.name === "Thor Waguespack" ? "founderImageThor" : undefined} src={founder.image} alt={founder.alt} width={founder.width} height={founder.height} /><div><h3>{founder.name}</h3><p>{founder.role}</p></div></article>)}</div></div>
+          <div className="sectionShell"><div className="teamHeading"><p className="sectionLabel">Meet the team</p><h2 className="majorHeading" id="team-title">Three founders.<br />One ThreeByrd.</h2></div><div className="teamGrid">{founders.map((founder, index) => <article className="founderCard" key={founder.name}><span>0{index + 1}</span><Image className={founder.name === "Thor Waguespack" ? "founderImageThor" : undefined} src={founder.image} alt={founder.alt} width={founder.width} height={founder.height} /><div><h3>{founder.name}</h3><p>{founder.role}</p></div></article>)}</div></div>
         </section>
 
         <section id="join" className="joinSection" aria-labelledby="join-title">
-          <div className="sectionShell joinLayout"><div className="joinContent"><p className="sectionLabel sectionLabelLight">Stay in the loop</p><h2 id="join-title">Be first at the table.</h2><p>Leave your email, phone number, or both. We will share menu and delivery updates as ThreeByrd grows.</p></div><JoinForm /></div>
+          <div className="sectionShell joinLayout"><div className="joinContent"><p className="sectionLabel sectionLabelLight">Stay in the loop</p><h2 className="majorHeading" id="join-title">Be first at the table.</h2><p>Leave your email, phone number, or both. We will share menu and delivery updates as ThreeByrd grows.</p></div><div className="joinAside"><JoinForm idPrefix="bottom-join" /><div className="socialLinks" aria-label="ThreeByrd social links"><a aria-label="Follow ThreeByrd on Instagram" href="https://www.instagram.com/threebyrd/" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" /></svg><span>Follow ThreeByrd on Instagram</span></a><a aria-label="Follow ThreeByrd on LinkedIn" href="https://www.linkedin.com/company/threebyrd/" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 10.2v6.3M8 7.7v.1M11.5 16.5v-3.4a2.3 2.3 0 0 1 4.6 0v3.4M11.5 10.2v6.3" /></svg><span>Follow ThreeByrd on LinkedIn</span></a></div></div></div>
         </section>
       </main>
 
       <footer className="siteFooter">
         <div className="footerTop"><Image src="/assets/threebyrd-logo.png" alt="ThreeByrd Meal Prep official logo" width={3938} height={2591} /><nav aria-label="Footer navigation">{navigation.map((item) => <a href={item.href} key={item.href}>{item.label}</a>)}<a href="#join">Get updates</a></nav></div>
-        <div className="footerBottom"><p>ThreeByrd Meal Prep, formerly SBX Chicken.</p><p>Ithaca, New York · Delivery only</p><p className="footerCutoff">Orders close {formatBusinessDateTime(cutoff)} · next cook {getSaturdayForCutoff(cutoff)}</p></div>
+        <div className="footerBottom"><p>ThreeByrd Meal Prep, formerly SBX Chicken.</p><p>Ithaca, New York · Delivery only</p><p className="footerCutoff">Orders close {formatBusinessDateTime(cutoff)} · next cook {getSaturdayForCutoff(cutoff)}</p><p className="footerContact">For inquiries, contact <a href="mailto:thor@threebyrd.com">thor@threebyrd.com</a></p></div>
       </footer>
     </>
   );

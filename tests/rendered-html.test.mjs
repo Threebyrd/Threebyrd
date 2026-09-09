@@ -64,8 +64,14 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /Mix and match any meals/);
   assert.match(html, /See all tier prices/);
   assert.match(html, /3 Big Chicken \+ 2 Big Beef = 5 meals total/);
+  const productGridIndex = html.indexOf('class="productGrid"');
+  const pricingExplainerIndex = html.indexOf('class="pricingExplainer"');
+  const orderSummaryIndex = html.indexOf('class="orderSummary"');
+  assert.ok(productGridIndex >= 0 && productGridIndex < pricingExplainerIndex, "products should appear before pricing explainer");
+  assert.ok(pricingExplainerIndex < orderSummaryIndex, "pricing explainer should appear before order summary");
   assert.match(html, /Pricing starts at/);
   assert.match(html, /3–4 meals/);
+  assert.equal((html.match(/class="pricingExplainer"/g) ?? []).length, 1);
   assert.equal((html.match(/class="pricingSteps"/g) ?? []).length, 1);
   assert.equal((html.match(/class="pricingTable"/g) ?? []).length, 1);
   assert.equal((html.match(/class="productPriceRange"/g) ?? []).length, 4);
@@ -76,6 +82,9 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /Follow ThreeByrd on LinkedIn/);
   assert.match(html, /https:\/\/www\.linkedin\.com\/company\/threebyrd\//);
   assert.match(html, /For inquiries, contact <a href="mailto:thor@threebyrd\.com">thor@threebyrd\.com<\/a>/);
+  assert.doesNotMatch(html, /Our story|From SBX Chicken|Started with meal prep\.|Built around four choices\.|Delivered for busy days\./i);
+  assert.match(html, /Giving back/);
+  assert.match(html, /Meet the team/);
   assert.match(html, /How ordering works/);
   assert.match(html, /Pick your protein/);
   assert.match(html, /Pick your quantity/);

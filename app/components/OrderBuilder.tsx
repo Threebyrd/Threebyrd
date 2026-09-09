@@ -119,46 +119,6 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
 
         <div className="orderLayout">
           <div className="productColumn">
-            <section className="pricingExplainer" aria-labelledby="pricing-explainer-title">
-              <p className="sectionLabel">Cart-wide pricing</p>
-              <h3 id="pricing-explainer-title">Order more. Pay less per meal.</h3>
-              <p className="pricingIntro">Mix and match any meals — your total cart size determines the price of every meal.</p>
-              <ol className="pricingSteps" aria-label="Cart pricing tiers">
-                {CART_PRICING_TIER_ORDER.map((tier) => (
-                  <li key={tier}>
-                    <strong>{formatPricingTier(tier)} meals</strong>
-                    <span>{tier === "20+" ? "best value" : "cart tier"}</span>
-                  </li>
-                ))}
-              </ol>
-              <p className="pricingNote">Mix proteins and sizes freely. Every meal gets its corresponding price from the tier your full cart reaches.</p>
-              <p className="pricingExample"><strong>Example:</strong> 3 Big Chicken + 2 Big Beef = 5 meals total, so both products receive 5–9 pricing.</p>
-              <details className="pricingDisclosure">
-                <summary>See all tier prices</summary>
-                <div className="pricingTableWrap">
-                  <table className="pricingTable">
-                    <caption className="srOnly">Exact per-meal pricing by total cart size</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Meal</th>
-                        {CART_PRICING_TIER_ORDER.map((tier) => <th scope="col" key={tier}>{formatPricingTier(tier)}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map((product) => (
-                        <tr key={product.id}>
-                          <th scope="row">{product.name}</th>
-                          {CART_PRICING_TIER_ORDER.map((tier) => (
-                            <td key={tier}>{formatCompactMoney(unitAmountAtTier(product, tier) ?? 0)}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </details>
-            </section>
-
             <div className="productGrid" aria-label="Available meals">
               {products.map((product) => {
                 const quantity = quantities[product.id];
@@ -202,6 +162,46 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                 );
               })}
             </div>
+
+            <section className="pricingExplainer" aria-labelledby="pricing-explainer-title">
+              <p className="sectionLabel">Cart-wide pricing</p>
+              <h3 id="pricing-explainer-title">Order more. Pay less per meal.</h3>
+              <p className="pricingIntro">Mix and match any meals — your total cart size determines the price of every meal.</p>
+              <ol className="pricingSteps" aria-label="Cart pricing tiers">
+                {CART_PRICING_TIER_ORDER.map((tier) => (
+                  <li key={tier}>
+                    <strong>{formatPricingTier(tier)} meals</strong>
+                    <span>{tier === "20+" ? "best value" : "cart tier"}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="pricingNote">Mix proteins and sizes freely. Every meal gets its corresponding price from the tier your full cart reaches.</p>
+              <p className="pricingExample"><strong>Example:</strong> 3 Big Chicken + 2 Big Beef = 5 meals total, so both products receive 5–9 pricing.</p>
+              <details className="pricingDisclosure">
+                <summary>See all tier prices</summary>
+                <div className="pricingTableWrap">
+                  <table className="pricingTable">
+                    <caption className="srOnly">Exact per-meal pricing by total cart size</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Meal</th>
+                        {CART_PRICING_TIER_ORDER.map((tier) => <th scope="col" key={tier}>{formatPricingTier(tier)}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map((product) => (
+                        <tr key={product.id}>
+                          <th scope="row">{product.name}</th>
+                          {CART_PRICING_TIER_ORDER.map((tier) => (
+                            <td key={tier}>{formatCompactMoney(unitAmountAtTier(product, tier) ?? 0)}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </section>
           </div>
 
           <aside className="orderSummary" aria-labelledby="summary-title">

@@ -208,17 +208,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="story" className="storySection" aria-labelledby="story-title">
-          <div className="sectionShell">
-            <div className="storyHeading"><p className="sectionLabel">Our story</p><h2 className="majorHeading" id="story-title">From SBX Chicken<br />to ThreeByrd.</h2><p>A student-founded meal-prep project becoming a broader brand for busy weeks, with delivery built in.</p></div>
-            <div className="storyGrid">
-              <article><div className="storyPhoto"><Image src="/assets/big-chicken.webp" alt="Big Chicken meal prep boxes" width={720} height={960} /></div><span>Then / SBX Chicken</span><h3>Started with meal prep.</h3><p>Thor, Truman, and Luc began by cooking straightforward meal-prep boxes while they were students at Cornell.</p></article>
-              <article><div className="storyPhoto"><Image src="/assets/hero-meal.webp" alt="Chicken and Beef meal prep boxes arranged on a table" width={1000} height={1333} /></div><span>The menu / kept simple</span><h3>Built around four choices.</h3><p>Chicken or Beef, two portion sizes, rice, and broccoli remain at the center of the menu.</p></article>
-              <article><div className="storyPhoto"><Image src="/assets/little-beef.webp" alt="Little Beef meal prep boxes" width={720} height={960} /></div><span>Now / ThreeByrd</span><h3>Delivered for busy days.</h3><p>Order the mix that fits your week, then let ThreeByrd handle cooking and Saturday delivery.</p></article>
-            </div>
-          </div>
-        </section>
-
         <section id="team" className="teamSection" aria-labelledby="team-title">
           <div className="sectionShell"><div className="teamHeading"><p className="sectionLabel">Meet the team</p><h2 className="majorHeading" id="team-title">Three founders.<br />One ThreeByrd.</h2></div><div className="teamGrid">{founders.map((founder) => <article className="founderCard" key={founder.name}><Image className="founderMark" src="/assets/threebyrd-single-chicken-star-192.png" alt="" aria-hidden="true" width={192} height={192} /><Image className={founder.name === "Thor Waguespack" ? "founderImageThor" : undefined} src={founder.image} alt={founder.alt} width={founder.width} height={founder.height} /><div><h3>{founder.name}</h3><p>{founder.role}</p><div className="founderContacts"><a className="founderContactLink" href={`mailto:${founder.email}`}>{founder.email}</a><a className="founderContactLink founderLinkedIn" href={founder.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${founder.name} on LinkedIn`}><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 10.2v6.3M8 7.7v.1M11.5 16.5v-3.4a2.3 2.3 0 0 1 4.6 0v3.4M11.5 10.2v6.3" /></svg><span>LinkedIn</span></a></div></div></article>)}</div></div>
         </section>

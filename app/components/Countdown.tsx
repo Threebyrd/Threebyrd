@@ -54,7 +54,7 @@ export default function Countdown({ initialCutoffIso }: CountdownProps) {
   }, []);
 
   const time = getCountdownParts(state.cutoff, state.now);
-  const closedCycle = state.now >= state.cutoff.getTime();
+  const closedCycle = state.now > state.cutoff.getTime();
 
   const statusLabel = !ORDERS_OPEN ? "Ordering opens in" : closedCycle ? "Next order window" : "Orders close in";
 

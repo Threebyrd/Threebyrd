@@ -37,7 +37,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     () => quoteOrder(Object.entries(quantities).map(([productId, quantity]) => ({ productId, quantity }))),
     [quantities],
   );
-  const orderWindowOpen = new Date(initialCutoffIso).getTime() > now;
+  const orderWindowOpen = new Date(initialCutoffIso).getTime() >= now;
   const orderingAvailable = ORDERS_OPEN && orderWindowOpen;
 
   useEffect(() => {

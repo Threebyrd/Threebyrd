@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000/](http://localhost:3000/). Products and nutrition remain visible, but ordering is intentionally closed through the centralized `ORDERS_OPEN` flag until the founders finalize pricing.
+Open [http://localhost:3000/](http://localhost:3000/). Products and nutrition remain visible, but ordering is intentionally closed through the centralized `ORDERS_OPEN` flag until the owners explicitly approve opening it.
 
 ## Useful commands
 
@@ -29,9 +29,11 @@ npm run db:generate
 - `app/page.tsx`: homepage structure, delivery-first positioning, menu, process, story, founders, and launch list.
 - `app/components/OrderBuilder.tsx`: customizable cart UI, live summary, minimum-order state, and Checkout handoff.
 - `app/components/Countdown.tsx`: browser-safe countdown to the next Friday 3:00 PM Eastern cutoff.
-- `app/order-config.ts`: trusted product catalog, tiered pricing, quote validation, and cutoff recurrence.
+- `app/order-config.ts`: trusted product catalog, canonical cart-wide pricing tiers, quote validation, and cutoff recurrence.
 - `app/api/checkout/route.ts`: server-side quote validation and Stripe Checkout Session creation.
+- `app/api/cors.ts`: exact-origin CORS protection for the checkout API.
 - `app/api/webhooks/stripe/route.ts`: signature verification and idempotent D1 order confirmation.
+- `app/stripe.ts`: Stripe mode and API-key isolation for local, staging, and production.
 - `app/success/page.tsx`: post-checkout confirmation experience.
 - `db/schema.ts` and `drizzle/`: confirmed-order schema and D1 migration.
 - `docs/ORDERING.md`: operator and developer guide for pricing, Stripe, cutoff overrides, orders, refunds, and deployment.
@@ -43,12 +45,15 @@ npm run db:generate
 
 Copy the needed values into `.env.local` for local development. Never commit that file.
 
-- `STRIPE_SECRET_KEY`: Stripe test-mode secret or least-privilege restricted key for server-side Checkout and confirmation retrieval.
+- `STRIPE_SECRET_KEY`: Stripe test-mode secret for local/staging, or the least-privilege live restricted key for production. Keep it in the Worker secret store only.
 - `STRIPE_WEBHOOK_SECRET`: signing secret for `/api/webhooks/stripe`.
+- `STRIPE_MODE`: `test` for local/staging and `live` for production; the server rejects mismatched Stripe key prefixes and webhook event modes.
 - `NEXT_PUBLIC_SITE_URL`: trusted site origin used in Stripe success/cancel URLs.
+- `NEXT_PUBLIC_CHECKOUT_API_ORIGIN`: public API origin used by the static frontend, normally `https://api.threebyrd.com` in production.
+- `CORS_ALLOWED_ORIGINS`: comma-separated browser origins allowed to call the checkout API.
 - `THREEBYRD_CUTOFF_OVERRIDE`: optional business-local wall time such as `2026-09-11T15:00:00`; see `docs/ORDERING.md`.
 - `NEXT_PUBLIC_APPS_SCRIPT_URL`: existing optional launch-list endpoint.
 
 ## Current scope
 
-The current customer experience is a closed ordering preview. Stripe payment code remains in place but is gated by `ORDERS_OPEN = false`; this update did not configure, connect, test, or modify Stripe. Stripe Billing and Invoicing remain future work.
+The current customer experience is a closed ordering preview. Production uses the verified live Stripe key and live webhook secret with `STRIPE_MODE=live`; staging and local development use separate sandbox credentials and D1 data. The controlled live verification payment was refunded, and `ORDERS_OPEN=false` remains enforced until launch approval.

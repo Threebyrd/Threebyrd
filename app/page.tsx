@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Countdown from "./components/Countdown";
 import CountUpTotal from "./components/CountUpTotal";
 import JoinForm from "./components/JoinForm";
 import OrderBuilder from "./components/OrderBuilder";
@@ -23,6 +22,8 @@ const founders = [
     width: 640,
     height: 960,
     alt: "Headshot of Thor Waguespack",
+    email: "thor@threebyrd.com",
+    linkedin: "https://www.linkedin.com/in/thorbw/",
   },
   {
     name: "Truman Popp",
@@ -31,6 +32,8 @@ const founders = [
     width: 640,
     height: 640,
     alt: "Headshot of Truman Popp",
+    email: "truman@threebyrd.com",
+    linkedin: "https://www.linkedin.com/in/trumanpopp/",
   },
   {
     name: "Luc Surprenant",
@@ -39,6 +42,8 @@ const founders = [
     width: 506,
     height: 675,
     alt: "Headshot of Luc Surprenant",
+    email: "luc@threebyrd.com",
+    linkedin: "https://www.linkedin.com/in/lucsurprenant/",
   },
 ];
 
@@ -162,7 +167,6 @@ export default function Home() {
           </div>
         </section>
 
-        <Countdown initialCutoffIso={cutoff.toISOString()} />
         <OrderBuilder initialCutoffIso={cutoff.toISOString()} />
 
         <section id="how-it-works" className="processSection" aria-labelledby="process-title">
@@ -216,7 +220,7 @@ export default function Home() {
         </section>
 
         <section id="team" className="teamSection" aria-labelledby="team-title">
-          <div className="sectionShell"><div className="teamHeading"><p className="sectionLabel">Meet the team</p><h2 className="majorHeading" id="team-title">Three founders.<br />One ThreeByrd.</h2></div><div className="teamGrid">{founders.map((founder, index) => <article className="founderCard" key={founder.name}><span>0{index + 1}</span><Image className={founder.name === "Thor Waguespack" ? "founderImageThor" : undefined} src={founder.image} alt={founder.alt} width={founder.width} height={founder.height} /><div><h3>{founder.name}</h3><p>{founder.role}</p></div></article>)}</div></div>
+          <div className="sectionShell"><div className="teamHeading"><p className="sectionLabel">Meet the team</p><h2 className="majorHeading" id="team-title">Three founders.<br />One ThreeByrd.</h2></div><div className="teamGrid">{founders.map((founder) => <article className="founderCard" key={founder.name}><Image className="founderMark" src="/assets/threebyrd-single-chicken-star-192.png" alt="" aria-hidden="true" width={192} height={192} /><Image className={founder.name === "Thor Waguespack" ? "founderImageThor" : undefined} src={founder.image} alt={founder.alt} width={founder.width} height={founder.height} /><div><h3>{founder.name}</h3><p>{founder.role}</p><div className="founderContacts"><a className="founderContactLink" href={`mailto:${founder.email}`}>{founder.email}</a><a className="founderContactLink founderLinkedIn" href={founder.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${founder.name} on LinkedIn`}><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 10.2v6.3M8 7.7v.1M11.5 16.5v-3.4a2.3 2.3 0 0 1 4.6 0v3.4M11.5 10.2v6.3" /></svg><span>LinkedIn</span></a></div></div></article>)}</div></div>
         </section>
 
         <section id="join" className="joinSection" aria-labelledby="join-title">

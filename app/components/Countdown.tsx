@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import {
-  BUSINESS_TIME_ZONE,
   formatBusinessDate,
   getNextFridayCutoffAfter,
+  ORDERS_OPEN,
 } from "../order-config";
 
 type CountdownProps = {
@@ -56,28 +56,20 @@ export default function Countdown({ initialCutoffIso }: CountdownProps) {
   const time = getCountdownParts(state.cutoff, state.now);
   const closedCycle = state.now >= state.cutoff.getTime();
 
+  const statusLabel = !ORDERS_OPEN ? "Ordering opens in" : closedCycle ? "Next order window" : "Orders close in";
+
   return (
-    <section className="countdownSection" aria-labelledby="countdown-title">
-      <div className="sectionShell countdownLayout">
-        <div>
-          <p className="sectionLabel sectionLabelLight">Delivery cadence</p>
-          <h2 id="countdown-title">Orders open until.</h2>
-          <p className="countdownCopy">
-            We cook on Saturday and deliver straight to your door. Order by Friday at 3:00 PM Eastern for the next cook.
-          </p>
-        </div>
-        <div className="countdownPanel" aria-live="polite">
-          <p>{closedCycle ? "Next order window" : "Time left to order"}</p>
-          <strong>{formatBusinessDate(state.cutoff)}</strong>
-          <div className="countdownDigits" aria-label={`${time.days} days, ${time.hours} hours, ${time.minutes} minutes, ${time.seconds} seconds`}>
-            <span><b>{pad(time.days)}</b><small>days</small></span>
-            <span><b>{pad(time.hours)}</b><small>hours</small></span>
-            <span><b>{pad(time.minutes)}</b><small>minutes</small></span>
-            <span><b>{pad(time.seconds)}</b><small>seconds</small></span>
-          </div>
-          <small className="countdownZone">3:00 PM · {BUSINESS_TIME_ZONE}</small>
-        </div>
+    <div className="summaryCountdown" aria-atomic="true" aria-live="polite">
+      <div className="summaryCountdownHeader">
+        <p>{statusLabel}</p>
+        <span>{formatBusinessDate(state.cutoff)} · 3:00 PM ET</span>
       </div>
-    </section>
+      <div className="summaryCountdownDigits" aria-label={`${statusLabel}: ${time.days} days, ${time.hours} hours, ${time.minutes} minutes, ${time.seconds} seconds`}>
+        <span><b>{pad(time.days)}</b><small>days</small></span>
+        <span><b>{pad(time.hours)}</b><small>hours</small></span>
+        <span><b>{pad(time.minutes)}</b><small>minutes</small></span>
+        <span><b>{pad(time.seconds)}</b><small>seconds</small></span>
+      </div>
+    </div>
   );
 }

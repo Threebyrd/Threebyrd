@@ -5,6 +5,81 @@ export const ORDERS_OPEN = false;
 
 export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef";
 
+export type CartPricingTier = "3-4" | "5-9" | "10-19" | "20+";
+
+type CartPricingTierDefinition = {
+  minTotalMeals: number;
+  maxTotalMeals?: number;
+  prices: Record<ProductId, number>;
+};
+
+/**
+ * Canonical meal pricing. The checkout route and the browser quote both read
+ * this table, but only the server-side quote is trusted for payment.
+ */
+export const CART_PRICING_TIERS: Record<CartPricingTier, CartPricingTierDefinition> = {
+  "3-4": {
+    minTotalMeals: 3,
+    maxTotalMeals: 4,
+    prices: {
+      "big-chicken": 1000,
+      "little-chicken": 800,
+      "big-beef": 1100,
+      "little-beef": 900,
+    },
+  },
+  "5-9": {
+    minTotalMeals: 5,
+    maxTotalMeals: 9,
+    prices: {
+      "big-chicken": 900,
+      "little-chicken": 750,
+      "big-beef": 1000,
+      "little-beef": 850,
+    },
+  },
+  "10-19": {
+    minTotalMeals: 10,
+    maxTotalMeals: 19,
+    prices: {
+      "big-chicken": 850,
+      "little-chicken": 700,
+      "big-beef": 950,
+      "little-beef": 800,
+    },
+  },
+  "20+": {
+    minTotalMeals: 20,
+    prices: {
+      "big-chicken": 800,
+      "little-chicken": 650,
+      "big-beef": 900,
+      "little-beef": 750,
+    },
+  },
+};
+
+export function getCartPricingTier(totalMeals: number): CartPricingTier | undefined {
+  if (!Number.isInteger(totalMeals) || totalMeals < CART_PRICING_TIERS["3-4"].minTotalMeals) {
+    return undefined;
+  }
+
+  for (const [tier, definition] of Object.entries(CART_PRICING_TIERS) as [CartPricingTier, CartPricingTierDefinition][]) {
+    if (totalMeals < definition.minTotalMeals) {
+      continue;
+    }
+    if (definition.maxTotalMeals === undefined || totalMeals <= definition.maxTotalMeals) {
+      return tier;
+    }
+  }
+
+  return undefined;
+}
+
+function amountForProductAtTier(productId: ProductId, tier: CartPricingTier): number {
+  return CART_PRICING_TIERS[tier].prices[productId];
+}
+
 export type Product = {
   id: ProductId;
   name: "Little Chicken" | "Big Chicken" | "Little Beef" | "Big Beef";
@@ -16,8 +91,6 @@ export type Product = {
   proteinGrams?: string;
   carbs?: string;
   fat?: string;
-  regularUnitAmountCents?: number;
-  discountedUnitAmountCents?: number;
   purchasable: boolean;
   description: string;
 };
@@ -34,8 +107,6 @@ export const products: readonly Product[] = [
     proteinGrams: "69g",
     carbs: "114g",
     fat: "26g",
-    regularUnitAmountCents: 1000,
-    discountedUnitAmountCents: 900,
     purchasable: true,
     description: "Chicken, white rice + broccoli",
   },
@@ -50,8 +121,6 @@ export const products: readonly Product[] = [
     proteinGrams: "66.5g",
     carbs: "77.5g",
     fat: "41g",
-    regularUnitAmountCents: 1200,
-    discountedUnitAmountCents: 1000,
     purchasable: true,
     description: "Beef, white rice + broccoli",
   },
@@ -66,8 +135,6 @@ export const products: readonly Product[] = [
     proteinGrams: "46.5g",
     carbs: "77.5g",
     fat: "17g",
-    regularUnitAmountCents: 800,
-    discountedUnitAmountCents: 600,
     purchasable: true,
     description: "Chicken, white rice + broccoli",
   },
@@ -95,15 +162,15 @@ export type PricedLine = {
   name: Product["name"];
   quantity: number;
   unitAmountCents: number;
-  regularUnitAmountCents: number;
   amountCents: number;
-  discountApplied: boolean;
+  pricingTier: CartPricingTier;
 };
 
 export type OrderQuote = {
   lines: PricedLine[];
   totalBoxes: number;
   subtotalCents: number;
+  pricingTier: CartPricingTier | null;
   errors: string[];
   isValid: boolean;
 };
@@ -112,14 +179,43 @@ export function getProduct(productId: string): Product | undefined {
   return productMap.get(productId as ProductId);
 }
 
-export function unitAmountFor(product: Product, quantity: number): number | undefined {
-  if (!product.purchasable || product.regularUnitAmountCents === undefined) {
+export function unitAmountFor(product: Product, totalMeals: number): number | undefined {
+  const pricingTier = getCartPricingTier(totalMeals);
+  if (!product.purchasable || !pricingTier) {
     return undefined;
   }
 
-  return quantity >= 5
-    ? product.discountedUnitAmountCents ?? product.regularUnitAmountCents
-    : product.regularUnitAmountCents;
+  return amountForProductAtTier(product.id, pricingTier);
+}
+
+export function minimumTierUnitAmountFor(product: Product): number | undefined {
+  return product.purchasable
+    ? amountForProductAtTier(product.id, "3-4")
+    : undefined;
+}
+
+export function readCartMetadata(value: unknown): CartItemInput[] | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+
+    return parsed.every((item) => (
+      typeof item === "object" &&
+      item !== null &&
+      typeof (item as { productId?: unknown }).productId === "string" &&
+      typeof (item as { quantity?: unknown }).quantity === "number"
+    ))
+      ? parsed as CartItemInput[]
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
@@ -133,7 +229,7 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
       continue;
     }
 
-    if (!Number.isInteger(item.quantity) || item.quantity < 0 || item.quantity > 99) {
+    if (typeof item.quantity !== "number" || !Number.isInteger(item.quantity) || item.quantity < 0 || item.quantity > 99) {
       errors.push(`Choose a whole-number quantity for ${product.name}.`);
       continue;
     }
@@ -143,11 +239,18 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
       continue;
     }
 
-    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+    const nextQuantity = (quantities.get(item.productId) ?? 0) + item.quantity;
+    if (nextQuantity > 99) {
+      errors.push(`Choose no more than 99 boxes of ${product.name}.`);
+      continue;
+    }
+    quantities.set(item.productId, nextQuantity);
   }
 
+  const totalBoxes = [...quantities.values()].reduce((total, quantity) => total + quantity, 0);
+  const pricingTier = getCartPricingTier(totalBoxes);
+  const pricingTierForDisplay = pricingTier ?? "3-4";
   const lines: PricedLine[] = [];
-  let totalBoxes = 0;
   let subtotalCents = 0;
 
   for (const product of products) {
@@ -156,19 +259,16 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
       continue;
     }
 
-    const regularUnitAmountCents = product.regularUnitAmountCents as number;
-    const unitAmountCents = unitAmountFor(product, quantity) as number;
+    const unitAmountCents = amountForProductAtTier(product.id, pricingTierForDisplay);
     const amountCents = unitAmountCents * quantity;
     lines.push({
       productId: product.id,
       name: product.name,
       quantity,
       unitAmountCents,
-      regularUnitAmountCents,
       amountCents,
-      discountApplied: quantity >= 5 && unitAmountCents < regularUnitAmountCents,
+      pricingTier: pricingTierForDisplay,
     });
-    totalBoxes += quantity;
     subtotalCents += amountCents;
   }
 
@@ -181,6 +281,7 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
     lines,
     totalBoxes,
     subtotalCents,
+    pricingTier: pricingTier ?? null,
     errors,
     isValid: errors.length === 0 && totalBoxes >= MINIMUM_BOXES,
   };

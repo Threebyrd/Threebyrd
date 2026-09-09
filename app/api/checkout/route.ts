@@ -1,42 +1,48 @@
 import { getNextOrderCutoff, ORDERS_OPEN, quoteOrder, type CartItemInput } from "../../order-config";
 import { getSiteOrigin, getStripe } from "../../stripe";
+import { isAllowedCheckoutOrigin, withCheckoutCors } from "../cors";
 
 type CheckoutRequest = {
   items?: CartItemInput[];
 };
 
 export async function POST(request: Request) {
+  if (!isAllowedCheckoutOrigin(request)) {
+    return Response.json({ error: "This checkout origin is not allowed." }, withCheckoutCors(request, { status: 403 }));
+  }
+
   if (!ORDERS_OPEN) {
-    return Response.json({ error: "Orders are currently closed. Ordering will be opening soon." }, { status: 503 });
+    return Response.json({ error: "Orders are currently closed. Ordering will be opening soon." }, withCheckoutCors(request, { status: 503 }));
   }
 
   let body: CheckoutRequest;
   try {
     body = await request.json() as CheckoutRequest;
   } catch {
-    return Response.json({ error: "We could not read that order. Please try again." }, { status: 400 });
+    return Response.json({ error: "We could not read that order. Please try again." }, withCheckoutCors(request, { status: 400 }));
   }
 
   const items = Array.isArray(body.items) ? body.items : [];
   const quote = quoteOrder(items);
   if (!quote.isValid) {
-    return Response.json({ error: quote.errors[0] ?? "Add at least three boxes to continue." }, { status: 400 });
+    return Response.json({ error: quote.errors[0] ?? "Add at least three boxes to continue." }, withCheckoutCors(request, { status: 400 }));
   }
 
   const cutoff = getNextOrderCutoff(new Date());
   if (Date.now() >= cutoff.getTime()) {
-    return Response.json({ error: "This order window has closed. Refresh for the next Friday cutoff." }, { status: 409 });
+    return Response.json({ error: "This order window has closed. Refresh for the next Friday cutoff." }, withCheckoutCors(request, { status: 409 }));
   }
 
   const stripe = getStripe();
   if (!stripe) {
-    return Response.json({ error: "Secure checkout is being configured. Please check back soon." }, { status: 503 });
+    return Response.json({ error: "Secure checkout is being configured. Please check back soon." }, withCheckoutCors(request, { status: 503 }));
   }
 
   try {
-    const siteOrigin = getSiteOrigin(request);
+    const siteOrigin = getSiteOrigin();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      integration_identifier: `threebyrd_checkout_${randomLetters(8)}`,
       line_items: quote.lines.map((line) => ({
         price_data: {
           currency: "usd",
@@ -57,17 +63,32 @@ export async function POST(request: Request) {
         cart: JSON.stringify(quote.lines.map((line) => ({ productId: line.productId, quantity: line.quantity }))),
         totalBoxes: String(quote.totalBoxes),
         subtotalCents: String(quote.subtotalCents),
+        pricingTier: quote.pricingTier ?? "3-4",
         cutoffAt: cutoff.toISOString(),
       },
     });
 
     if (!session.url) {
-      return Response.json({ error: "Stripe did not return a checkout link. Please try again." }, { status: 502 });
+      return Response.json({ error: "Stripe did not return a checkout link. Please try again." }, withCheckoutCors(request, { status: 502 }));
     }
 
-    return Response.json({ url: session.url });
+    return Response.json({ url: session.url }, withCheckoutCors(request));
   } catch (error) {
     console.error("Stripe Checkout Session creation failed", error instanceof Error ? error.message : "unknown error");
-    return Response.json({ error: "Secure checkout is temporarily unavailable. Please try again." }, { status: 502 });
+    return Response.json({ error: "Secure checkout is temporarily unavailable. Please try again." }, withCheckoutCors(request, { status: 502 }));
   }
+}
+
+export function OPTIONS(request: Request) {
+  if (!isAllowedCheckoutOrigin(request)) {
+    return new Response(null, { status: 403 });
+  }
+
+  return new Response(null, withCheckoutCors(request, { status: 204 }));
+}
+
+function randomLetters(length: number): string {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(bytes, (byte) => letters[byte % letters.length]).join("");
 }

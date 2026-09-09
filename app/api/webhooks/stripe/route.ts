@@ -1,34 +1,72 @@
 import type Stripe from "stripe";
 import { getDb } from "../../../../db";
+import { getCartPricingTier, quoteOrder, readCartMetadata } from "../../../order-config";
 import { orders } from "../../../../db/schema";
-import { getStripe } from "../../../stripe";
+import { getStripe, getStripeMode, isStripeEventForMode } from "../../../stripe";
 
 export async function POST(request: Request) {
   const stripe = getStripe();
+  const stripeMode = getStripeMode();
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const signature = request.headers.get("stripe-signature");
 
-  if (!stripe || !webhookSecret || !signature) {
+  if (!stripe || !stripeMode || !webhookSecret) {
     return Response.json({ error: "Stripe webhook is not configured." }, { status: 503 });
+  }
+
+  if (!signature) {
+    return Response.json({ error: "Invalid webhook signature." }, { status: 400 });
   }
 
   let event: Stripe.Event;
   try {
     const payload = await request.text();
-    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    event = await stripe.webhooks.constructEventAsync(payload, signature, webhookSecret);
   } catch (error) {
     console.error("Stripe webhook signature verification failed", error instanceof Error ? error.message : "unknown error");
     return Response.json({ error: "Invalid webhook signature." }, { status: 400 });
   }
 
-  if (event.type !== "checkout.session.completed") {
+  if (!isStripeEventForMode(event.livemode, stripeMode)) {
+    console.error("Stripe webhook mode does not match the Worker environment.");
+    return Response.json({ error: "Webhook mode is not accepted by this environment." }, { status: 400 });
+  }
+
+  if (event.type === "checkout.session.async_payment_failed") {
+    return Response.json({ received: true });
+  }
+
+  if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") {
     return Response.json({ received: true });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
-  const cart = session.metadata?.cart;
+  if (event.type === "checkout.session.completed" && session.payment_status !== "paid") {
+    return Response.json({ received: true, deferred: true });
+  }
+
+  const cart = readCartMetadata(session.metadata?.cart);
   if (!cart) {
     return Response.json({ error: "Checkout session is missing its order metadata." }, { status: 500 });
+  }
+
+  const quote = quoteOrder(cart);
+  const metadataTotalBoxes = Number(session.metadata?.totalBoxes);
+  const metadataSubtotalCents = Number(session.metadata?.subtotalCents);
+  const metadataPricingTier = session.metadata?.pricingTier;
+  if (
+    session.mode !== "payment" ||
+    session.payment_status !== "paid" ||
+    !quote.isValid ||
+    quote.pricingTier !== (getCartPricingTier(quote.totalBoxes) ?? null) ||
+    metadataTotalBoxes !== quote.totalBoxes ||
+    metadataSubtotalCents !== quote.subtotalCents ||
+    metadataPricingTier !== quote.pricingTier ||
+    session.currency !== "usd" ||
+    session.amount_total !== quote.subtotalCents
+  ) {
+    console.error("Confirmed Stripe session failed order reconciliation", session.id);
+    return Response.json({ error: "Checkout session could not be reconciled." }, { status: 500 });
   }
 
   try {
@@ -42,9 +80,9 @@ export async function POST(request: Request) {
       customerName: session.collected_information?.shipping_details?.name ?? session.customer_details?.name ?? null,
       customerPhone: session.customer_details?.phone ?? null,
       deliveryAddress: JSON.stringify(session.collected_information?.shipping_details?.address ?? session.customer_details?.address ?? null),
-      items: cart,
-      amountCents: session.amount_total ?? 0,
-      currency: session.currency ?? "usd",
+      items: JSON.stringify(cart),
+      amountCents: session.amount_total,
+      currency: session.currency,
       cutoffAt: session.metadata?.cutoffAt ?? null,
       createdAt: session.created,
     }).onConflictDoNothing({ target: orders.stripeSessionId });

@@ -1,0 +1,34 @@
+{
+	"name": "threebyrd-website",
+	"main": "dist/server/index.js",
+	"compatibility_date": "2026-05-15",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"workers_dev": true,
+	"routes": [
+		{
+			"pattern": "api.threebyrd.com",
+			"custom_domain": true
+		}
+	],
+	"assets": {
+		"directory": "./dist/client",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "threebyrd-orders",
+			"database_id": "65fe6bf2-d15b-43a6-9fef-f6fd38773571"
+		}
+	],
+  "vars": {
+    "STRIPE_MODE": "live",
+    "NEXT_PUBLIC_SITE_URL": "https://threebyrd.com",
+    "CORS_ALLOWED_ORIGINS": "https://threebyrd.com"
+  },
+  "secrets": {
+    "required": ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]
+  }
+}

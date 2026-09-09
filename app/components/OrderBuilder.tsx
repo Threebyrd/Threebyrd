@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import Countdown from "./Countdown";
 import MacroSnapshot from "./MacroSnapshot";
 import {
   formatMoney,
+  minimumTierUnitAmountFor,
   ORDERS_OPEN,
   products,
   quoteOrder,
@@ -17,6 +19,8 @@ type OrderBuilderProps = {
 };
 
 const initialQuantities = Object.fromEntries(products.map((product) => [product.id, 0])) as Record<ProductId, number>;
+const checkoutApiOrigin = (process.env.NEXT_PUBLIC_CHECKOUT_API_ORIGIN ?? "").trim().replace(/\/$/, "");
+const checkoutApiUrl = `${checkoutApiOrigin}/api/checkout`;
 
 export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: OrderBuilderProps) {
   const [quantities, setQuantities] = useState<Record<ProductId, number>>(initialQuantities);
@@ -65,7 +69,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     setStatusMessage("");
 
     try {
-      const response = await fetch("/api/checkout", {
+      const response = await fetch(checkoutApiUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -118,7 +122,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                         <p className="productProtein">{product.protein}</p>
                         <h3>{product.name}</h3>
                       </div>
-                      <strong>{disabled ? "—" : formatMoney(product.regularUnitAmountCents ?? 0)}</strong>
+                      <strong>{disabled ? "—" : formatMoney(minimumTierUnitAmountFor(product) ?? 0)}</strong>
                     </div>
                     <p className="productDescription">{disabled ? "We are putting the finishing touches on this recipe." : product.description}</p>
                     <MacroSnapshot product={product} />
@@ -131,7 +135,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                         <button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={!ORDERS_OPEN}>+</button>
                       </div>
                     )}
-                    {line?.discountApplied && <p className="discountNote">5+ quantity pricing applied</p>}
+                    {line && line.pricingTier !== "3-4" && <p className="discountNote">{line.pricingTier} cart tier pricing applied</p>}
                   </div>
                 </article>
               );
@@ -146,6 +150,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               </div>
               <span className="boxCount">{quote.totalBoxes} {quote.totalBoxes === 1 ? "box" : "boxes"}</span>
             </div>
+            <Countdown initialCutoffIso={initialCutoffIso} />
             {!ORDERS_OPEN && (
               <div className="closedOrderNotice" role="status">
                 <strong>Orders are currently closed</strong>
@@ -158,7 +163,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                   <div className="summaryLine" key={line.productId}>
                     <div>
                       <strong>{line.name}</strong>
-                      <span>{line.quantity} × {formatMoney(line.unitAmountCents)}{line.discountApplied ? " · 5+ price" : ""}</span>
+                      <span>{line.quantity} × {formatMoney(line.unitAmountCents)}{quote.pricingTier && quote.pricingTier !== "3-4" ? ` · ${quote.pricingTier} tier` : ""}</span>
                     </div>
                     <b>{formatMoney(line.amountCents)}</b>
                   </div>

@@ -253,20 +253,6 @@ h1, h2, h3 { text-wrap: balance; }
 .tickerSequence { align-items: center; display: flex; flex-shrink: 0; }
 @keyframes ticker { to { transform: translateX(-50%); } }
 
-.countdownSection { background: var(--tb-red); border-bottom: var(--border-ui); color: var(--tb-paper); padding-block: 78px; scroll-margin-top: 84px; }
-.countdownLayout { align-items: center; display: grid; gap: clamp(2rem, 6vw, 7rem); grid-template-columns: minmax(0, 0.9fr) minmax(380px, 1.1fr); }
-.countdownSection h2 { color: var(--tb-paper); font-family: var(--font-display); font-size: clamp(3.2rem, 5.5vw, 5.4rem); font-weight: 400; line-height: 0.9; margin: 0; text-transform: uppercase; }
-.countdownCopy { color: rgba(251, 247, 239, 0.82); font-size: 1rem; margin: 1.2rem 0 0; max-width: 45ch; }
-.countdownPanel { background: var(--tb-paper); border: var(--border-major); box-shadow: var(--shadow-hard); color: var(--tb-ink); padding: 1.2rem 1.3rem 1.1rem; }
-.countdownPanel > p { color: var(--tb-red); font-size: 0.68rem; font-weight: 900; letter-spacing: 0.09em; margin: 0; text-transform: uppercase; }
-.countdownPanel > strong { display: block; font-family: var(--font-display); font-size: clamp(1.9rem, 3.2vw, 3rem); font-weight: 400; line-height: 1; margin-top: 0.45rem; text-transform: uppercase; }
-.countdownDigits { border-block: var(--border-ui); display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 1.2rem; }
-.countdownDigits span { padding: 0.8rem 0.45rem; text-align: center; }
-.countdownDigits span + span { border-left: var(--border-ui); }
-.countdownDigits b, .countdownDigits small { display: block; }
-.countdownDigits b { color: var(--tb-red); font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 400; line-height: 0.95; }
-.countdownDigits small, .countdownZone { color: var(--tb-muted); font-size: 0.64rem; font-weight: 900; text-transform: uppercase; }
-.countdownZone { display: block; margin-top: 0.8rem; text-align: right; }
 
 .orderSection { background: var(--tb-sand); border-bottom: var(--border-ui); padding-block: 104px 112px; scroll-margin-top: 84px; }
 .orderPage { background: var(--tb-sand); min-height: 100svh; }
@@ -304,6 +290,17 @@ h1, h2, h3 { text-wrap: balance; }
 .summaryHeader .sectionLabel { color: var(--tb-gold-soft); margin-bottom: 0.4rem; }
 .summaryHeader h3 { font-family: var(--font-display); font-size: 2rem; font-weight: 400; line-height: 0.95; margin: 0; text-transform: uppercase; }
 .boxCount { background: var(--tb-gold-soft); color: var(--tb-red); font-size: 0.68rem; font-weight: 900; padding: 0.4rem 0.5rem; text-transform: uppercase; white-space: nowrap; }
+.summaryCountdown { border-block: 1px solid rgba(251, 247, 239, 0.45); margin-top: 1rem; padding-block: 0.85rem; }
+.summaryCountdownHeader { align-items: baseline; display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; justify-content: space-between; }
+.summaryCountdownHeader p, .summaryCountdownHeader span { margin: 0; text-transform: uppercase; }
+.summaryCountdownHeader p { color: var(--tb-gold-soft); font-size: 0.68rem; font-weight: 900; letter-spacing: 0.08em; }
+.summaryCountdownHeader span { color: rgba(251, 247, 239, 0.76); font-size: 0.68rem; font-weight: 850; text-align: right; }
+.summaryCountdownDigits { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 0.75rem; }
+.summaryCountdownDigits span { min-width: 0; padding: 0.35rem 0.15rem 0.15rem; text-align: center; }
+.summaryCountdownDigits span + span { border-left: 1px solid rgba(251, 247, 239, 0.42); }
+.summaryCountdownDigits b, .summaryCountdownDigits small { display: block; }
+.summaryCountdownDigits b { color: var(--tb-gold-soft); font-family: var(--font-display); font-size: clamp(1.65rem, 3.2vw, 2.3rem); font-variant-numeric: tabular-nums; font-weight: 400; line-height: 0.95; min-width: 2ch; }
+.summaryCountdownDigits small { color: rgba(251, 247, 239, 0.68); font-size: 0.58rem; font-weight: 900; text-transform: uppercase; }
 .summaryLines { border-top: 1px solid rgba(251, 247, 239, 0.45); margin-top: 1.2rem; }
 .summaryLine { align-items: center; border-bottom: 1px solid rgba(251, 247, 239, 0.45); display: flex; gap: 0.5rem; justify-content: space-between; padding: 0.8rem 0; }
 .summaryLine strong, .summaryLine span { display: block; }
@@ -417,14 +414,18 @@ h1, h2, h3 { text-wrap: balance; }
 .founderCard:nth-child(2) { background: var(--tb-rose); transform: rotate(0.8deg) translateY(18px); }
 .founderCard:nth-child(3) { background: var(--tb-olive); transform: rotate(-0.4deg); }
 .founderCard:hover, .founderCard:nth-child(2):hover, .founderCard:nth-child(3):hover { box-shadow: 2px 2px 0 var(--tb-line); transform: translate(2px, 2px) rotate(0); }
-.founderCard > span { align-items: center; background: var(--tb-red); border: var(--border-ui); border-radius: 50%; color: var(--tb-paper); display: flex; font-family: var(--font-display); font-size: 1rem; height: 44px; justify-content: center; left: -10px; position: absolute; top: -12px; width: 44px; z-index: 2; }
-.founderCard > img { aspect-ratio: 1 / 1.08; border-bottom: var(--border-major); height: auto; object-fit: cover; width: 100%; }
+.founderCard > img:not(.founderMark) { aspect-ratio: 1 / 1.08; border-bottom: var(--border-major); height: auto; object-fit: cover; width: 100%; }
+.founderCard > img.founderMark { background: var(--tb-red); border: var(--border-ui); border-radius: 50%; height: 60px; left: -12px; object-fit: contain; padding: 0.2rem; position: absolute; top: -16px; width: 60px; z-index: 2; }
 .founderCard > img.founderImageThor { object-position: center 55%; }
-.founderCard:nth-child(2) > img { object-position: center 49%; }
-.founderCard:nth-child(3) > img { object-position: center 50%; }
-.founderCard div { padding: 1rem 1.1rem; position: relative; }
+.founderCard:nth-child(2) > img:not(.founderMark) { object-position: center 49%; }
+.founderCard:nth-child(3) > img:not(.founderMark) { object-position: center 50%; }
+.founderCard > div { padding: 1rem 1.1rem; position: relative; }
 .founderCard h3 { color: var(--tb-red); font-family: var(--font-display); font-size: 1.65rem; font-weight: 400; line-height: 1; margin-bottom: 0; text-transform: uppercase; }
 .founderCard p { font-size: 0.74rem; font-weight: 850; margin: 0.4rem 0 0; text-transform: uppercase; }
+.founderContacts { display: grid; gap: 0.35rem; margin-top: 0.8rem; }
+.founderContactLink { align-items: center; color: var(--tb-red); display: flex; font-size: 0.72rem; font-weight: 850; gap: 0.42rem; min-height: 42px; overflow-wrap: anywhere; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.founderContactLink:hover { color: var(--tb-gold-dark); }
+.founderLinkedIn svg { fill: none; flex: 0 0 auto; height: 1.2rem; stroke: currentColor; stroke-width: 1.8; width: 1.2rem; }
 
 .joinSection { background: var(--tb-red); color: var(--tb-paper); padding-block: 96px; scroll-margin-top: 84px; }
 .joinLayout { align-items: center; display: grid; gap: clamp(3rem, 7vw, 7rem); grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
@@ -518,9 +519,9 @@ h1, h2, h3 { text-wrap: balance; }
   .heroContent { max-width: 780px; }
   .heroVisual { justify-self: center; max-width: 660px; }
   .heroPhotoFrame img { aspect-ratio: 5 / 4; }
-  .countdownLayout, .orderLayout, .joinLayout { grid-template-columns: 1fr; }
+  .orderLayout, .joinLayout { grid-template-columns: 1fr; }
   .upperJoinLayout { grid-template-columns: 1fr; }
-  .countdownPanel, .orderSummary { max-width: 780px; width: 100%; }
+  .orderSummary { max-width: 780px; width: 100%; }
   .orderSummary { position: static; }
   .orderIntro, .givingTop, .storyHeading { align-items: start; gap: 1.5rem; grid-template-columns: 1fr; }
   .storyHeading .sectionLabel { grid-column: auto; margin-bottom: -0.5rem; }
@@ -568,13 +569,7 @@ h1, h2, h3 { text-wrap: balance; }
   .tickerTrack { padding-block: 0.5rem; }
   .tickerTrack span { font-size: 0.66rem; }
   .tickerTrack b { margin-inline: 1rem; }
-  .countdownSection, .orderSection, .processSection, .givingSection, .storySection, .teamSection { padding-block: 64px 70px; }
-  .countdownSection h2 { font-size: 3.3rem; }
-  .countdownCopy { font-size: 0.9rem; }
-  .countdownPanel { padding: 1rem; }
-  .countdownPanel > strong { font-size: 1.75rem; }
-  .countdownDigits b { font-size: 1.85rem; }
-  .countdownDigits small { font-size: 0.52rem; }
+  .orderSection, .processSection, .givingSection, .storySection, .teamSection { padding-block: 64px 70px; }
   .orderIntro h2, .givingTop h2, .storyHeading h2, .teamHeading h2, .joinContent h2, .upperJoinContent h2 { font-size: 2.45rem; line-height: 1; min-width: 0; }
   .orderIntroCopy > p:first-child { font-size: 0.95rem; }
   .orderLayout { margin-top: 2.3rem; }
@@ -602,7 +597,7 @@ h1, h2, h3 { text-wrap: balance; }
   .storyGrid article:last-child .storyPhoto img { aspect-ratio: 4 / 3; }
   .teamGrid { padding-inline: 6px; }
   .founderCard, .founderCard:nth-child(2), .founderCard:nth-child(3) { transform: none; }
-  .founderCard > img { aspect-ratio: 1 / 0.95; }
+  .founderCard > img:not(.founderMark) { aspect-ratio: 1 / 0.95; }
   .joinForm, .joinFormCompact { grid-template-columns: 1fr; }
   .joinFormCompact button { grid-column: auto; grid-row: auto; }
   .joinForm input, .joinForm button { min-height: 52px; }

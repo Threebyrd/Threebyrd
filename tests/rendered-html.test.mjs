@@ -24,7 +24,10 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /<title>ThreeByrd Meal Prep \| Chicken \+ Beef, Delivered<\/title>/i);
   assert.match(html, /Choose<br\s*\/>\s*<em>your protein/);
   assert.match(html, /delivered straight to your door/i);
-  assert.match(html, /Orders open until/);
+  assert.doesNotMatch(html, /Orders open until/);
+  assert.match(html, /class="summaryCountdown"/);
+  assert.match(html, /Ordering opens in/);
+  assert.match(html, /Friday, September 11(?:<!-- -->)? · 3:00 PM ET/);
   assert.match(html, /Orders are currently closed/);
   assert.match(html, /Ordering will be opening soon/);
   assert.match(html, /Friday, September 11/);
@@ -60,6 +63,16 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /processImageThree/);
   assert.match(html, /Big Beef meal prep boxes with rice and broccoli/);
   assert.match(html, /founderImageThor/);
+  assert.equal((html.match(/class="founderMark/g) ?? []).length, 3);
+  assert.doesNotMatch(html, /<article class="founderCard[^>]*>[\s\S]*?<span>0[123]<\/span>/);
+  assert.match(html, /mailto:thor@threebyrd\.com/);
+  assert.match(html, /mailto:truman@threebyrd\.com/);
+  assert.match(html, /mailto:luc@threebyrd\.com/);
+  assert.match(html, /https:\/\/www\.linkedin\.com\/in\/thorbw\//);
+  assert.match(html, /https:\/\/www\.linkedin\.com\/in\/trumanpopp\//);
+  assert.match(html, /https:\/\/www\.linkedin\.com\/in\/lucsurprenant\//);
+  assert.equal((html.match(/class="founderContactLink founderLinkedIn"/g) ?? []).length, 3);
+  assert.doesNotMatch(html, /countdownSection|countdownPanel|countdownLayout/);
   assert.doesNotMatch(html, /hero-chicken-thigh\.png/);
   assert.equal((html.match(/class="tickerSequence"/g) ?? []).length, 2);
   assert.equal((html.match(/class="nutritionRail"/g) ?? []).length, 0);
@@ -73,7 +86,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /Coming soon/);
   assert.match(html, /\$8/);
   assert.match(html, /\$10/);
-  assert.match(html, /\$12/);
+  assert.match(html, /\$11/);
   assert.doesNotMatch(html, /Choose a weekly plan|Pick your weekly rhythm|Weekly Plans|3–20 meals|Small size|Big size|What Is In The Box|What.s in the Box/i);
   assert.doesNotMatch(html, /Order now|Shop now/i);
   assert.doesNotMatch(html, /threebyrd-wordmark-wide\.png/);
@@ -86,11 +99,22 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
 test("keeps checkout closed at the server boundary", async () => {
   const response = await render("/api/checkout", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", origin: "https://threebyrd.com" },
     body: JSON.stringify({ items: [{ productId: "big-chicken", quantity: 3 }] }),
   });
   assert.equal(response.status, 503);
+  assert.equal(response.headers.get("access-control-allow-origin"), "https://threebyrd.com");
   assert.match(await response.text(), /Orders are currently closed/);
+});
+
+test("rejects checkout requests from unknown browser origins", async () => {
+  const response = await render("/api/checkout", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://not-threebyrd.example" },
+    body: JSON.stringify({ items: [{ productId: "big-chicken", quantity: 3 }] }),
+  });
+  assert.equal(response.status, 403);
+  assert.equal(response.headers.get("access-control-allow-origin"), null);
 });
 
 test("renders the order route and safe canceled-checkout state", async () => {

@@ -84,7 +84,7 @@ export default function JoinForm({ idPrefix, compact = false }: JoinFormProps) {
       </div>
       <button type="submit" disabled={locked}>
         {!configured
-          ? "List opening soon"
+          ? "List menu updates"
           : status === "submitting"
             ? "Sending…"
             : status === "success"
@@ -100,7 +100,7 @@ export default function JoinForm({ idPrefix, compact = false }: JoinFormProps) {
         {statusMessage ||
           (configured
             ? "We will only use your contact info to share launch updates."
-            : "The sign-up connection will be added before online ordering opens.")}
+            : "The sign-up connection will be added before menu updates begin.")}
       </p>
     </form>
   );

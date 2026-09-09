@@ -2,7 +2,7 @@
 
 ## Current release state
 
-Ordering is intentionally closed until the owners explicitly approve opening it. The shared `ORDERS_OPEN = false` value in `app/order-config.ts` drives the disabled quantity controls, closed summary panel, and server-side checkout guard. The live Checkout and webhook path has been verified, but public ordering is not enabled.
+Production ordering is open. The shared `ORDERS_OPEN = true` value in `app/order-config.ts` enables the quantity controls and server-side Checkout path. The live Checkout and webhook path has been verified; staging remains isolated in Stripe test mode.
 
 ## What changed
 
@@ -58,11 +58,11 @@ ThreeByrd uses separate Cloudflare Workers and D1 databases for the two Stripe m
 | --- | --- | --- | --- | --- |
 | Local | `vinext dev` | `test` | local CLI secret | local D1 persistence |
 | Staging | `threebyrd-website-staging` on `workers.dev` | `test` | sandbox endpoint at `/api/webhooks/stripe` | `threebyrd-orders-staging` |
-| Production | `threebyrd-website` at `api.threebyrd.com` | `live` (verified; ordering closed) | live endpoint at `/api/webhooks/stripe` | `threebyrd-orders` |
+| Production | `threebyrd-website` at `api.threebyrd.com` | `live` (verified; ordering open) | live endpoint at `/api/webhooks/stripe` | `threebyrd-orders` |
 
 `STRIPE_MODE` is not a secret. The server only constructs a Stripe client when the configured key prefix matches the mode (`sk_test_`/`rk_test_` for test and `sk_live_`/`rk_live_` for live). The webhook handler also requires Stripe’s signed event `livemode` value to match. Signing secrets do not identify their mode by prefix, so they must remain separate per Worker and per Stripe webhook endpoint.
 
-The staging environment has no `api.threebyrd.com` route and allows only controlled local origins by default. The production Worker keeps the existing custom domain, production D1 binding, live secrets, and `ORDERS_OPEN = false` until public launch is approved.
+The staging environment has no `api.threebyrd.com` route and allows only controlled local origins by default. The production Worker keeps the existing custom domain, production D1 binding, live secrets, and `ORDERS_OPEN = true`; set it back to `false` and redeploy as the emergency close procedure.
 
 ## Required environment variables
 
@@ -108,12 +108,10 @@ Invoicing is also intentionally outside student checkout. For future fraternity,
 
 ## What ThreeByrd still needs to do
 
-1. Keep production `ORDERS_OPEN = false` until the owners approve launch.
-2. Keep staging isolated with `STRIPE_MODE=test`, its sandbox secrets, and its separate D1 database.
-3. Decide tax registrations, product tax classification, and whether to enable Stripe Tax with a tax adviser; do not enable it by assumption.
-4. Review the live-account operational checklist, including receipts, statement descriptor, fulfillment, and refund handling.
-5. Publish and verify the complete frontend/API synchronization before opening orders.
-6. When launch is approved, change `ORDERS_OPEN` to `true`, deploy the Worker, and verify the first real order through the live webhook and D1.
+1. Keep staging isolated with `STRIPE_MODE=test`, its sandbox secrets, and its separate D1 database.
+2. Decide tax registrations, product tax classification, and whether to enable Stripe Tax with a tax adviser; do not enable it by assumption.
+3. Monitor the live-account operational checklist, including receipts, statement descriptor, fulfillment, refunds, and webhook delivery.
+4. If an emergency close is needed, set `ORDERS_OPEN` to `false`, deploy the Worker, and verify that checkout returns HTTP 503.
 
 ## Cloudflare configuration before public API access
 
@@ -121,7 +119,7 @@ The following must be completed manually before `api.threebyrd.com` is made publ
 
 1. In Cloudflare Workers & Pages, deploy the server-backed Vinext build to the existing Threebyrd Sites/Worker project and keep the logical D1 binding named `DB` attached to the existing `orders` database. Do not deploy the static GitHub Pages artifact as the API runtime.
 2. Add `api.threebyrd.com` as a custom domain for that Worker. If Cloudflare requests DNS configuration instead, create only the `api` DNS record pointing to the exact target Cloudflare provides, with proxying enabled if Cloudflare marks it required. Do not change the root `threebyrd.com` record or GitHub Pages custom-domain configuration.
-3. Wait for the Cloudflare-managed certificate to become active and verify `https://api.threebyrd.com/` reaches the Worker. Verify `POST /api/checkout` still returns the closed-order response while `ORDERS_OPEN = false`.
+3. Wait for the Cloudflare-managed certificate to become active and verify `https://api.threebyrd.com/` reaches the Worker. With ordering open, verify a valid cart reaches Stripe Checkout and invalid/unavailable carts remain rejected.
 4. Production currently has these API runtime values:
    - Secret `STRIPE_SECRET_KEY` containing the verified live restricted key
    - Secret `STRIPE_WEBHOOK_SECRET` for the registered live endpoint
@@ -135,4 +133,4 @@ The following must be completed manually before `api.threebyrd.com` is made publ
 
 ## Deployment
 
-The app remains a Vinext/Cloudflare Worker project. After the verified implementation is committed to `main`, the normal main-branch deployment automation publishes the static frontend. Keep the Worker deployed separately through Wrangler and keep `ORDERS_OPEN=false` until launch approval.
+The app remains a Vinext/Cloudflare Worker project. The main-branch automation publishes the static frontend, while the Worker is deployed separately through Wrangler. Production is currently launched with `ORDERS_OPEN=true`; staging remains on its separately deployed test-mode artifact.

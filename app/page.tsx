@@ -160,7 +160,7 @@ export default function Home() {
           <div className="sectionShell upperJoinLayout">
             <div className="upperJoinContent">
               <p className="sectionLabel">Stay in the loop</p>
-              <h2 className="majorHeading" id="upper-join-title">Be first to know when ordering opens.</h2>
+              <h2 className="majorHeading" id="upper-join-title">Be first to know what&apos;s next.</h2>
               <p>Leave your email, phone number, or both for ordering and delivery updates.</p>
             </div>
             <JoinForm idPrefix="upper-join" compact />

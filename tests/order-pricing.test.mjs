@@ -13,7 +13,7 @@ function quote(...items) {
 }
 
 test("blocks one and two boxes, and allows a mixed three-box order", () => {
-  assert.equal(ORDERS_OPEN, false);
+  assert.equal(ORDERS_OPEN, true);
   assert.equal(quote(["big-chicken", 1]).isValid, false);
   assert.match(quote(["big-chicken", 2]).errors[0], /Add 1 more box/);
   const mixed = quote(["big-chicken", 1], ["little-chicken", 1], ["big-beef", 1]);

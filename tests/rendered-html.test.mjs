@@ -26,15 +26,15 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /delivered straight to your door/i);
   assert.doesNotMatch(html, /Orders open until/);
   assert.match(html, /class="summaryCountdown"/);
-  assert.match(html, /Ordering opens in/);
+  assert.match(html, /Orders close in|Next order window/);
   assert.match(html, /Friday, September 11(?:<!-- -->)? · 3:00 PM ET/);
-  assert.match(html, /Orders are currently closed/);
-  assert.match(html, /Ordering will be opening soon/);
+  assert.doesNotMatch(html, /Orders are currently closed/);
+  assert.match(html, /Order window closed|Continue to secure checkout/);
   assert.match(html, /Friday, September 11/);
   assert.match(html, /Choose Meal Order/);
   assert.match(html, /3-box minimum/);
   assert.match(html, /Mix and match however you want/);
-  assert.match(html, /Be first to know when ordering opens/);
+  assert.match(html, /Be first to know what.s next/);
   assert.equal((html.match(/class="joinForm/g) ?? []).length, 2);
   assert.match(html, /id="upper-join-email"[^>]*name="email"/);
   assert.match(html, /id="upper-join-phone"[^>]*name="phone"/);
@@ -96,7 +96,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.equal((html.match(/class="founderCard/g) ?? []).length, 3);
 });
 
-test("keeps checkout closed at the server boundary", async () => {
+test("passes the open-order gate at the server boundary", async () => {
   const response = await render("/api/checkout", {
     method: "POST",
     headers: { "content-type": "application/json", origin: "https://threebyrd.com" },
@@ -104,7 +104,7 @@ test("keeps checkout closed at the server boundary", async () => {
   });
   assert.equal(response.status, 503);
   assert.equal(response.headers.get("access-control-allow-origin"), "https://threebyrd.com");
-  assert.match(await response.text(), /Orders are currently closed/);
+  assert.match(await response.text(), /Secure checkout is being configured/);
 });
 
 test("rejects checkout requests from unknown browser origins", async () => {

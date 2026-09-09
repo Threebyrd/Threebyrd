@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000/](http://localhost:3000/). Products and nutrition remain visible, but ordering is intentionally closed through the centralized `ORDERS_OPEN` flag until the owners explicitly approve opening it.
+Open [http://localhost:3000/](http://localhost:3000/). The production launch is enabled through the centralized `ORDERS_OPEN` flag; local development must continue using Stripe test credentials.
 
 ## Useful commands
 
@@ -56,4 +56,4 @@ Copy the needed values into `.env.local` for local development. Never commit tha
 
 ## Current scope
 
-The current customer experience is a closed ordering preview. Production uses the verified live Stripe key and live webhook secret with `STRIPE_MODE=live`; staging and local development use separate sandbox credentials and D1 data. The controlled live verification payment was refunded, and `ORDERS_OPEN=false` remains enforced until launch approval.
+The production customer experience is live ordering. Production uses the verified live Stripe key and live webhook secret with `STRIPE_MODE=live`; staging and local development use separate sandbox credentials and D1 data. The controlled live verification payment was refunded, its D1 row remains an audit record, and Little Beef remains unavailable.

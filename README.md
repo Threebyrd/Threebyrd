@@ -56,4 +56,4 @@ Copy the needed values into `.env.local` for local development. Never commit tha
 
 ## Current scope
 
-The production customer experience is live ordering. Production uses the verified live Stripe key and live webhook secret with `STRIPE_MODE=live`; staging and local development use separate sandbox credentials and D1 data. The controlled live verification payment was refunded, its D1 row remains an audit record, and Little Beef remains unavailable.
+The production customer experience is live ordering. Production uses the verified live Stripe key and live webhook secret with `STRIPE_MODE=live`; staging and local development use separate sandbox credentials and D1 data. The controlled live verification payment was refunded, its D1 row remains an audit record, and all four meals, including Little Beef, are available for purchase.

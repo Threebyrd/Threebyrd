@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CART_PRICING_TIERS,
+  formatCompactMoney,
+  getNextPricingTier,
   getNextFridayCutoffAfter,
   getSaturdayForCutoff,
   getCartPricingTier,
+  getProduct,
   ORDERS_OPEN,
+  priceRangeFor,
   quoteOrder,
 } from "../app/order-config.ts";
 
@@ -35,6 +40,10 @@ test("applies the cart-wide pricing tier at every boundary", () => {
   assert.equal(quote(["big-beef", 5]).subtotalCents, 5000);
   assert.equal(quote(["big-beef", 10]).subtotalCents, 9500);
   assert.equal(quote(["big-beef", 20]).subtotalCents, 18000);
+  assert.equal(quote(["little-beef", 3]).subtotalCents, 2700);
+  assert.equal(quote(["little-beef", 5]).subtotalCents, 4250);
+  assert.equal(quote(["little-beef", 10]).subtotalCents, 8000);
+  assert.equal(quote(["little-beef", 20]).subtotalCents, 15000);
   assert.equal(getCartPricingTier(2), undefined);
   assert.equal(getCartPricingTier(3), "3-4");
   assert.equal(getCartPricingTier(4), "3-4");
@@ -56,10 +65,62 @@ test("applies one tier to mixed-product carts", () => {
   assert.equal(mixed.subtotalCents, 4700);
 });
 
-test("rejects unavailable and malformed cart items", () => {
-  const unavailable = quote(["little-beef", 3]);
-  assert.equal(unavailable.isValid, false);
-  assert.match(unavailable.errors[0], /coming soon/);
+test("keeps the canonical matrix and all four purchasable product details", () => {
+  assert.deepEqual(CART_PRICING_TIERS["3-4"].prices, {
+    "big-chicken": 1000,
+    "little-chicken": 800,
+    "big-beef": 1100,
+    "little-beef": 900,
+  });
+  assert.deepEqual(CART_PRICING_TIERS["5-9"].prices, {
+    "big-chicken": 900,
+    "little-chicken": 750,
+    "big-beef": 1000,
+    "little-beef": 850,
+  });
+  assert.deepEqual(CART_PRICING_TIERS["10-19"].prices, {
+    "big-chicken": 850,
+    "little-chicken": 700,
+    "big-beef": 950,
+    "little-beef": 800,
+  });
+  assert.deepEqual(CART_PRICING_TIERS["20+"].prices, {
+    "big-chicken": 800,
+    "little-chicken": 650,
+    "big-beef": 900,
+    "little-beef": 750,
+  });
+
+  const littleBeef = getProduct("little-beef");
+  assert.equal(littleBeef?.purchasable, true);
+  assert.deepEqual({
+    calories: littleBeef?.calories,
+    proteinGrams: littleBeef?.proteinGrams,
+    carbs: littleBeef?.carbs,
+    fat: littleBeef?.fat,
+  }, { calories: "784", proteinGrams: "45.225g", carbs: "83g", fat: "41g" });
+  assert.deepEqual({
+    calories: getProduct("big-beef")?.calories,
+    proteinGrams: getProduct("big-beef")?.proteinGrams,
+    carbs: getProduct("big-beef")?.carbs,
+    fat: getProduct("big-beef")?.fat,
+  }, { calories: "1113", proteinGrams: "69.5g", carbs: "113.5g", fat: "41g" });
+  assert.equal(quote(["little-beef", 3]).isValid, true);
+  assert.equal(quote(["little-beef", 3]).subtotalCents, 2700);
+  assert.deepEqual(priceRangeFor(littleBeef), { highestCents: 900, lowestCents: 750 });
+  assert.equal(formatCompactMoney(900), "$9");
+  assert.equal(formatCompactMoney(750), "$7.50");
+});
+
+test("derives next-tier messaging from the canonical tier definitions", () => {
+  assert.deepEqual(getNextPricingTier(0), { tier: "3-4", mealsUntil: 3 });
+  assert.deepEqual(getNextPricingTier(3), { tier: "5-9", mealsUntil: 2 });
+  assert.deepEqual(getNextPricingTier(7), { tier: "10-19", mealsUntil: 3 });
+  assert.deepEqual(getNextPricingTier(12), { tier: "20+", mealsUntil: 8 });
+  assert.equal(getNextPricingTier(20), undefined);
+});
+
+test("rejects invalid and malformed cart items", () => {
 
   assert.equal(quote(["not-a-product", 3]).isValid, false);
   assert.equal(quote(["big-chicken", 0]).isValid, false);

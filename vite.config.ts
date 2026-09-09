@@ -13,7 +13,6 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
 const localBindingConfig = {
   main: "./worker/index.ts",
-  compatibility_flags: ["nodejs_compat"],
   d1_databases: d1
     ? [
         {
@@ -54,7 +53,9 @@ export default defineConfig(async ({ mode }) => {
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         config: {
           ...localBindingConfig,
-          compatibility_flags: mode === "development" ? ["nodejs_compat"] : [],
+          // The root Wrangler config already provides nodejs_compat. Passing
+          // it again here makes Miniflare reject local startup as a duplicate.
+          compatibility_flags: [],
           // The generated production Wrangler config is merged with the
           // root config, which contains the real remote D1 identity.
           // Keep the placeholder only for local development.

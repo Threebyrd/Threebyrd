@@ -260,9 +260,31 @@ h1, h2, h3 { text-wrap: balance; }
 .orderPage .orderSection { border-top: var(--border-ui); margin-top: 1.2rem; }
 .orderIntro { align-items: end; display: grid; gap: 3rem; grid-template-columns: minmax(0, 1fr) minmax(320px, 0.62fr); }
 .orderIntro h2 { font-size: clamp(3.5rem, 6.4vw, 6rem); }
+.orderIntroCopy { min-width: 0; }
 .orderIntroCopy > p:first-child { font-size: 1.12rem; font-weight: 700; }
 .orderRule { border-left: 4px solid var(--tb-red); color: var(--tb-red); font-size: 0.82rem; margin: 1.2rem 0 0; padding-left: 0.8rem; }
 .orderLayout { align-items: start; display: grid; gap: 2rem; grid-template-columns: minmax(0, 1.45fr) minmax(310px, 0.55fr); margin-top: 3.2rem; }
+.productColumn { min-width: 0; }
+.pricingExplainer { background: var(--tb-paper); border: var(--border-major); box-shadow: var(--shadow-hard); margin-bottom: 1.2rem; min-width: 0; padding: clamp(1rem, 2.4vw, 1.7rem); }
+.pricingExplainer h3 { color: var(--tb-red); font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 400; line-height: 0.95; margin: 0; min-width: 0; overflow-wrap: anywhere; text-transform: uppercase; }
+.pricingIntro { font-size: 0.92rem; font-weight: 750; margin: 0.7rem 0 0; max-width: 54ch; min-width: 0; overflow-wrap: anywhere; }
+.pricingSteps { display: grid; gap: 0.7rem; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 1.3rem 0 1rem; padding: 0; }
+.pricingSteps li { align-items: flex-start; background: var(--tb-gold-soft); border: var(--border-ui); display: flex; flex-direction: column; justify-content: center; min-height: 70px; padding: 0.7rem; position: relative; }
+.pricingSteps li + li::before { color: var(--tb-red); content: "→"; font-size: 1.35rem; font-weight: 900; left: -0.78rem; line-height: 1; position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; }
+.pricingSteps strong { color: var(--tb-red); font-family: var(--font-display); font-size: 1.2rem; font-weight: 400; line-height: 1; text-transform: uppercase; }
+.pricingSteps span { color: var(--tb-muted); font-size: 0.58rem; font-weight: 900; margin-top: 0.35rem; text-transform: uppercase; }
+.pricingNote, .pricingExample { color: var(--tb-muted); font-size: 0.76rem; margin: 0.65rem 0 0; min-width: 0; overflow-wrap: anywhere; }
+.pricingExample strong { color: var(--tb-red); }
+.pricingDisclosure { border-top: 1px solid var(--tb-line); margin-top: 1rem; padding-top: 0.8rem; }
+.pricingDisclosure summary { color: var(--tb-red); cursor: pointer; font-size: 0.72rem; font-weight: 900; list-style-position: inside; text-transform: uppercase; }
+.pricingTableWrap { margin-top: 0.75rem; max-width: 100%; min-width: 0; overflow-x: auto; }
+.pricingTable { border-collapse: collapse; min-width: 560px; width: 100%; }
+.pricingTable th, .pricingTable td { border: 1px solid var(--tb-line); font-size: 0.68rem; padding: 0.55rem 0.6rem; text-align: right; }
+.pricingTable th { background: var(--tb-gold-pale); font-weight: 900; }
+.pricingTable thead th:not(:first-child) { color: var(--tb-red); }
+.pricingTable th:first-child { text-align: left; }
+.pricingTable tbody th { background: var(--tb-paper); }
+.pricingTable td { font-weight: 800; }
 .productGrid { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .productCard { background: var(--tb-surface); border: var(--border-major); border-radius: var(--radius-card); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 .productCardBeef { background: #F7F1E6; }
@@ -275,6 +297,10 @@ h1, h2, h3 { text-wrap: balance; }
 .productProtein { color: var(--tb-gold); font-size: 0.65rem; font-weight: 900; letter-spacing: 0.08em; margin: 0 0 0.25rem; text-transform: uppercase; }
 .productHeading h3 { color: var(--tb-red); font-family: var(--font-display); font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 400; line-height: 0.95; margin: 0; text-transform: uppercase; }
 .productHeading > strong { color: var(--tb-red); font-family: var(--font-display); font-size: 1.85rem; font-weight: 400; line-height: 1; }
+.productPriceRange { align-items: flex-end; color: var(--tb-red); display: flex; flex-direction: column; flex-shrink: 0; line-height: 1; max-width: 12rem; text-align: right; }
+.productPriceRange strong { font-family: var(--font-display); font-size: clamp(1.25rem, 2.5vw, 2rem); font-weight: 400; white-space: nowrap; }
+.productPriceRange span { font-size: 0.58rem; font-weight: 900; margin-top: 0.22rem; text-transform: uppercase; }
+.productPriceRange small { color: var(--tb-muted); font-family: var(--font-body); font-size: 0.52rem; font-weight: 750; line-height: 1.15; margin-top: 0.25rem; max-width: 11ch; text-transform: none; }
 .productDescription { color: var(--tb-muted); font-size: 0.78rem; margin: 0.7rem 0 0; }
 .quantityControl { align-items: center; display: grid; gap: 0.8rem; grid-template-columns: 48px 1fr 48px; margin-top: auto; padding-top: 1.2rem; }
 .quantityControl button { background: var(--tb-red); border: var(--border-ui); border-radius: 50%; color: var(--tb-paper); cursor: pointer; font-size: 1.7rem; height: 48px; line-height: 1; width: 48px; }
@@ -302,12 +328,29 @@ h1, h2, h3 { text-wrap: balance; }
 .summaryCountdownDigits b { color: var(--tb-gold-soft); font-family: var(--font-display); font-size: clamp(1.65rem, 3.2vw, 2.3rem); font-variant-numeric: tabular-nums; font-weight: 400; line-height: 0.95; min-width: 2ch; }
 .summaryCountdownDigits small { color: rgba(251, 247, 239, 0.68); font-size: 0.58rem; font-weight: 900; text-transform: uppercase; }
 .summaryLines { border-top: 1px solid rgba(251, 247, 239, 0.45); margin-top: 1.2rem; }
-.summaryLine { align-items: center; border-bottom: 1px solid rgba(251, 247, 239, 0.45); display: flex; gap: 0.5rem; justify-content: space-between; padding: 0.8rem 0; }
+.summaryLine { align-items: flex-start; border-bottom: 1px solid rgba(251, 247, 239, 0.45); display: flex; gap: 0.55rem; justify-content: space-between; padding: 0.8rem 0; }
+.summaryLineInfo { min-width: 0; padding-top: 0.15rem; }
 .summaryLine strong, .summaryLine span { display: block; }
 .summaryLine strong { font-size: 0.78rem; }
 .summaryLine span { color: rgba(251, 247, 239, 0.7); font-size: 0.66rem; margin-top: 0.2rem; }
-.summaryLine > b { color: var(--tb-gold-soft); font-size: 0.82rem; }
+.summaryLineActions { align-items: center; display: flex; flex-shrink: 0; gap: 0.55rem; }
+.summaryQuantityControl { align-items: center; display: grid; gap: 0.2rem; grid-template-columns: 34px 2rem 34px; }
+.summaryQuantityControl button { background: transparent; border: 1px solid rgba(251, 247, 239, 0.7); border-radius: 50%; color: var(--tb-paper); cursor: pointer; font-size: 1.15rem; height: 34px; line-height: 1; padding: 0; width: 34px; }
+.summaryQuantityControl button:hover:not(:disabled) { background: var(--tb-gold-soft); color: var(--tb-red); }
+.summaryQuantityControl button:disabled { cursor: not-allowed; opacity: 0.32; }
+.summaryQuantityControl output { font-family: var(--font-display); font-size: 1.35rem; line-height: 1; min-width: 2ch; text-align: center; }
+.summaryLineActions > b { color: var(--tb-gold-soft); font-size: 0.82rem; min-width: 4.2rem; text-align: right; }
 .summaryEmpty { color: rgba(251, 247, 239, 0.7); font-size: 0.82rem; margin: 1.2rem 0; }
+.nextTierMessage { background: rgba(251, 247, 239, 0.11); border: 1px solid rgba(251, 247, 239, 0.6); margin-top: 1rem; padding: 0.75rem; }
+.nextTierMessage p { font-size: 0.7rem; margin: 0; }
+.nextTierCurrent { color: var(--tb-gold-soft); text-transform: uppercase; }
+.nextTierCurrent strong, .nextTierPrompt strong { color: var(--tb-paper); }
+.nextTierPrompt { color: rgba(251, 247, 239, 0.75); margin-top: 0.45rem !important; }
+.nextTierPrices { display: grid; gap: 0.3rem 0.7rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 0.65rem; }
+.nextTierPrices span { align-items: baseline; display: flex; gap: 0.25rem; justify-content: space-between; min-width: 0; }
+.nextTierPrices small { color: rgba(251, 247, 239, 0.72); font-size: 0.56rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nextTierPrices b { color: var(--tb-gold-soft); font-size: 0.68rem; }
+.nextTierBest { color: var(--tb-gold-soft); font-weight: 900; margin-top: 0.45rem !important; text-transform: uppercase; }
 .minimumStatus { background: rgba(251, 247, 239, 0.11); border: 1px solid rgba(251, 247, 239, 0.6); color: var(--tb-paper); font-size: 0.7rem; font-weight: 850; margin-top: 1rem; padding: 0.65rem 0.7rem; }
 .minimumStatus.isComplete { background: var(--tb-gold-soft); border-color: var(--tb-gold-soft); color: var(--tb-red); }
 .summaryTotal { align-items: baseline; border-bottom: 1px solid rgba(251, 247, 239, 0.45); display: flex; justify-content: space-between; margin-top: 1rem; padding-bottom: 1rem; }
@@ -574,12 +617,24 @@ h1, h2, h3 { text-wrap: balance; }
   .orderIntroCopy > p:first-child { font-size: 0.95rem; }
   .orderLayout { margin-top: 2.3rem; }
   .productGrid, .storyGrid, .teamGrid { grid-template-columns: 1fr; }
+  .pricingExplainer { padding: 0.9rem; }
+  .pricingSteps { gap: 0.55rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pricingSteps li { min-height: 62px; padding: 0.55rem; }
+  .pricingSteps li + li::before { display: none; }
+  .pricingSteps strong { font-size: 1.05rem; }
   .productPhoto img { aspect-ratio: 4 / 3; }
   .quantityControl { grid-template-columns: 52px 1fr 52px; }
   .quantityControl button { height: 52px; width: 52px; }
   .quantityControl output { font-size: 2.6rem; }
+  .productPriceRange { max-width: 9.5rem; }
+  .productPriceRange strong { font-size: 1.2rem; }
+  .productPriceRange small { font-size: 0.48rem; }
   .orderSummary { padding: 1rem; }
   .summaryHeader h3 { font-size: 1.8rem; }
+  .summaryLineActions { gap: 0.35rem; }
+  .summaryQuantityControl { gap: 0.1rem; grid-template-columns: 42px 2rem 42px; }
+  .summaryQuantityControl button { height: 42px; width: 42px; }
+  .summaryLineActions > b { min-width: 3.8rem; }
   .processSection > .sectionShell > h2 { font-size: 2.75rem; }
   .processCopy { min-height: 300px; }
   .processCopy h3 { font-size: 2.2rem; }

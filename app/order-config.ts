@@ -7,11 +7,13 @@ export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-
 
 export type CartPricingTier = "3-4" | "5-9" | "10-19" | "20+";
 
-type CartPricingTierDefinition = {
+export type CartPricingTierDefinition = {
   minTotalMeals: number;
   maxTotalMeals?: number;
   prices: Record<ProductId, number>;
 };
+
+export const CART_PRICING_TIER_ORDER: readonly CartPricingTier[] = ["3-4", "5-9", "10-19", "20+"];
 
 /**
  * Canonical meal pricing. The checkout route and the browser quote both read
@@ -64,7 +66,8 @@ export function getCartPricingTier(totalMeals: number): CartPricingTier | undefi
     return undefined;
   }
 
-  for (const [tier, definition] of Object.entries(CART_PRICING_TIERS) as [CartPricingTier, CartPricingTierDefinition][]) {
+  for (const tier of CART_PRICING_TIER_ORDER) {
+    const definition = CART_PRICING_TIERS[tier];
     if (totalMeals < definition.minTotalMeals) {
       continue;
     }
@@ -74,6 +77,23 @@ export function getCartPricingTier(totalMeals: number): CartPricingTier | undefi
   }
 
   return undefined;
+}
+
+export function getNextPricingTier(totalMeals: number): { tier: CartPricingTier; mealsUntil: number } | undefined {
+  if (!Number.isInteger(totalMeals) || totalMeals < 0) {
+    return undefined;
+  }
+
+  const tier = CART_PRICING_TIER_ORDER.find(
+    (candidate) => totalMeals < CART_PRICING_TIERS[candidate].minTotalMeals,
+  );
+  return tier
+    ? { tier, mealsUntil: CART_PRICING_TIERS[tier].minTotalMeals - totalMeals }
+    : undefined;
+}
+
+export function formatPricingTier(tier: CartPricingTier): string {
+  return tier.replace("-", "–");
 }
 
 function amountForProductAtTier(productId: ProductId, tier: CartPricingTier): number {
@@ -117,9 +137,9 @@ export const products: readonly Product[] = [
     size: "Big",
     image: "/assets/big-beef.webp",
     alt: "Big Beef meal prep boxes with rice and broccoli",
-    calories: "960",
-    proteinGrams: "66.5g",
-    carbs: "77.5g",
+    calories: "1113",
+    proteinGrams: "69.5g",
+    carbs: "113.5g",
     fat: "41g",
     purchasable: true,
     description: "Beef, white rice + broccoli",
@@ -145,8 +165,12 @@ export const products: readonly Product[] = [
     size: "Little",
     image: "/assets/little-beef.webp",
     alt: "Little Beef meal prep boxes with rice and broccoli",
-    purchasable: false,
-    description: "Coming soon",
+    calories: "784",
+    proteinGrams: "45.225g",
+    carbs: "83g",
+    fat: "41g",
+    purchasable: true,
+    description: "Beef, white rice + broccoli",
   },
 ];
 
@@ -192,6 +216,21 @@ export function minimumTierUnitAmountFor(product: Product): number | undefined {
   return product.purchasable
     ? amountForProductAtTier(product.id, "3-4")
     : undefined;
+}
+
+export function unitAmountAtTier(product: Product, tier: CartPricingTier): number | undefined {
+  return product.purchasable ? amountForProductAtTier(product.id, tier) : undefined;
+}
+
+export function priceRangeFor(product: Product): { highestCents: number; lowestCents: number } | undefined {
+  if (!product.purchasable) {
+    return undefined;
+  }
+
+  return {
+    highestCents: amountForProductAtTier(product.id, CART_PRICING_TIER_ORDER[0]),
+    lowestCents: amountForProductAtTier(product.id, CART_PRICING_TIER_ORDER[CART_PRICING_TIER_ORDER.length - 1]),
+  };
 }
 
 export function readCartMetadata(value: unknown): CartItemInput[] | null {
@@ -289,6 +328,10 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
 
 export function formatMoney(amountCents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amountCents / 100);
+}
+
+export function formatCompactMoney(amountCents: number): string {
+  return amountCents % 100 === 0 ? `$${amountCents / 100}` : formatMoney(amountCents);
 }
 
 type BusinessDateParts = {

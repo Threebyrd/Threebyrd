@@ -6,7 +6,7 @@ Production ordering is open. The shared `ORDERS_OPEN = true` value in `app/order
 
 ## What changed
 
-The old fixed weekly-plan selector was replaced with a one-time, mix-and-match order builder. Customers can choose Little Chicken, Big Chicken, or Big Beef; Little Beef is displayed as Coming soon and cannot be purchased. The homepage now makes Chicken/Beef choice and Saturday delivery the primary story.
+The old fixed weekly-plan selector was replaced with a one-time, mix-and-match order builder. Customers can choose Little Chicken, Big Chicken, Little Beef, or Big Beef, mix quantities directly in the order summary, and see the full cart-wide pricing model before checkout. The homepage makes Chicken/Beef choice and Saturday delivery the primary story.
 
 Important implementation files are `app/order-config.ts`, `app/components/OrderBuilder.tsx`, `app/components/Countdown.tsx`, `app/api/checkout/route.ts`, `app/api/cors.ts`, `app/api/webhooks/stripe/route.ts`, `app/success/page.tsx`, `db/schema.ts`, and `drizzle/0001_groovy_avengers.sql`.
 
@@ -19,13 +19,20 @@ Prices are integer cents in the canonical pricing table in `app/order-config.ts`
 | Little Chicken | $8.00 | $7.50 | $7.00 | $6.50 |
 | Big Chicken | $10.00 | $9.00 | $8.50 | $8.00 |
 | Big Beef | $11.00 | $10.00 | $9.50 | $9.00 |
-| Little Beef | Coming soon | Coming soon | Coming soon | Coming soon |
+| Little Beef | $9.00 | $8.50 | $8.00 | $7.50 |
 
-The server reconstructs a quote from product IDs and quantities. It does not accept a client-provided price, discount, subtotal, or total. Every order needs at least three total purchasable boxes, and the boxes may be mixed across SKUs. Little Beef has prices in the canonical matrix for future use but remains unavailable because its product record is still marked `purchasable: false`.
+The server reconstructs a quote from product IDs and quantities. It does not accept a client-provided price, discount, subtotal, or total. Every order needs at least three total purchasable boxes, and the boxes may be mixed across SKUs. The browser uses the same canonical matrix for display only; the server remains authoritative for payment.
 
 To change prices, update the single matrix in `app/order-config.ts`, then run the pricing tests and build. Do not duplicate prices in the UI or Stripe Dashboard: Checkout receives server-generated `price_data` for each current cart line.
 
-To enable Little Beef later, change `purchasable` to `true` in its product record after confirming its nutrition and allergen copy. Its prices already exist in the canonical matrix; do not add a separate price table. Rerun the complete test suite before enabling it.
+The product cards derive their visible high-to-low price ranges, compact tier disclosure, and next-tier order-summary message from that same matrix. Little Beef is currently purchasable and uses the exact macros in the product catalog.
+
+| Meal | Calories | Protein | Carbs | Fat |
+| --- | ---: | ---: | ---: | ---: |
+| Big Chicken | 970 | 69g | 114g | 26g |
+| Little Chicken | 660 | 46.5g | 77.5g | 17g |
+| Big Beef | 1113 | 69.5g | 113.5g | 41g |
+| Little Beef | 784 | 45.225g | 83g | 41g |
 
 ## Friday cutoff and Saturday delivery
 
@@ -90,7 +97,7 @@ Install and authenticate the Stripe CLI separately, then forward test events:
 stripe listen --forward-to localhost:3000/api/webhooks/stripe
 ```
 
-Put the CLI-provided webhook signing secret in `STRIPE_WEBHOOK_SECRET`, restart the dev server, and use test-mode Checkout with Stripe’s official test payment details. Test 2 meals (blocked), 3, 4, 5, 9, 10, 19, 20, and 21 meals, mixed products (including the 3 Big Chicken + 2 Big Beef = $47 example), Little Beef and invalid SKUs (blocked), zero/negative/fractional quantities, canceled Checkout, frontend price manipulation, one successful Checkout, both successful webhook event types, failed asynchronous payment, and replayed delivery. A successful webhook needs a real D1 binding to persist the order; without it, the endpoint intentionally returns a retryable error rather than claiming the order was saved.
+Put the CLI-provided webhook signing secret in `STRIPE_WEBHOOK_SECRET`, restart the dev server, and use test-mode Checkout with Stripe’s official test payment details. Test 2 meals (blocked), 3, 4, 5, 9, 10, 19, 20, and 21 meals, mixed products (including the 3 Big Chicken + 2 Big Beef = $47 example), Little Beef, invalid SKUs, zero/negative/fractional quantities, canceled Checkout, frontend price manipulation, one successful Checkout, both successful webhook event types, failed asynchronous payment, and replayed delivery. A successful webhook needs a real D1 binding to persist the order; without it, the endpoint intentionally returns a retryable error rather than claiming the order was saved.
 
 Staging sandbox webhooks must use the signing secret for the Stripe test-mode endpoint. Never put the production live webhook secret in local or staging files, and never use a Stripe CLI forwarding secret for a registered production endpoint.
 

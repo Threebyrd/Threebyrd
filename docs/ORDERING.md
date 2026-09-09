@@ -8,7 +8,7 @@ Ordering is intentionally closed until the owners explicitly approve opening it.
 
 The old fixed weekly-plan selector was replaced with a one-time, mix-and-match order builder. Customers can choose Little Chicken, Big Chicken, or Big Beef; Little Beef is displayed as Coming soon and cannot be purchased. The homepage now makes Chicken/Beef choice and Saturday delivery the primary story.
 
-Important implementation files are `app/order-config.ts`, `app/components/OrderBuilder.tsx`, `app/components/Countdown.tsx`, `app/api/checkout/route.ts`, `app/api/cors.ts`, `app/api/webhooks/stripe/route.ts`, `app/success/page.tsx`, `db/schema.ts`, and `drizzle/0000_parched_sunfire.sql`.
+Important implementation files are `app/order-config.ts`, `app/components/OrderBuilder.tsx`, `app/components/Countdown.tsx`, `app/api/checkout/route.ts`, `app/api/cors.ts`, `app/api/webhooks/stripe/route.ts`, `app/success/page.tsx`, `db/schema.ts`, and `drizzle/0001_groovy_avengers.sql`.
 
 ## Product and pricing rules
 
@@ -25,7 +25,7 @@ The server reconstructs a quote from product IDs and quantities. It does not acc
 
 To change prices, update the single matrix in `app/order-config.ts`, then run the pricing tests and build. Do not duplicate prices in the UI or Stripe Dashboard: Checkout receives server-generated `price_data` for each current cart line.
 
-To enable Little Beef later, add its regular and discounted cent values and change `purchasable` to `true` in the same product record. Confirm its nutrition and allergen copy before doing so, then rerun the complete test suite.
+To enable Little Beef later, change `purchasable` to `true` in its product record after confirming its nutrition and allergen copy. Its prices already exist in the canonical matrix; do not add a separate price table. Rerun the complete test suite before enabling it.
 
 ## Friday cutoff and Saturday delivery
 

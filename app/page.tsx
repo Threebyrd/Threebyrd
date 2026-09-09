@@ -179,7 +179,7 @@ export default function Home() {
                 <Image className="processImage processImageOne" src="/assets/big-chicken.webp" alt="Big Chicken meal prep boxes" width={720} height={960} />
               </article>
               <article className="processCard processCardTwo">
-                <div className="processCopy"><span>02</span><h3>Pick your quantity.</h3><p>Mix and match three or more boxes. Each SKU earns its own 5+ quantity price.</p><a href="#order">Build your order <span aria-hidden="true">→</span></a></div>
+                <div className="processCopy"><span>02</span><h3>Pick your quantity.</h3><p>Mix and match three or more boxes. Your total cart quantity sets the price tier for every meal.</p><a href="#order">Build your order <span aria-hidden="true">→</span></a></div>
                 <Image className="processImage processImageTwo" src="/assets/little-chicken.webp" alt="Little Chicken meal prep boxes" width={720} height={960} />
               </article>
               <article className="processCard processCardThree">

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Countdown from "./Countdown";
 import MacroSnapshot from "./MacroSnapshot";
@@ -23,8 +24,13 @@ const checkoutApiOrigin = (process.env.NEXT_PUBLIC_CHECKOUT_API_ORIGIN ?? "").tr
 const checkoutApiUrl = `${checkoutApiOrigin}/api/checkout`;
 
 export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: OrderBuilderProps) {
+  const searchParams = useSearchParams();
   const [quantities, setQuantities] = useState<Record<ProductId, number>>(initialQuantities);
-  const [statusMessage, setStatusMessage] = useState(checkoutMessage ?? "");
+  const [statusMessage, setStatusMessage] = useState(() => (
+    checkoutMessage ?? (searchParams.get("checkout") === "canceled"
+      ? "Checkout was canceled. Your order is still here whenever you are ready."
+      : "")
+  ));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [now, setNow] = useState(() => new Date(initialCutoffIso).getTime());
   const quote = useMemo(

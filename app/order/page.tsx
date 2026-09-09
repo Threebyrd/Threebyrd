@@ -2,20 +2,13 @@ import Link from "next/link";
 import OrderBuilder from "../components/OrderBuilder";
 import { getNextOrderCutoff } from "../order-config";
 
-type OrderPageProps = {
-  searchParams?: Promise<{ checkout?: string }>;
-};
+export const dynamic = "force-static";
 
-export default async function OrderPage({ searchParams }: OrderPageProps) {
-  const params = await searchParams;
-  const checkoutMessage = params?.checkout === "canceled"
-    ? "Checkout was canceled. Your order is still here whenever you are ready."
-    : undefined;
-
+export default function OrderPage() {
   return (
     <main className="orderPage">
       <Link className="orderPageBack" href="/">← ThreeByrd home</Link>
-      <OrderBuilder initialCutoffIso={getNextOrderCutoff().toISOString()} checkoutMessage={checkoutMessage} />
+      <OrderBuilder initialCutoffIso={getNextOrderCutoff().toISOString()} />
     </main>
   );
 }

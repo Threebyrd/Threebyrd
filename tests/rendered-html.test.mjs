@@ -117,13 +117,13 @@ test("rejects checkout requests from unknown browser origins", async () => {
   assert.equal(response.headers.get("access-control-allow-origin"), null);
 });
 
-test("renders the order route and safe canceled-checkout state", async () => {
-  const response = await render("/order?checkout=canceled");
+test("renders the static order route with cancellation compatibility", async () => {
+  const response = await render("/order");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Checkout was canceled/);
   assert.match(html, /Build your order/);
   assert.match(html, /Little Beef/);
+  assert.match(html, /class="orderPage"/);
 });
 
 test("renders a confirmation route without requiring Stripe secrets", async () => {

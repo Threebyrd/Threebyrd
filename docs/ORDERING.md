@@ -2,7 +2,7 @@
 
 ## Current release state
 
-Production ordering is open. The shared `ORDERS_OPEN = true` value in `app/order-config.ts` enables the quantity controls and server-side Checkout path. The live Checkout and webhook path has been verified; staging remains isolated in Stripe test mode.
+Production ordering is open. The production Wrangler variable `ORDERS_OPEN=true` enables the server-side Checkout path; staging explicitly sets it to `false`. The live Checkout and webhook path has been verified; staging remains isolated in Stripe test mode.
 
 ## What changed
 
@@ -14,25 +14,25 @@ Important implementation files are `app/order-config.ts`, `app/components/OrderB
 
 Prices are integer cents in the canonical pricing table in `app/order-config.ts`. The entire cart selects one tier before any line item is priced:
 
-| Product | 3–4 meals | 5–9 meals | 10–19 meals | 20+ meals |
-| --- | ---: | ---: | ---: | ---: |
-| Little Chicken | $8.00 | $7.50 | $7.00 | $6.50 |
-| Big Chicken | $10.00 | $9.00 | $8.50 | $8.00 |
-| Big Beef | $11.00 | $10.00 | $9.50 | $9.00 |
-| Little Beef | $9.00 | $8.50 | $8.00 | $7.50 |
+| Product | 3–4 meals | 5–9 meals | 10+ meals |
+| --- | ---: | ---: | ---: |
+| Little Chicken | $8.00 | $7.50 | $7.00 |
+| Big Chicken | $10.00 | $9.00 | $8.50 |
+| Big Beef | $11.00 | $10.00 | $9.50 |
+| Little Beef | $9.00 | $8.50 | $8.00 |
 
 The server reconstructs a quote from product IDs and quantities. It does not accept a client-provided price, discount, subtotal, or total. Every order needs at least three total purchasable boxes, and the boxes may be mixed across SKUs. The browser uses the same canonical matrix for display only; the server remains authoritative for payment.
 
 To change prices, update the single matrix in `app/order-config.ts`, then run the pricing tests and build. Do not duplicate prices in the UI or Stripe Dashboard: Checkout receives server-generated `price_data` for each current cart line.
 
-The product cards derive their visible high-to-low price ranges, compact tier disclosure, and next-tier order-summary message from that same matrix. Little Beef is currently purchasable and uses the exact macros in the product catalog.
+The product cards derive their visible high-to-low price ranges, compact tier disclosure, and next-tier order-summary message from that same matrix. At 10+ meals the best standard price is unlocked; 20+ meals keeps the 10+ prices and shows a custom-pricing contact note. Delivery is free, so the checkout summary shows `Meal subtotal`, `Delivery $0`, and `Total` with no Stripe shipping fee. Little Beef is currently purchasable and uses the exact macros in the product catalog.
 
 | Meal | Calories | Protein | Carbs | Fat |
 | --- | ---: | ---: | ---: | ---: |
-| Big Chicken | 970 | 69g | 114g | 26g |
-| Little Chicken | 660 | 46.5g | 77.5g | 17g |
-| Big Beef | 1113 | 69.5g | 113.5g | 41g |
-| Little Beef | 784 | 45.225g | 83g | 41g |
+| Big Chicken | 970 | 70g | 114g | 26g |
+| Little Chicken | 660 | 47g | 78g | 17g |
+| Big Beef | 1115 | 70g | 114g | 41g |
+| Little Beef | 785 | 46g | 83g | 41g |
 
 ## Friday cutoff and Saturday delivery
 
@@ -69,7 +69,7 @@ ThreeByrd uses separate Cloudflare Workers and D1 databases for the two Stripe m
 
 `STRIPE_MODE` is not a secret. The server only constructs a Stripe client when the configured key prefix matches the mode (`sk_test_`/`rk_test_` for test and `sk_live_`/`rk_live_` for live). The webhook handler also requires Stripe’s signed event `livemode` value to match. Signing secrets do not identify their mode by prefix, so they must remain separate per Worker and per Stripe webhook endpoint.
 
-The staging environment has no `api.threebyrd.com` route and allows only controlled local origins by default. The production Worker keeps the existing custom domain, production D1 binding, live secrets, and `ORDERS_OPEN = true`; set it back to `false` and redeploy as the emergency close procedure.
+The staging environment has no `api.threebyrd.com` route and allows only controlled local origins by default. The production Worker keeps the existing custom domain, production D1 binding, live secrets, and `ORDERS_OPEN=true`; staging keeps `ORDERS_OPEN=false`. Set the production variable back to `false` and redeploy as the emergency close procedure.
 
 ## Required environment variables
 
@@ -140,4 +140,4 @@ The following must be completed manually before `api.threebyrd.com` is made publ
 
 ## Deployment
 
-The app remains a Vinext/Cloudflare Worker project. The main-branch automation publishes the static frontend, while the Worker is deployed separately through Wrangler. Production is currently launched with `ORDERS_OPEN=true`; staging remains on its separately deployed test-mode artifact.
+The app remains a Vinext/Cloudflare Worker project. The main-branch automation publishes the static frontend, while the Worker is deployed separately through Wrangler. Production is currently launched with `ORDERS_OPEN=true`; staging remains on its separately deployed test-mode artifact with `ORDERS_OPEN=false`.

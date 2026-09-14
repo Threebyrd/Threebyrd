@@ -26,7 +26,7 @@ npm run db:generate
 
 ## Main files
 
-- `app/page.tsx`: homepage structure, delivery-first positioning, menu, process, story, founders, and launch list.
+- `app/page.tsx`: homepage structure, delivery-first positioning, menu, giving-back section, team, and launch list.
 - `app/components/OrderBuilder.tsx`: customizable cart UI, live summary, minimum-order state, and Checkout handoff.
 - `app/components/Countdown.tsx`: browser-safe countdown to the next Friday 3:00 PM Eastern cutoff.
 - `app/order-config.ts`: trusted product catalog, canonical cart-wide pricing tiers, quote validation, and cutoff recurrence.

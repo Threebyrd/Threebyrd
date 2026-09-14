@@ -25,6 +25,7 @@
 	],
   "vars": {
     "STRIPE_MODE": "live",
+    "ORDERS_OPEN": "true",
     "NEXT_PUBLIC_SITE_URL": "https://threebyrd.com",
     "CORS_ALLOWED_ORIGINS": "https://threebyrd.com"
   },

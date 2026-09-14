@@ -11,7 +11,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "This checkout origin is not allowed." }, withCheckoutCors(request, { status: 403 }));
   }
 
-  if (!ORDERS_OPEN) {
+  const environmentOrdersOpen = process.env.ORDERS_OPEN?.trim().toLowerCase() !== "false";
+  if (!ORDERS_OPEN || !environmentOrdersOpen) {
     return Response.json({ error: "Orders are currently closed. Ordering will be opening soon." }, withCheckoutCors(request, { status: 503 }));
   }
 

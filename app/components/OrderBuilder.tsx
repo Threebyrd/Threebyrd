@@ -112,7 +112,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             <h2 className="majorHeading" id="order-title">Chicken.<br />Beef.<br /><em>Your call.</em></h2>
           </div>
           <div className="orderIntroCopy">
-            <p>Choose Little or Big, mix and match across proteins, and send three or more boxes to your door.</p>
+            <p>Choose Little or Big, mix and match across proteins, and get your meals delivered to your door Saturday.</p>
             <p className="orderRule"><strong>3-box minimum.</strong> Mix and match however you want.</p>
           </div>
         </div>
@@ -126,9 +126,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                 const line = quote.lines.find((item) => item.productId === product.id);
                 const priceRange = priceRangeFor(product);
                 return (
-                  <article className={`productCard productCard${product.protein}${disabled ? " isComingSoon" : ""}`} key={product.id}>
+                  <article className={`productCard productCard${product.protein} productCard-${product.id}${disabled ? " isComingSoon" : ""}`} key={product.id}>
                     <div className="productPhoto">
-                      <Image src={product.image} alt={product.alt} width={720} height={960} sizes="(max-width: 720px) 100vw, 25vw" />
+                      <Image src={product.image} alt={product.alt} width={1800} height={1200} sizes="(max-width: 720px) 100vw, 25vw" />
                       {disabled && <span className="comingSoonBadge">Coming soon</span>}
                     </div>
                     <div className="productCardBody">
@@ -171,12 +171,13 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                 {CART_PRICING_TIER_ORDER.map((tier) => (
                   <li key={tier}>
                     <strong>{formatPricingTier(tier)} meals</strong>
-                    <span>{tier === "20+" ? "best value" : "cart tier"}</span>
+                    <span>{tier === "10+" ? "best standard price" : "cart tier"}</span>
                   </li>
                 ))}
               </ol>
               <p className="pricingNote">Mix proteins and sizes freely. Every meal gets its corresponding price from the tier your full cart reaches.</p>
               <p className="pricingExample"><strong>Example:</strong> 3 Big Chicken + 2 Big Beef = 5 meals total, so both products receive 5–9 pricing.</p>
+              <p className="customPricingNote">Ordering 20+ meals? <a href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">Reach out</a> for custom pricing.</p>
               <details className="pricingDisclosure">
                 <summary>See all tier prices</summary>
                 <div className="pricingTableWrap">
@@ -254,16 +255,21 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                   </div>
                 </>
               ) : (
-                <p className="nextTierBest">Best pricing unlocked.</p>
+                <p className="nextTierBest">Best standard pricing unlocked.</p>
               )}
             </div>
+            {quote.totalBoxes >= 20 && <p className="customPricingNote summaryCustomPricing">Ordering 20+ meals? <a href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">Reach out</a> for custom pricing.</p>}
             <div className={`minimumStatus${quote.totalBoxes >= 3 ? " isComplete" : ""}`} role="status" aria-live="polite">
               {quote.totalBoxes >= 3
                 ? "3-box minimum met."
                 : `Add ${3 - quote.totalBoxes} more ${3 - quote.totalBoxes === 1 ? "box" : "boxes"} to reach the 3-box minimum.`}
             </div>
-            <div className="summaryTotal"><span>Subtotal</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
-            <p className="deliveryNote"><span aria-hidden="true">✦</span> Delivery only · Cooked and delivered Saturday.</p>
+            <div className="summaryTotal">
+              <div className="summaryTotalRow"><span>Meal subtotal</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
+              <div className="summaryTotalRow"><span>Delivery</span><strong>$0</strong></div>
+              <div className="summaryTotalFinal"><span>Total</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
+            </div>
+            <p className="deliveryNote"><span aria-hidden="true">✦</span> Free Saturday delivery to your door.</p>
             <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting}>
               {isSubmitting ? "Opening secure checkout…" : !ORDERS_OPEN ? "Ordering closed" : !orderWindowOpen ? "Order window closed" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>

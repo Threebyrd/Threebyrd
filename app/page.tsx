@@ -18,30 +18,18 @@ const founders = [
   {
     name: "Thor Waguespack",
     role: "Co-Founder",
-    image: "/assets/thor-waguespack.webp",
-    width: 640,
-    height: 960,
-    alt: "Headshot of Thor Waguespack",
     email: "thor@threebyrd.com",
     linkedin: "https://www.linkedin.com/in/thorbw/",
   },
   {
     name: "Truman Popp",
     role: "Co-Founder",
-    image: "/assets/truman-popp.webp",
-    width: 640,
-    height: 640,
-    alt: "Headshot of Truman Popp",
     email: "truman@threebyrd.com",
     linkedin: "https://www.linkedin.com/in/trumanpopp/",
   },
   {
     name: "Luc Surprenant",
     role: "Co-Founder",
-    image: "/assets/luc-surprenant.webp",
-    width: 506,
-    height: 675,
-    alt: "Headshot of Luc Surprenant",
     email: "luc@threebyrd.com",
     linkedin: "https://www.linkedin.com/in/lucsurprenant/",
   },
@@ -66,7 +54,6 @@ const pressLinks = [
 
 const navigation = [
   { label: "Order", href: "#order" },
-  { label: "How It Works", href: "#how-it-works" },
   { label: "Giving Back", href: "#giving-back" },
   { label: "Team", href: "#team" },
 ];
@@ -117,7 +104,6 @@ export default function Home() {
               </div>
               <div className="heroActions" aria-label="Main actions">
                 <a className="button buttonPrimary" href="#order">Choose Meal Order <span aria-hidden="true">→</span></a>
-                <a className="textLink" href="#how-it-works">How ordering works <span aria-hidden="true">↓</span></a>
               </div>
               <dl className="heroProof" aria-label="ThreeByrd at a glance">
                 <div><dt>Delivery</dt><dd>To your door</dd></div>
@@ -169,31 +155,6 @@ export default function Home() {
 
         <OrderBuilder initialCutoffIso={cutoff.toISOString()} />
 
-        <section id="how-it-works" className="processSection" aria-labelledby="process-title">
-          <div className="sectionShell">
-            <p className="sectionLabel sectionLabelLight">How ordering works</p>
-            <h2 className="majorHeading" id="process-title">Pick your build.<br />We handle the rest.</h2>
-            <div className="processGrid">
-              <article className="processCard processCardOne">
-                <div className="processCopy"><span>01</span><h3>Pick your protein.</h3><p>Choose Chicken or Beef, then choose a Little or Big box.</p><a href="#order">Choose Chicken or Beef <span aria-hidden="true">→</span></a></div>
-                <Image className="processImage processImageOne" src="/assets/big-chicken.webp" alt="Big Chicken meal prep boxes" width={720} height={960} />
-              </article>
-              <article className="processCard processCardTwo">
-                <div className="processCopy"><span>02</span><h3>Pick your quantity.</h3><p>Mix and match three or more boxes. Your total cart quantity sets the price tier for every meal.</p><a href="#order">Build your order <span aria-hidden="true">→</span></a></div>
-                <Image className="processImage processImageTwo" src="/assets/little-chicken.webp" alt="Little Chicken meal prep boxes" width={720} height={960} />
-              </article>
-              <article className="processCard processCardThree">
-                <div className="processCopy"><span>03</span><h3>We cook.</h3><p>Checkout securely and we prepare your order for Saturday kitchen day.</p></div>
-                <Image className="processImage processImageThree" src="/assets/big-beef.webp" alt="Big Beef meal prep boxes with rice and broccoli" width={720} height={960} />
-              </article>
-              <article className="processCard processCardFour">
-                <div className="processCopy"><span>04</span><h3>Delivered to your door.</h3><p>Your meals arrive Saturday. Delivery only—there is no pickup option.</p></div>
-                <Image className="processImage processImageFour" src="/assets/little-chicken.webp" alt="Little Chicken meal prep boxes ready for delivery" width={720} height={960} />
-              </article>
-            </div>
-          </div>
-        </section>
-
         <section id="giving-back" className="givingSection" aria-labelledby="giving-title">
           <div className="sectionShell">
             <div className="givingTop">
@@ -209,7 +170,29 @@ export default function Home() {
         </section>
 
         <section id="team" className="teamSection" aria-labelledby="team-title">
-          <div className="sectionShell"><div className="teamHeading"><p className="sectionLabel">Meet the team</p><h2 className="majorHeading" id="team-title">Three founders.<br />One ThreeByrd.</h2></div><div className="teamGrid">{founders.map((founder) => <article className="founderCard" key={founder.name}><Image className="founderMark" src="/assets/threebyrd-single-chicken-star-192.png" alt="" aria-hidden="true" width={192} height={192} /><Image className={founder.name === "Thor Waguespack" ? "founderImageThor" : undefined} src={founder.image} alt={founder.alt} width={founder.width} height={founder.height} /><div><h3>{founder.name}</h3><p>{founder.role}</p><div className="founderContacts"><a className="founderContactLink" href={`mailto:${founder.email}`}>{founder.email}</a><a className="founderContactLink founderLinkedIn" href={founder.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${founder.name} on LinkedIn`}><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 10.2v6.3M8 7.7v.1M11.5 16.5v-3.4a2.3 2.3 0 0 1 4.6 0v3.4M11.5 10.2v6.3" /></svg><span>LinkedIn</span></a></div></div></article>)}</div></div>
+          <div className="sectionShell">
+            <div className="teamHeading"><p className="sectionLabel">Meet the team</p><h2 className="majorHeading" id="team-title">Three founders.<br />One ThreeByrd.</h2></div>
+            <div className="teamFeature">
+              <div className="teamPhotoFrame">
+                <Image className="teamMark" src="/assets/threebyrd-single-chicken-star-192.png" alt="" aria-hidden="true" width={192} height={192} />
+                <Image src="/assets/threebyrd-team.webp" alt="ThreeByrd co-founders Thor Waguespack, Truman Popp, and Luc Surprenant" width={1800} height={1200} sizes="(max-width: 1024px) 100vw, 60vw" />
+              </div>
+              <div className="teamRoster">
+                {founders.map((founder) => (
+                  <article className="teamMember" key={founder.name}>
+                    <h3>{founder.name}</h3>
+                    <p>{founder.role}</p>
+                    <div className="founderContacts">
+                      <a className="founderContactLink" href={`mailto:${founder.email}`}>{founder.email}</a>
+                      <a className="founderContactLink founderLinkedIn" href={founder.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${founder.name} on LinkedIn`}>
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 10.2v6.3M8 7.7v.1M11.5 16.5v-3.4a2.3 2.3 0 0 1 4.6 0v3.4M11.5 10.2v6.3" /></svg><span>LinkedIn</span>
+                      </a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
 
         <section id="join" className="joinSection" aria-labelledby="join-title">

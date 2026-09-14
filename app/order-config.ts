@@ -5,7 +5,7 @@ export const ORDERS_OPEN = true;
 
 export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef";
 
-export type CartPricingTier = "3-4" | "5-9" | "10-19" | "20+";
+export type CartPricingTier = "3-4" | "5-9" | "10+";
 
 export type CartPricingTierDefinition = {
   minTotalMeals: number;
@@ -13,7 +13,7 @@ export type CartPricingTierDefinition = {
   prices: Record<ProductId, number>;
 };
 
-export const CART_PRICING_TIER_ORDER: readonly CartPricingTier[] = ["3-4", "5-9", "10-19", "20+"];
+export const CART_PRICING_TIER_ORDER: readonly CartPricingTier[] = ["3-4", "5-9", "10+"];
 
 /**
  * Canonical meal pricing. The checkout route and the browser quote both read
@@ -40,23 +40,13 @@ export const CART_PRICING_TIERS: Record<CartPricingTier, CartPricingTierDefiniti
       "little-beef": 850,
     },
   },
-  "10-19": {
+  "10+": {
     minTotalMeals: 10,
-    maxTotalMeals: 19,
     prices: {
       "big-chicken": 850,
       "little-chicken": 700,
       "big-beef": 950,
       "little-beef": 800,
-    },
-  },
-  "20+": {
-    minTotalMeals: 20,
-    prices: {
-      "big-chicken": 800,
-      "little-chicken": 650,
-      "big-beef": 900,
-      "little-beef": 750,
     },
   },
 };
@@ -124,7 +114,7 @@ export const products: readonly Product[] = [
     image: "/assets/big-chicken.webp",
     alt: "Big Chicken meal prep boxes with rice and broccoli",
     calories: "970",
-    proteinGrams: "69g",
+    proteinGrams: "70g",
     carbs: "114g",
     fat: "26g",
     purchasable: true,
@@ -137,9 +127,9 @@ export const products: readonly Product[] = [
     size: "Big",
     image: "/assets/big-beef.webp",
     alt: "Big Beef meal prep boxes with rice and broccoli",
-    calories: "1113",
-    proteinGrams: "69.5g",
-    carbs: "113.5g",
+    calories: "1115",
+    proteinGrams: "70g",
+    carbs: "114g",
     fat: "41g",
     purchasable: true,
     description: "Beef, white rice + broccoli",
@@ -152,8 +142,8 @@ export const products: readonly Product[] = [
     image: "/assets/little-chicken.webp",
     alt: "Little Chicken meal prep boxes with rice and broccoli",
     calories: "660",
-    proteinGrams: "46.5g",
-    carbs: "77.5g",
+    proteinGrams: "47g",
+    carbs: "78g",
     fat: "17g",
     purchasable: true,
     description: "Chicken, white rice + broccoli",
@@ -165,8 +155,8 @@ export const products: readonly Product[] = [
     size: "Little",
     image: "/assets/little-beef.webp",
     alt: "Little Beef meal prep boxes with rice and broccoli",
-    calories: "784",
-    proteinGrams: "45.225g",
+    calories: "785",
+    proteinGrams: "46g",
     carbs: "83g",
     fat: "41g",
     purchasable: true,

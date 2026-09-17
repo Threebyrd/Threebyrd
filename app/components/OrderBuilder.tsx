@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Countdown from "./Countdown";
 import MacroSnapshot from "./MacroSnapshot";
+import { formatOrderCapacityMessage, isOrderCapacitySoldOut, type OrderCapacityAvailability } from "../capacity";
 import {
   CART_PRICING_TIERS,
   CART_PRICING_TIER_ORDER,
@@ -28,6 +29,7 @@ type OrderBuilderProps = {
 const initialQuantities = Object.fromEntries(products.map((product) => [product.id, 0])) as Record<ProductId, number>;
 const checkoutApiOrigin = (process.env.NEXT_PUBLIC_CHECKOUT_API_ORIGIN ?? "").trim().replace(/\/$/, "");
 const checkoutApiUrl = `${checkoutApiOrigin}/api/checkout`;
+const capacityApiUrl = `${checkoutApiOrigin}/api/capacity`;
 
 export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: OrderBuilderProps) {
   const searchParams = useSearchParams();
@@ -38,6 +40,8 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       : "")
   ));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [capacity, setCapacity] = useState<OrderCapacityAvailability | null>(null);
+  const [capacityOverrideSoldOut, setCapacityOverrideSoldOut] = useState(false);
   const [now, setNow] = useState(() => new Date(initialCutoffIso).getTime());
   const quote = useMemo(
     () => quoteOrder(Object.entries(quantities).map(([productId, quantity]) => ({ productId, quantity }))),
@@ -46,6 +50,24 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const nextTier = getNextPricingTier(quote.totalBoxes);
   const orderWindowOpen = new Date(initialCutoffIso).getTime() >= now;
   const orderingAvailable = ORDERS_OPEN && orderWindowOpen;
+  const capacitySoldOut = capacityOverrideSoldOut || isOrderCapacitySoldOut(capacity);
+
+  const refreshCapacity = useCallback(async (): Promise<OrderCapacityAvailability | null> => {
+    try {
+      const response = await fetch(capacityApiUrl, { headers: { accept: "application/json" } });
+      if (!response.ok) {
+        throw new Error("Capacity request failed.");
+      }
+      const nextCapacity = await response.json() as OrderCapacityAvailability;
+      setCapacity(nextCapacity);
+      if (!isOrderCapacitySoldOut(nextCapacity)) {
+        setCapacityOverrideSoldOut(false);
+      }
+      return nextCapacity;
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     const update = () => setNow(Date.now());
@@ -53,6 +75,15 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const initialFetch = window.setTimeout(() => void refreshCapacity(), 0);
+    const timer = window.setInterval(() => void refreshCapacity(), 60_000);
+    return () => {
+      window.clearTimeout(initialFetch);
+      window.clearInterval(timer);
+    };
+  }, [refreshCapacity]);
 
   function changeQuantity(productId: ProductId, delta: number) {
     setQuantities((current) => ({
@@ -78,6 +109,11 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       return;
     }
 
+    if (capacitySoldOut) {
+      setStatusMessage("Sold out for this week. Please check back for the next ordering window.");
+      return;
+    }
+
     setIsSubmitting(true);
     setStatusMessage("");
 
@@ -89,8 +125,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
           items: quote.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
         }),
       });
-      const body = await response.json().catch(() => ({})) as { error?: unknown; url?: unknown };
+      const body = await response.json().catch(() => ({})) as { code?: unknown; error?: unknown; url?: unknown };
       if (!response.ok) {
+        if (body.code === "CAPACITY_EXHAUSTED") {
+          setCapacityOverrideSoldOut(true);
+          void refreshCapacity();
+        }
         throw new Error(typeof body.error === "string" ? body.error : "Checkout is temporarily unavailable.");
       }
       if (typeof body.url !== "string") {
@@ -214,6 +254,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               <span className="boxCount">{quote.totalBoxes} {quote.totalBoxes === 1 ? "box" : "boxes"}</span>
             </div>
             <Countdown initialCutoffIso={initialCutoffIso} />
+            <div className={`capacityIndicator${capacitySoldOut ? " isSoldOut" : ""}`} role="status" aria-live="polite">
+              {capacity ? formatOrderCapacityMessage(capacity) : "Checking weekly capacity…"}
+            </div>
             {quote.lines.length > 0 ? (
               <div className="summaryLines">
                 {quote.lines.map((line) => (
@@ -270,12 +313,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               <div className="summaryTotalFinal"><span>Total</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
             </div>
             <p className="deliveryNote"><span aria-hidden="true">✦</span> Free Saturday delivery to your door.</p>
-            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting}>
-              {isSubmitting ? "Opening secure checkout…" : !ORDERS_OPEN ? "Ordering closed" : !orderWindowOpen ? "Order window closed" : "Continue to secure checkout"}
+            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || capacitySoldOut}>
+              {isSubmitting ? "Opening secure checkout…" : capacitySoldOut ? "Sold out for this week" : !ORDERS_OPEN ? "Ordering closed" : !orderWindowOpen ? "Order window closed" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>
             </button>
             <p className={`checkoutStatus${statusMessage ? " hasMessage" : ""}`} role="alert" aria-live="polite">
-              {statusMessage || (!ORDERS_OPEN ? "Ordering will be opening soon. Check back for updates." : "Secure checkout collects your delivery details.")}
+              {statusMessage || (capacitySoldOut ? "Sold out for this week. Check back for the next ordering window." : !ORDERS_OPEN ? "Ordering will be opening soon. Check back for updates." : "Secure checkout collects your delivery details.")}
             </p>
           </aside>
         </div>

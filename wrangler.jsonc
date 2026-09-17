@@ -6,6 +6,9 @@
 		"nodejs_compat"
 	],
 	"workers_dev": true,
+	"triggers": {
+		"crons": ["*/5 * * * *"]
+	},
 	"routes": [
 		{
 			"pattern": "api.threebyrd.com",
@@ -20,7 +23,8 @@
 		{
 			"binding": "DB",
 			"database_name": "threebyrd-orders",
-			"database_id": "65fe6bf2-d15b-43a6-9fef-f6fd38773571"
+			"database_id": "65fe6bf2-d15b-43a6-9fef-f6fd38773571",
+			"migrations_dir": "drizzle"
 		}
 	],
   "vars": {

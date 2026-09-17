@@ -4,6 +4,9 @@
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS"
@@ -12,7 +15,8 @@
     {
       "binding": "DB",
       "database_name": "threebyrd-orders-staging",
-      "database_id": "825afa40-489f-4e86-b646-c63a9b378fb2"
+      "database_id": "825afa40-489f-4e86-b646-c63a9b378fb2",
+      "migrations_dir": "drizzle"
     }
   ],
   "vars": {

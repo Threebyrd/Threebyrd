@@ -4,11 +4,35 @@
 
 Production ordering is open. The production Wrangler variable `ORDERS_OPEN=true` enables the server-side Checkout path; staging explicitly sets it to `false`. The live Checkout and webhook path has been verified; staging remains isolated in Stripe test mode.
 
+The weekly capacity implementation is currently being staged. The source configuration targets the current window (`2026-09-18`) with a 50-customer-order limit and a 30-minute reservation lifetime. Production must not be migrated or redeployed with this feature until staging validation is approved.
+
 ## What changed
 
 The old fixed weekly-plan selector was replaced with a one-time, mix-and-match order builder. Customers can choose Little Chicken, Big Chicken, Little Beef, or Big Beef, mix quantities directly in the order summary, and see the full cart-wide pricing model before checkout. The homepage makes Chicken/Beef choice and Saturday delivery the primary story.
 
-Important implementation files are `app/order-config.ts`, `app/components/OrderBuilder.tsx`, `app/components/Countdown.tsx`, `app/api/checkout/route.ts`, `app/api/cors.ts`, `app/api/webhooks/stripe/route.ts`, `app/success/page.tsx`, `db/schema.ts`, and `drizzle/0001_groovy_avengers.sql`.
+Important implementation files are `app/order-config.ts`, `app/components/OrderBuilder.tsx`, `app/components/Countdown.tsx`, `app/api/capacity/route.ts`, `app/api/checkout/route.ts`, `app/api/cors.ts`, `app/api/webhooks/stripe/route.ts`, `app/success/page.tsx`, `app/capacity.ts`, `app/order-capacity-config.ts`, `app/order-capacity-db.ts`, `db/schema.ts`, and `drizzle/0001_groovy_avengers.sql` plus `drizzle/0002_narrow_stature.sql`.
+
+## Weekly capacity and reservations
+
+Capacity counts completed customer orders, regardless of meal count. The public `GET /api/capacity` endpoint returns the display data needed by the frontend: whether a cap is enabled, the limit, confirmed orders, active reservations, remaining slots, and the existing `ordersOpen` state. It does not calculate or accept payment totals.
+
+For a capped window, checkout performs this sequence:
+
+1. Validate the cart using the existing canonical product and pricing logic.
+2. Atomically release expired reservations and insert one new reservation only if confirmed plus active reserved orders is below the configured limit.
+3. Create the Stripe Checkout Session with the reservation ID, window key, and a matching approximately 30-minute Stripe expiration.
+4. Attach the Stripe session ID to the reservation. A Stripe API failure releases the reservation immediately; an abandoned session is released by the scheduled cleanup or after its expiry on the next capacity request.
+5. On a verified paid Checkout webhook, mark the reservation confirmed and insert the order with the existing unique `stripe_session_id` protection. Replayed webhooks do not consume another slot or create another order.
+
+`app/order-capacity-config.ts` is the single window configuration source. Set `limit` to `null` for a future uncapped window, or update it to another order count such as 75 or 100 together with a new `windowKey`. The row key keeps windows isolated without changing the existing `orders` table. If the configured key is older than the current Friday cutoff, runtime automatically treats the window as uncapped until the operator explicitly advances the key. A five-minute Worker cron invokes cleanup across all windows.
+
+The new migration is `drizzle/0002_narrow_stature.sql`. The existing staging database has its `orders` table but an empty legacy `d1_migrations` ledger, so replaying the historical baseline would try to recreate `orders`. Apply only this new schema file to staging:
+
+```bash
+npx wrangler d1 execute threebyrd-orders-staging --remote --config wrangler.staging.jsonc --file drizzle/0002_narrow_stature.sql
+```
+
+After staging approval, inspect production’s existing schema and apply the same file to production only if the reservation table is absent, then deploy the production Worker. Do not run the production migration as part of staging validation.
 
 ## Product and pricing rules
 

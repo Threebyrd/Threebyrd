@@ -1,7 +1,6 @@
 import type Stripe from "stripe";
-import { getDb } from "../../../../db";
+import { recordConfirmedOrder, releaseOrderCapacityReservation } from "../../../../app/order-capacity-db";
 import { getCartPricingTier, quoteOrder, readCartMetadata } from "../../../order-config";
-import { orders } from "../../../../db/schema";
 import { getStripe, getStripeMode, isStripeEventForMode } from "../../../stripe";
 
 export async function POST(request: Request) {
@@ -32,15 +31,30 @@ export async function POST(request: Request) {
     return Response.json({ error: "Webhook mode is not accepted by this environment." }, { status: 400 });
   }
 
-  if (event.type === "checkout.session.async_payment_failed") {
-    return Response.json({ received: true });
-  }
-
-  if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") {
+  if (
+    event.type !== "checkout.session.completed" &&
+    event.type !== "checkout.session.async_payment_succeeded" &&
+    event.type !== "checkout.session.async_payment_failed" &&
+    event.type !== "checkout.session.expired"
+  ) {
     return Response.json({ received: true });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
+
+  if (event.type === "checkout.session.async_payment_failed" || event.type === "checkout.session.expired") {
+    try {
+      await releaseOrderCapacityReservation(await getCapacityDatabase(), {
+        reservationId: session.metadata?.capacityReservationId,
+        stripeSessionId: session.id,
+      });
+      return Response.json({ received: true });
+    } catch (error) {
+      console.error("Failed Stripe capacity reservation release", error instanceof Error ? error.message : "unknown error");
+      return Response.json({ error: "Reservation release failed; Stripe should retry this webhook." }, { status: 500 });
+    }
+  }
+
   if (event.type === "checkout.session.completed" && session.payment_status !== "paid") {
     return Response.json({ received: true, deferred: true });
   }
@@ -70,26 +84,38 @@ export async function POST(request: Request) {
   }
 
   try {
-    const db = getDb();
-    await db.insert(orders).values({
-      id: session.id,
+    const database = await getCapacityDatabase();
+    const reservationId = session.metadata?.capacityReservationId ?? null;
+    const confirmedAt = Math.floor(Date.now() / 1000);
+    const customerName = session.collected_information?.shipping_details?.name ?? session.customer_details?.name ?? null;
+    const deliveryAddress = JSON.stringify(session.collected_information?.shipping_details?.address ?? session.customer_details?.address ?? null);
+    const recorded = await recordConfirmedOrder(database, {
       stripeSessionId: session.id,
       stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
-      status: "confirmed",
       customerEmail: session.customer_details?.email ?? null,
-      customerName: session.collected_information?.shipping_details?.name ?? session.customer_details?.name ?? null,
+      customerName,
       customerPhone: session.customer_details?.phone ?? null,
-      deliveryAddress: JSON.stringify(session.collected_information?.shipping_details?.address ?? session.customer_details?.address ?? null),
+      deliveryAddress,
       items: JSON.stringify(cart),
       amountCents: session.amount_total,
       currency: session.currency,
       cutoffAt: session.metadata?.cutoffAt ?? null,
       createdAt: session.created,
-    }).onConflictDoNothing({ target: orders.stripeSessionId });
+    }, { reservationId, confirmedAt });
+
+    if (!recorded) {
+      console.error("Confirmed Stripe session could not be linked to an order", session.id);
+      return Response.json({ error: "Checkout reservation could not be confirmed." }, { status: 500 });
+    }
 
     return Response.json({ received: true });
   } catch (error) {
     console.error("Confirmed Stripe order could not be recorded", error instanceof Error ? error.message : "unknown error");
     return Response.json({ error: "Order recording failed; Stripe should retry this webhook." }, { status: 500 });
   }
+}
+
+async function getCapacityDatabase() {
+  const { getDatabaseBinding } = await import("../../../../db");
+  return getDatabaseBinding();
 }

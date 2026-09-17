@@ -15,6 +15,13 @@
       "when": 1788970292683,
       "tag": "0001_groovy_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789588154631,
+      "tag": "0002_narrow_stature",
+      "breakpoints": true
     }
   ]
 }

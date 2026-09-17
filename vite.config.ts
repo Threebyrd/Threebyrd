@@ -13,6 +13,12 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
 const localBindingConfig = {
   main: "./worker/index.ts",
+  vars: {
+    STRIPE_MODE: "test",
+    ORDERS_OPEN: "false",
+    NEXT_PUBLIC_SITE_URL: "http://localhost:3000",
+    CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000",
+  },
   d1_databases: d1
     ? [
         {
@@ -60,6 +66,7 @@ export default defineConfig(async ({ mode }) => {
           // root config, which contains the real remote D1 identity.
           // Keep the placeholder only for local development.
           d1_databases: mode === "development" ? localBindingConfig.d1_databases : [],
+          vars: mode === "development" ? localBindingConfig.vars : {},
         },
       }),
     ],

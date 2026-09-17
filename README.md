@@ -28,9 +28,11 @@ npm run db:generate
 
 - `app/page.tsx`: homepage structure, delivery-first positioning, menu, giving-back section, team, and launch list.
 - `app/components/OrderBuilder.tsx`: customizable cart UI, live summary, minimum-order state, and Checkout handoff.
+- `app/capacity.ts`, `app/order-capacity-config.ts`, and `app/order-capacity-db.ts`: shared capacity messaging, weekly cap configuration, and D1 reservation enforcement.
 - `app/components/Countdown.tsx`: browser-safe countdown to the next Friday 3:00 PM Eastern cutoff.
 - `app/order-config.ts`: trusted product catalog, canonical cart-wide pricing tiers, quote validation, and cutoff recurrence.
 - `app/api/checkout/route.ts`: server-side quote validation and Stripe Checkout Session creation.
+- `app/api/capacity/route.ts`: public, read-only availability for the current ordering window.
 - `app/api/cors.ts`: exact-origin CORS protection for the checkout API.
 - `app/api/webhooks/stripe/route.ts`: signature verification and idempotent D1 order confirmation.
 - `app/stripe.ts`: Stripe mode and API-key isolation for local, staging, and production.
@@ -53,6 +55,12 @@ Copy the needed values into `.env.local` for local development. Never commit tha
 - `CORS_ALLOWED_ORIGINS`: comma-separated browser origins allowed to call the checkout API.
 - `THREEBYRD_CUTOFF_OVERRIDE`: optional business-local wall time such as `2026-09-11T15:00:00`; see `docs/ORDERING.md`.
 - `NEXT_PUBLIC_APPS_SCRIPT_URL`: existing optional launch-list endpoint.
+
+## Weekly order capacity
+
+The current ordering window is configured in `app/order-capacity-config.ts` with a 50-order limit. The limit counts customer orders, not meals: a checkout containing 20 meals consumes one slot. The Worker reserves a slot atomically in D1 before creating a Stripe Checkout Session, links the reservation to the session, and converts it to `confirmed` only after a paid webhook. Reservations expire after 30 minutes and are also cleaned by the Worker’s five-minute scheduled task. A stale window key automatically falls back to no cap after its Friday cutoff, so the next drop must be explicitly configured.
+
+The browser reads `GET /api/capacity` for display only. The checkout route remains authoritative and returns a sold-out response when the last slot is taken by another customer. To prepare a future window, change the stable `windowKey` and set `limit` to the desired order count; use `null` to disable the cap. Apply `drizzle/0002_narrow_stature.sql` to each D1 database before deploying code that uses the reservation table.
 
 ## Current scope
 

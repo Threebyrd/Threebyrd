@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
 
-export function getDb() {
+export function getDatabaseBinding(): D1Database {
   const workerEnv = env as unknown as { DB?: D1Database };
   if (!workerEnv.DB) {
     throw new Error(
@@ -10,5 +10,9 @@ export function getDb() {
     );
   }
 
-  return drizzle(workerEnv.DB, { schema });
+  return workerEnv.DB;
+}
+
+export function getDb() {
+  return drizzle(getDatabaseBinding(), { schema });
 }

@@ -26,6 +26,8 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /delivered straight to your door/i);
   assert.doesNotMatch(html, /Orders open until/);
   assert.match(html, /class="summaryCountdown"/);
+  assert.match(html, /class="capacityIndicator"/);
+  assert.match(html, /Checking weekly capacity/);
   assert.match(html, /Orders close in|Next order window/);
   assert.match(html, /Friday, September \d{1,2}(?:<!-- -->)? · 3:00 PM ET/);
   assert.doesNotMatch(html, /Orders are currently closed/);

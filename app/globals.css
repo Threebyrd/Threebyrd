@@ -261,6 +261,20 @@ h1, h2, h3 { text-wrap: balance; }
 .orderRule { border-left: 4px solid var(--tb-red); color: var(--tb-red); font-size: 0.82rem; margin: 1.2rem 0 0; padding-left: 0.8rem; }
 .orderLayout { align-items: start; display: grid; gap: 2rem; grid-template-columns: minmax(0, 1.45fr) minmax(310px, 0.55fr); margin-top: 3.2rem; }
 .productColumn { min-width: 0; }
+.mobileCartControl, .mobileCartProgress { display: none; }
+.mobileCartControl { align-items: center; background: var(--tb-red); border: var(--border-ui); box-shadow: var(--shadow-hard); color: var(--tb-paper); gap: 0.55rem; min-height: 50px; padding: 0.55rem 0.7rem; position: fixed; right: max(var(--gutter), calc(env(safe-area-inset-right) + 0.75rem)); top: calc(70px + env(safe-area-inset-top) + 0.65rem); z-index: 40; }
+.mobileCartControl:hover { background: var(--tb-gold); color: var(--tb-ink); }
+.mobileCartIcon { align-items: center; display: inline-flex; height: 1.35rem; justify-content: center; width: 1.35rem; }
+.mobileCartIcon svg { fill: none; height: 100%; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; width: 100%; }
+.mobileCartDetails { display: grid; gap: 0.08rem; line-height: 1.05; text-align: left; }
+.mobileCartDetails strong { font-size: 0.7rem; text-transform: uppercase; }
+.mobileCartDetails small { color: var(--tb-gold-soft); font-size: 0.68rem; font-weight: 850; }
+.mobileCartArrow { color: var(--tb-gold-soft); font-size: 1.1rem; margin-left: 0.1rem; }
+.mobileCartProgress { align-items: center; background: var(--tb-gold-pale); border: var(--border-ui); color: var(--tb-red); gap: 0.55rem; margin-top: -0.55rem; padding: 0.65rem 0.7rem; }
+.mobileCartProgress strong { font-size: 0.72rem; font-weight: 900; }
+.mobileCartProgress > span { color: var(--tb-muted); font-size: 0.66rem; }
+.mobileCartProgress button { align-items: center; background: var(--tb-red); border: var(--border-ui); color: var(--tb-paper); display: inline-flex; font-size: 0.68rem; font-weight: 900; gap: 0.35rem; min-height: 40px; padding: 0.5rem 0.6rem; text-transform: uppercase; }
+.mobileCartProgress button:hover { background: var(--tb-gold); color: var(--tb-ink); }
 .pricingExplainer { background: var(--tb-paper); border: var(--border-major); box-shadow: var(--shadow-hard); margin-bottom: 1.2rem; min-width: 0; padding: clamp(1rem, 2.4vw, 1.7rem); }
 .pricingExplainer h3 { color: var(--tb-red); font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 400; line-height: 0.95; margin: 0; min-width: 0; overflow-wrap: anywhere; text-transform: uppercase; }
 .pricingIntro { font-size: 0.92rem; font-weight: 750; margin: 0.7rem 0 0; max-width: 54ch; min-width: 0; overflow-wrap: anywhere; }
@@ -309,7 +323,7 @@ h1, h2, h3 { text-wrap: balance; }
 .productAvailability { color: var(--tb-muted); }
 .discountNote { color: var(--tb-gold-dark); }
 
-.orderSummary { background: var(--tb-red); border: var(--border-major); box-shadow: var(--shadow-hard); color: var(--tb-paper); padding: 1.2rem; position: sticky; top: 104px; }
+.orderSummary { background: var(--tb-red); border: var(--border-major); box-shadow: var(--shadow-hard); color: var(--tb-paper); padding: 1.2rem; position: sticky; scroll-margin-top: 104px; top: 104px; }
 .summaryHeader { align-items: start; display: flex; gap: 0.7rem; justify-content: space-between; }
 .summaryHeader .sectionLabel { color: var(--tb-gold-soft); margin-bottom: 0.4rem; }
 .summaryHeader h3 { font-family: var(--font-display); font-size: 2rem; font-weight: 400; line-height: 0.95; margin: 0; text-transform: uppercase; }
@@ -415,8 +429,7 @@ h1, h2, h3 { text-wrap: balance; }
 .teamHeading { max-width: 760px; }
 .teamFeature { align-items: start; display: grid; gap: clamp(1.5rem, 4vw, 4rem); grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr); margin-top: 2.75rem; }
 .teamPhotoFrame { background: var(--tb-gold-pale); border: var(--border-major); box-shadow: var(--shadow-hard); overflow: hidden; position: relative; transform: rotate(-0.45deg); }
-.teamPhotoFrame > img:not(.teamMark) { aspect-ratio: 3 / 2; display: block; height: auto; object-fit: cover; object-position: center; width: 100%; }
-.teamMark { background: var(--tb-red); border: var(--border-ui); border-radius: 50%; height: 58px; left: 14px; object-fit: contain; padding: 0.2rem; position: absolute; top: 14px; width: 58px; z-index: 2; }
+.teamPhotoFrame > img { aspect-ratio: 3 / 2; display: block; height: auto; object-fit: cover; object-position: center; width: 100%; }
 .teamRoster { background: var(--tb-gold-pale); border: var(--border-major); box-shadow: var(--shadow-hard); }
 .teamMember { padding: 1rem 1.1rem; }
 .teamMember + .teamMember { border-top: var(--border-ui); }
@@ -560,6 +573,9 @@ h1, h2, h3 { text-wrap: balance; }
   .tickerTrack { padding-block: 0.5rem; }
   .tickerTrack span { font-size: 0.66rem; }
   .tickerTrack b { margin-inline: 1rem; }
+  .mobileCartControl { display: flex; }
+  .mobileCartProgress { display: grid; grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) auto; }
+  .mobileCartProgress > span { grid-column: 1 / -1; }
   .orderSection, .givingSection, .teamSection { padding-block: 64px 70px; }
   .orderIntro h2, .givingTop h2, .teamHeading h2, .joinContent h2 { font-size: 2.45rem; line-height: 1; min-width: 0; }
   .orderIntroCopy > p:first-child { font-size: 0.95rem; }
@@ -594,7 +610,7 @@ h1, h2, h3 { text-wrap: balance; }
   .pressList small { grid-column: 2; grid-row: 2; }
   .teamFeature { grid-template-columns: 1fr; }
   .teamPhotoFrame { margin-inline: 6px; }
-  .teamPhotoFrame > img:not(.teamMark) { aspect-ratio: 4 / 3; }
+  .teamPhotoFrame > img { aspect-ratio: 4 / 3; }
   .joinForm, .joinFormCompact { grid-template-columns: 1fr; }
   .joinFormCompact button { grid-column: auto; grid-row: auto; }
   .joinForm input, .joinForm button { min-height: 52px; }

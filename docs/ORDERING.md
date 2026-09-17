@@ -40,10 +40,10 @@ Prices are integer cents in the canonical pricing table in `app/order-config.ts`
 
 | Product | 3–4 meals | 5–9 meals | 10+ meals |
 | --- | ---: | ---: | ---: |
-| Little Chicken | $8.00 | $7.50 | $7.00 |
+| Little Chicken | $8.00 | $7.00 | $7.00 |
 | Big Chicken | $10.00 | $9.00 | $8.50 |
 | Big Beef | $11.00 | $10.00 | $9.50 |
-| Little Beef | $9.00 | $8.50 | $8.00 |
+| Little Beef | $9.00 | $8.00 | $8.00 |
 
 The server reconstructs a quote from product IDs and quantities. It does not accept a client-provided price, discount, subtotal, or total. Every order needs at least three total purchasable boxes, and the boxes may be mixed across SKUs. The browser uses the same canonical matrix for display only; the server remains authoritative for payment.
 

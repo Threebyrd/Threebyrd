@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Countdown from "./Countdown";
 import MacroSnapshot from "./MacroSnapshot";
 import { formatOrderCapacityMessage, isOrderCapacitySoldOut, type OrderCapacityAvailability } from "../capacity";
@@ -13,6 +13,7 @@ import {
   formatMoney,
   formatPricingTier,
   getNextPricingTier,
+  MINIMUM_BOXES,
   ORDERS_OPEN,
   priceRangeFor,
   products,
@@ -42,12 +43,21 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capacity, setCapacity] = useState<OrderCapacityAvailability | null>(null);
   const [capacityOverrideSoldOut, setCapacityOverrideSoldOut] = useState(false);
+  const [lastInteractedProductId, setLastInteractedProductId] = useState<ProductId | null>(null);
+  const orderSummaryRef = useRef<HTMLElement>(null);
   const [now, setNow] = useState(() => new Date(initialCutoffIso).getTime());
   const quote = useMemo(
     () => quoteOrder(Object.entries(quantities).map(([productId, quantity]) => ({ productId, quantity }))),
     [quantities],
   );
   const nextTier = getNextPricingTier(quote.totalBoxes);
+  const nextTierProducts = nextTier
+    ? products.filter((product) => (
+      !quote.pricingTier
+      || CART_PRICING_TIERS[nextTier.tier].prices[product.id] < CART_PRICING_TIERS[quote.pricingTier].prices[product.id]
+    ))
+    : [];
+  const nextTierProductNames = nextTierProducts.map((product) => product.name).join(" + ");
   const orderWindowOpen = new Date(initialCutoffIso).getTime() >= now;
   const orderingAvailable = ORDERS_OPEN && orderWindowOpen;
   const capacitySoldOut = capacityOverrideSoldOut || isOrderCapacitySoldOut(capacity);
@@ -85,11 +95,19 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     };
   }, [refreshCapacity]);
 
+  function scrollToSummary() {
+    const summary = orderSummaryRef.current;
+    if (!summary) return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    summary.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
+  }
+
   function changeQuantity(productId: ProductId, delta: number) {
     setQuantities((current) => ({
       ...current,
       [productId]: Math.max(0, Math.min(99, current[productId] + delta)),
     }));
+    setLastInteractedProductId(productId);
     setStatusMessage("");
   }
 
@@ -157,6 +175,21 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
           </div>
         </div>
 
+        {quote.totalBoxes > 0 && (
+          <button
+            className="mobileCartControl"
+            type="button"
+            onClick={scrollToSummary}
+            aria-label={`Review your order: ${quote.totalBoxes} ${quote.totalBoxes === 1 ? "box" : "boxes"}, ${formatMoney(quote.subtotalCents)}`}
+          >
+            <span className="mobileCartIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 5h2l1.4 9.1a2 2 0 0 0 2 1.7h7.8a2 2 0 0 0 1.9-1.4L21 8H7" /><circle cx="10" cy="19" r="1" /><circle cx="18" cy="19" r="1" /></svg>
+            </span>
+            <span className="mobileCartDetails"><strong>{quote.totalBoxes} {quote.totalBoxes === 1 ? "box" : "boxes"}</strong><small>{formatMoney(quote.subtotalCents)} subtotal</small></span>
+            <span className="mobileCartArrow" aria-hidden="true">↓</span>
+          </button>
+        )}
+
         <div className="orderLayout">
           <div className="productColumn">
             <div className="productGrid" aria-label="Available meals">
@@ -166,39 +199,58 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                 const line = quote.lines.find((item) => item.productId === product.id);
                 const priceRange = priceRangeFor(product);
                 return (
-                  <article className={`productCard productCard${product.protein} productCard-${product.id}${disabled ? " isComingSoon" : ""}`} key={product.id}>
-                    <div className="productPhoto">
-                      <Image src={product.image} alt={product.alt} width={1800} height={1200} sizes="(max-width: 720px) 100vw, 25vw" />
-                      {disabled && <span className="comingSoonBadge">Coming soon</span>}
-                    </div>
-                    <div className="productCardBody">
-                      <div className="productHeading">
-                        <div>
-                          <p className="productProtein">{product.protein}</p>
-                          <h3>{product.name}</h3>
-                        </div>
-                        {priceRange ? (
-                          <div className="productPriceRange" aria-label={`${product.name} price range ${formatCompactMoney(priceRange.highestCents)} to ${formatCompactMoney(priceRange.lowestCents)} per meal`}>
-                            <strong>{formatCompactMoney(priceRange.highestCents)} → {formatCompactMoney(priceRange.lowestCents)}</strong>
-                            <span>/ meal</span>
-                            <small>depending on total cart size</small>
-                          </div>
-                        ) : <strong>—</strong>}
+                  <Fragment key={product.id}>
+                    <article className={`productCard productCard${product.protein} productCard-${product.id}${disabled ? " isComingSoon" : ""}`}>
+                      <div className="productPhoto">
+                        <Image src={product.image} alt={product.alt} width={1800} height={1200} sizes="(max-width: 720px) 100vw, 25vw" />
+                        {disabled && <span className="comingSoonBadge">Coming soon</span>}
                       </div>
-                      <p className="productDescription">{product.description}</p>
-                      <MacroSnapshot product={product} />
-                      {disabled ? (
-                        <p className="productAvailability">Not available for purchase yet.</p>
-                      ) : (
-                        <div className="quantityControl" aria-label={`Quantity for ${product.name}`}>
-                          <button type="button" aria-label={`Remove one ${product.name}`} onClick={() => changeQuantity(product.id, -1)} disabled={!ORDERS_OPEN || quantity === 0}>−</button>
-                          <output aria-live="polite">{quantity}</output>
-                          <button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={!ORDERS_OPEN || quantity >= 99}>+</button>
+                      <div className="productCardBody">
+                        <div className="productHeading">
+                          <div>
+                            <p className="productProtein">{product.protein}</p>
+                            <h3>{product.name}</h3>
+                          </div>
+                          {priceRange ? (
+                            <div className="productPriceRange" aria-label={`${product.name} price range ${formatCompactMoney(priceRange.highestCents)} to ${formatCompactMoney(priceRange.lowestCents)} per meal`}>
+                              <strong>{formatCompactMoney(priceRange.highestCents)} → {formatCompactMoney(priceRange.lowestCents)}</strong>
+                              <span>/ meal</span>
+                              <small>depending on total cart size</small>
+                            </div>
+                          ) : <strong>—</strong>}
                         </div>
-                      )}
-                      {line && line.pricingTier !== "3-4" && <p className="discountNote">{formatPricingTier(line.pricingTier)} cart tier pricing applied</p>}
-                    </div>
-                  </article>
+                        <p className="productDescription">{product.description}</p>
+                        <MacroSnapshot product={product} />
+                        {disabled ? (
+                          <p className="productAvailability">Not available for purchase yet.</p>
+                        ) : (
+                          <div className="quantityControl" aria-label={`Quantity for ${product.name}`}>
+                            <button type="button" aria-label={`Remove one ${product.name}`} onClick={() => changeQuantity(product.id, -1)} disabled={!ORDERS_OPEN || quantity === 0}>−</button>
+                            <output aria-live="polite">{quantity}</output>
+                            <button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={!ORDERS_OPEN || quantity >= 99}>+</button>
+                          </div>
+                        )}
+                        {line && line.pricingTier !== "3-4" && <p className="discountNote">{formatPricingTier(line.pricingTier)} cart tier pricing applied</p>}
+                      </div>
+                    </article>
+                    {lastInteractedProductId === product.id && quote.totalBoxes > 0 && (
+                      <div className="mobileCartProgress" role="status" aria-live="polite">
+                        {quote.totalBoxes >= MINIMUM_BOXES ? (
+                          <strong>3-box minimum met ✓</strong>
+                        ) : (
+                          <strong>Add {MINIMUM_BOXES - quote.totalBoxes} more {MINIMUM_BOXES - quote.totalBoxes === 1 ? "box" : "boxes"} to reach the 3-box minimum.</strong>
+                        )}
+                        {quote.totalBoxes >= MINIMUM_BOXES && orderingAvailable && !capacitySoldOut && (
+                          <button type="button" onClick={scrollToSummary}>Review &amp; checkout <span aria-hidden="true">→</span></button>
+                        )}
+                        <span>
+                          {quote.totalBoxes >= MINIMUM_BOXES && (!orderingAvailable || capacitySoldOut)
+                            ? capacitySoldOut ? "Sold out for this week." : "Ordering is currently closed."
+                            : "Or keep scrolling to add more."}
+                        </span>
+                      </div>
+                    )}
+                  </Fragment>
                 );
               })}
             </div>
@@ -245,7 +297,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             </section>
           </div>
 
-          <aside className="orderSummary" aria-labelledby="summary-title">
+          <aside ref={orderSummaryRef} id="order-summary" className="orderSummary" aria-labelledby="summary-title">
             <div className="summaryHeader">
               <div>
                 <p className="sectionLabel">Your order</p>
@@ -287,15 +339,15 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               )}
               {nextTier ? (
                 <>
-                  <p className="nextTierPrompt">Add <strong>{nextTier.mealsUntil} more {nextTier.mealsUntil === 1 ? "meal" : "meals"}</strong> to unlock <strong>{formatPricingTier(nextTier.tier)} pricing:</strong></p>
-                  <div className="nextTierPrices">
-                    {products.map((product) => (
+                  <p className="nextTierPrompt">Add <strong>{nextTier.mealsUntil} more {nextTier.mealsUntil === 1 ? "meal" : "meals"}</strong> to unlock <strong>{formatPricingTier(nextTier.tier)} pricing{nextTierProducts.length < products.length ? ` on ${nextTierProductNames}` : ""}:</strong></p>
+                  {nextTierProducts.length > 0 && <div className="nextTierPrices">
+                    {nextTierProducts.map((product) => (
                       <span key={product.id}>
                         <small>{product.name}</small>
                         <b>{formatCompactMoney(CART_PRICING_TIERS[nextTier.tier].prices[product.id])}</b>
                       </span>
                     ))}
-                  </div>
+                  </div>}
                 </>
               ) : (
                 <p className="nextTierBest">Best standard pricing unlocked.</p>

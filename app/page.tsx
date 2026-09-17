@@ -167,7 +167,6 @@ export default function Home() {
             <div className="teamHeading"><p className="sectionLabel">Meet the team</p><h2 className="majorHeading" id="team-title">Three founders.<br />One ThreeByrd.</h2></div>
             <div className="teamFeature">
               <div className="teamPhotoFrame">
-                <Image className="teamMark" src="/assets/threebyrd-single-chicken-star-192.png" alt="" aria-hidden="true" width={192} height={192} />
                 <Image src="/assets/threebyrd-team.webp" alt="ThreeByrd co-founders Thor Waguespack, Truman Popp, and Luc Surprenant" width={1800} height={1200} sizes="(max-width: 1024px) 100vw, 60vw" />
               </div>
               <div className="teamRoster">

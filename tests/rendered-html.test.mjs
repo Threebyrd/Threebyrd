@@ -112,7 +112,9 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /threebyrd-team\.webp/);
   assert.match(html, /ThreeByrd co-founders Thor Waguespack, Truman Popp, and Luc Surprenant/);
   assert.equal((html.match(/class="teamMember/g) ?? []).length, 3);
-  assert.equal((html.match(/class="teamMark/g) ?? []).length, 1);
+  assert.equal((html.match(/class="teamMark/g) ?? []).length, 0);
+  assert.doesNotMatch(html, /threebyrd-single-chicken-star-192\.png/);
+  assert.match(html, /id="order-summary"/);
   assert.match(html, /mailto:thor@threebyrd\.com/);
   assert.match(html, /mailto:truman@threebyrd\.com/);
   assert.match(html, /mailto:luc@threebyrd\.com/);

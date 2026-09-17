@@ -34,14 +34,14 @@ test("applies the cart-wide pricing tier at every boundary", () => {
   assert.equal(quote(["big-chicken", 19]).subtotalCents, 16150);
   assert.equal(quote(["big-chicken", 20]).subtotalCents, 17000);
   assert.equal(quote(["big-chicken", 21]).subtotalCents, 17850);
-  assert.equal(quote(["little-chicken", 5]).subtotalCents, 3750);
+  assert.equal(quote(["little-chicken", 5]).subtotalCents, 3500);
   assert.equal(quote(["little-chicken", 10]).subtotalCents, 7000);
   assert.equal(quote(["little-chicken", 20]).subtotalCents, 14000);
   assert.equal(quote(["big-beef", 5]).subtotalCents, 5000);
   assert.equal(quote(["big-beef", 10]).subtotalCents, 9500);
   assert.equal(quote(["big-beef", 20]).subtotalCents, 19000);
   assert.equal(quote(["little-beef", 3]).subtotalCents, 2700);
-  assert.equal(quote(["little-beef", 5]).subtotalCents, 4250);
+  assert.equal(quote(["little-beef", 5]).subtotalCents, 4000);
   assert.equal(quote(["little-beef", 10]).subtotalCents, 8000);
   assert.equal(quote(["little-beef", 20]).subtotalCents, 16000);
   assert.equal(getCartPricingTier(2), undefined);
@@ -74,9 +74,9 @@ test("keeps the canonical matrix and all four purchasable product details", () =
   });
   assert.deepEqual(CART_PRICING_TIERS["5-9"].prices, {
     "big-chicken": 900,
-    "little-chicken": 750,
+    "little-chicken": 700,
     "big-beef": 1000,
-    "little-beef": 850,
+    "little-beef": 800,
   });
   assert.deepEqual(CART_PRICING_TIERS["10+"].prices, {
     "big-chicken": 850,
@@ -101,9 +101,10 @@ test("keeps the canonical matrix and all four purchasable product details", () =
   }, { calories: "1115", proteinGrams: "70g", carbs: "114g", fat: "41g" });
   assert.equal(quote(["little-beef", 3]).isValid, true);
   assert.equal(quote(["little-beef", 3]).subtotalCents, 2700);
+  assert.deepEqual(priceRangeFor(getProduct("little-chicken")), { highestCents: 800, lowestCents: 700 });
   assert.deepEqual(priceRangeFor(littleBeef), { highestCents: 900, lowestCents: 800 });
   assert.equal(formatCompactMoney(900), "$9");
-  assert.equal(formatCompactMoney(750), "$7.50");
+  assert.equal(formatCompactMoney(700), "$7");
 });
 
 test("derives next-tier messaging from the canonical tier definitions", () => {

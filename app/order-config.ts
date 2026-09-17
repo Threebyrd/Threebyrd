@@ -35,9 +35,9 @@ export const CART_PRICING_TIERS: Record<CartPricingTier, CartPricingTierDefiniti
     maxTotalMeals: 9,
     prices: {
       "big-chicken": 900,
-      "little-chicken": 750,
+      "little-chicken": 700,
       "big-beef": 1000,
-      "little-beef": 850,
+      "little-beef": 800,
     },
   },
   "10+": {

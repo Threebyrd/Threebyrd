@@ -61,6 +61,8 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const orderWindowOpen = new Date(initialCutoffIso).getTime() >= now;
   const orderingAvailable = ORDERS_OPEN && orderWindowOpen;
   const capacitySoldOut = capacityOverrideSoldOut || isOrderCapacitySoldOut(capacity);
+  const capacityRemaining = capacity?.enabled && capacity.remaining !== null ? capacity.remaining : null;
+  const capacityShortfall = capacityRemaining === null ? 0 : Math.max(0, quote.totalBoxes - capacityRemaining);
 
   const refreshCapacity = useCallback(async (): Promise<OrderCapacityAvailability | null> => {
     try {
@@ -129,6 +131,11 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
 
     if (capacitySoldOut) {
       setStatusMessage("Sold out for this week. Please check back for the next ordering window.");
+      return;
+    }
+
+    if (capacityShortfall > 0) {
+      setStatusMessage(`Only ${capacityRemaining} meals remain this week. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.`);
       return;
     }
 
@@ -235,19 +242,23 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                     </article>
                     {lastInteractedProductId === product.id && quote.totalBoxes > 0 && (
                       <div className="mobileCartProgress" role="status" aria-live="polite">
-                        {quote.totalBoxes >= MINIMUM_BOXES ? (
+                        {capacityShortfall > 0 ? (
+                          <strong>Only {capacityRemaining} meals remain this week.</strong>
+                        ) : quote.totalBoxes >= MINIMUM_BOXES ? (
                           <strong>3-box minimum met ✓</strong>
                         ) : (
                           <strong>Add {MINIMUM_BOXES - quote.totalBoxes} more {MINIMUM_BOXES - quote.totalBoxes === 1 ? "box" : "boxes"} to reach the 3-box minimum.</strong>
                         )}
-                        {quote.totalBoxes >= MINIMUM_BOXES && orderingAvailable && !capacitySoldOut && (
+                        {capacityShortfall > 0 ? (
+                          <span>Remove {capacityShortfall} {capacityShortfall === 1 ? "box" : "boxes"} to continue.</span>
+                        ) : quote.totalBoxes >= MINIMUM_BOXES && orderingAvailable && !capacitySoldOut && (
                           <button type="button" onClick={scrollToSummary}>Review &amp; checkout <span aria-hidden="true">→</span></button>
                         )}
-                        <span>
+                        {!capacityShortfall && <span>
                           {quote.totalBoxes >= MINIMUM_BOXES && (!orderingAvailable || capacitySoldOut)
                             ? capacitySoldOut ? "Sold out for this week." : "Ordering is currently closed."
                             : "Or keep scrolling to add more."}
-                        </span>
+                        </span>}
                       </div>
                     )}
                   </Fragment>
@@ -365,12 +376,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               <div className="summaryTotalFinal"><span>Total</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
             </div>
             <p className="deliveryNote"><span aria-hidden="true">✦</span> Free Saturday delivery to your door.</p>
-            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || capacitySoldOut}>
-              {isSubmitting ? "Opening secure checkout…" : capacitySoldOut ? "Sold out for this week" : !ORDERS_OPEN ? "Ordering closed" : !orderWindowOpen ? "Order window closed" : "Continue to secure checkout"}
+            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || capacitySoldOut || capacityShortfall > 0}>
+              {isSubmitting ? "Opening secure checkout…" : capacityShortfall > 0 ? `Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue` : capacitySoldOut ? "Sold out for this week" : !ORDERS_OPEN ? "Ordering closed" : !orderWindowOpen ? "Order window closed" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>
             </button>
             <p className={`checkoutStatus${statusMessage ? " hasMessage" : ""}`} role="alert" aria-live="polite">
-              {statusMessage || (capacitySoldOut ? "Sold out for this week. Check back for the next ordering window." : !ORDERS_OPEN ? "Ordering will be opening soon. Check back for updates." : "Secure checkout collects your delivery details.")}
+              {statusMessage || (capacityShortfall > 0 ? `Only ${capacityRemaining} meals remain this week. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.` : capacitySoldOut ? "Sold out for this week. Check back for the next ordering window." : !ORDERS_OPEN ? "Ordering will be opening soon. Check back for updates." : "Secure checkout collects your delivery details.")}
             </p>
           </aside>
         </div>

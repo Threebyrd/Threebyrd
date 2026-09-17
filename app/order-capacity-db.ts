@@ -18,6 +18,7 @@ export type CapacityDatabase = {
 export type CapacityReservation = {
   id: string;
   windowKey: string;
+  mealCount: number;
   reservedAt: number;
   expiresAt: number;
 };
@@ -55,11 +56,11 @@ export async function getOrderCapacityAvailability(
   database: CapacityDatabase,
   config: OrderCapacityConfig,
   now = Math.floor(Date.now() / 1000),
-): Promise<{ confirmed: number; reserved: number; remaining: number | null }> {
+): Promise<{ confirmedMeals: number; reservedMeals: number; remaining: number | null }> {
   const countSql = `
     SELECT
-      COALESCE(SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END), 0) AS confirmed,
-      COALESCE(SUM(CASE WHEN status = 'reserved' AND expires_at > ? THEN 1 ELSE 0 END), 0) AS reserved
+      COALESCE(SUM(CASE WHEN status = 'confirmed' THEN meal_count ELSE 0 END), 0) AS confirmed_meals,
+      COALESCE(SUM(CASE WHEN status = 'reserved' AND expires_at > ? THEN meal_count ELSE 0 END), 0) AS reserved_meals
     FROM ${RESERVATION_TABLE}
     WHERE window_key = ?
       AND (status = 'confirmed' OR (status = 'reserved' AND expires_at > ?))
@@ -69,14 +70,14 @@ export async function getOrderCapacityAvailability(
     database.prepare(releaseExpiredSql).bind(now, now),
     database.prepare(countSql).bind(now, config.windowKey, now),
   ]);
-  const counts = (results[1]?.results?.[0] ?? {}) as { confirmed?: unknown; reserved?: unknown };
-  const confirmed = toCount(counts.confirmed);
-  const reserved = toCount(counts.reserved);
+  const counts = (results[1]?.results?.[0] ?? {}) as { confirmed_meals?: unknown; reserved_meals?: unknown };
+  const confirmedMeals = toCount(counts.confirmed_meals);
+  const reservedMeals = toCount(counts.reserved_meals);
 
   return {
-    confirmed,
-    reserved,
-    remaining: config.limit === null ? null : Math.max(0, config.limit - confirmed - reserved),
+    confirmedMeals,
+    reservedMeals,
+    remaining: config.limit === null ? null : Math.max(0, config.limit - confirmedMeals - reservedMeals),
   };
 }
 
@@ -89,12 +90,16 @@ export async function reserveOrderCapacity(
     return true;
   }
 
+  if (!Number.isSafeInteger(reservation.mealCount) || reservation.mealCount <= 0) {
+    return false;
+  }
+
   const reserveSql = `
     INSERT INTO ${RESERVATION_TABLE}
-      (id, window_key, status, reserved_at, expires_at)
-    SELECT ?, ?, 'reserved', ?, ?
+      (id, window_key, status, meal_count, reserved_at, expires_at)
+    SELECT ?, ?, 'reserved', ?, ?, ?
     WHERE (
-      SELECT COUNT(*)
+      SELECT COALESCE(SUM(meal_count), 0)
       FROM ${RESERVATION_TABLE}
       WHERE window_key = ?
         AND (
@@ -109,10 +114,12 @@ export async function reserveOrderCapacity(
     database.prepare(reserveSql).bind(
       reservation.id,
       reservation.windowKey,
+      reservation.mealCount,
       reservation.reservedAt,
       reservation.expiresAt,
       reservation.windowKey,
       reservation.reservedAt,
+      reservation.mealCount,
       config.limit,
     ),
   ]);

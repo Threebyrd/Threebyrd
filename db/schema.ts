@@ -26,6 +26,7 @@ export const orderCapacityReservations = sqliteTable("order_capacity_reservation
   windowKey: text("window_key").notNull(),
   stripeSessionId: text("stripe_session_id"),
   status: text("status").notNull(),
+  mealCount: integer("meal_count").notNull().default(0),
   reservedAt: integer("reserved_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
   confirmedAt: integer("confirmed_at"),

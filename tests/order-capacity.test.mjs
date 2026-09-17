@@ -65,15 +65,17 @@ class FakeD1 {
     }
 
     if (query.includes("INSERT INTO order_capacity_reservations")) {
-      const [id, windowKey, reservedAt, expiresAt, countWindowKey, now, limit] = values;
-      const count = this.rows.filter((row) => (
+      const [id, windowKey, mealCount, reservedAt, expiresAt, countWindowKey, now, requestedMeals, limit] = values;
+      const count = this.rows.reduce((total, row) => total + (
         row.windowKey === countWindowKey &&
         (row.status === "confirmed" || (row.status === "reserved" && row.expiresAt > now))
-      )).length;
-      if (count >= limit) {
+          ? row.mealCount
+          : 0
+      ), 0);
+      if (count + requestedMeals > limit) {
         return { meta: { changes: 0 } };
       }
-      this.rows.push({ id, windowKey, stripeSessionId: null, status: "reserved", reservedAt, expiresAt });
+      this.rows.push({ id, windowKey, stripeSessionId: null, status: "reserved", mealCount, reservedAt, expiresAt });
       return { meta: { changes: 1 } };
     }
 
@@ -138,8 +140,8 @@ class FakeD1 {
       ));
       return {
         results: [{
-          confirmed: current.filter((row) => row.status === "confirmed").length,
-          reserved: current.filter((row) => row.status === "reserved").length,
+          confirmed_meals: current.filter((row) => row.status === "confirmed").reduce((total, row) => total + row.mealCount, 0),
+          reserved_meals: current.filter((row) => row.status === "reserved").reduce((total, row) => total + row.mealCount, 0),
         }],
       };
     }
@@ -153,10 +155,11 @@ class FakeD1 {
   }
 }
 
-function reservation(id, now = 1_000) {
+function reservation(id, now = 1_000, mealCount = 1) {
   return {
     id,
     windowKey: "test-window",
+    mealCount,
     reservedAt: now,
     expiresAt: now + 1_800,
   };
@@ -164,7 +167,7 @@ function reservation(id, now = 1_000) {
 
 const testConfig = { windowKey: "test-window", limit: 50, reservationTtlSeconds: 1_800 };
 
-test("configures a reusable 50-order window with a 30-minute reservation", () => {
+test("configures a reusable 50-meal window with a 30-minute reservation", () => {
   assert.equal(ORDER_CAPACITY_CONFIG.limit, 50);
   assert.equal(ORDER_CAPACITY_CONFIG.reservationTtlSeconds, 1_800);
   assert.equal(typeof ORDER_CAPACITY_CONFIG.windowKey, "string");
@@ -172,12 +175,12 @@ test("configures a reusable 50-order window with a 30-minute reservation", () =>
   assert.equal(getOrderCapacityConfig("2026-09-25").limit, null);
 });
 
-test("reserves a normal slot and converts it to one confirmed order", async () => {
+test("reserves and confirms the exact meal quantity", async () => {
   const database = new FakeD1();
-  assert.equal(await reserveOrderCapacity(database, testConfig, reservation("r-1")), true);
+  assert.equal(await reserveOrderCapacity(database, testConfig, reservation("r-1", 1_000, 3)), true);
   assert.equal(await attachOrderCapacityReservation(database, "r-1", "cs_test_1"), true);
   assert.equal(await confirmOrderCapacityReservation(database, { reservationId: "r-1", stripeSessionId: "cs_test_1" }, 1_100), true);
-  assert.deepEqual(await getOrderCapacityAvailability(database, testConfig, 1_100), { confirmed: 1, reserved: 0, remaining: 49 });
+  assert.deepEqual(await getOrderCapacityAvailability(database, testConfig, 1_100), { confirmedMeals: 3, reservedMeals: 0, remaining: 47 });
 });
 
 test("expired and abandoned reservations release capacity", async () => {
@@ -186,27 +189,31 @@ test("expired and abandoned reservations release capacity", async () => {
   expired.expiresAt = 1_100;
   assert.equal(await reserveOrderCapacity(database, testConfig, expired), true);
   await cleanupExpiredOrderCapacityReservations(database, 1_101);
-  assert.deepEqual(await getOrderCapacityAvailability(database, testConfig, 1_101), { confirmed: 0, reserved: 0, remaining: 50 });
+  assert.deepEqual(await getOrderCapacityAvailability(database, testConfig, 1_101), { confirmedMeals: 0, reservedMeals: 0, remaining: 50 });
 
   const abandoned = reservation("r-abandoned", 2_000);
   assert.equal(await reserveOrderCapacity(database, testConfig, abandoned), true);
   await releaseOrderCapacityReservation(database, { reservationId: "r-abandoned" }, 2_001);
-  assert.deepEqual(await getOrderCapacityAvailability(database, testConfig, 2_001), { confirmed: 0, reserved: 0, remaining: 50 });
+  assert.deepEqual(await getOrderCapacityAvailability(database, testConfig, 2_001), { confirmedMeals: 0, reservedMeals: 0, remaining: 50 });
 });
 
-test("capacity one permits exactly one of simultaneous checkout attempts", async () => {
+test("capacity reservations remain atomic for simultaneous multi-meal checkouts", async () => {
   const database = new FakeD1();
-  const oneSlot = { ...testConfig, limit: 1 };
+  const fiveMeals = { ...testConfig, limit: 5 };
   const results = await Promise.all([
-    reserveOrderCapacity(database, oneSlot, reservation("r-a")),
-    reserveOrderCapacity(database, oneSlot, reservation("r-b")),
+    reserveOrderCapacity(database, fiveMeals, reservation("r-a", 1_000, 3)),
+    reserveOrderCapacity(database, fiveMeals, reservation("r-b", 1_000, 3)),
   ]);
   assert.deepEqual(results.sort(), [false, true]);
-  assert.deepEqual(await getOrderCapacityAvailability(database, oneSlot, 1_000), { confirmed: 0, reserved: 1, remaining: 0 });
+  assert.deepEqual(await getOrderCapacityAvailability(database, fiveMeals, 1_000), { confirmedMeals: 0, reservedMeals: 3, remaining: 2 });
 });
 
-test("capacity zero rejects reservations and disabled capacity never blocks checkout", async () => {
+test("exact-fill and oversized carts are enforced, while disabled capacity never blocks checkout", async () => {
   const database = new FakeD1();
+  const fourMeals = { ...testConfig, limit: 4 };
+  assert.equal(await reserveOrderCapacity(database, fourMeals, reservation("r-four", 1_000, 4)), true);
+  assert.equal(await reserveOrderCapacity(database, fourMeals, reservation("r-too-large", 1_000, 5)), false);
+  assert.deepEqual(await getOrderCapacityAvailability(database, fourMeals, 1_000), { confirmedMeals: 0, reservedMeals: 4, remaining: 0 });
   assert.equal(await reserveOrderCapacity(database, { ...testConfig, limit: 0 }, reservation("r-zero")), false);
   assert.equal(await reserveOrderCapacity(database, { ...testConfig, limit: null }, reservation("r-disabled")), true);
   const disabled = await getOrderCapacityAvailability(database, { ...testConfig, limit: null });
@@ -219,12 +226,12 @@ test("replaying confirmation is idempotent and sold-out UI messaging is explicit
   await attachOrderCapacityReservation(database, "r-replay", "cs_test_replay");
   assert.equal(await confirmOrderCapacityReservation(database, { reservationId: "r-replay", stripeSessionId: "cs_test_replay" }), true);
   assert.equal(await confirmOrderCapacityReservation(database, { reservationId: "r-replay", stripeSessionId: "cs_test_replay" }), true);
-  assert.deepEqual(await getOrderCapacityAvailability(database, testConfig), { confirmed: 1, reserved: 0, remaining: 49 });
+  assert.deepEqual(await getOrderCapacityAvailability(database, testConfig), { confirmedMeals: 1, reservedMeals: 0, remaining: 49 });
 
-  const soldOut = { enabled: true, limit: 1, confirmed: 1, reserved: 0, remaining: 0, ordersOpen: true };
+  const soldOut = { enabled: true, limit: 1, confirmedMeals: 1, reservedMeals: 0, remaining: 0, ordersOpen: true };
   assert.equal(isOrderCapacitySoldOut(soldOut), true);
   assert.equal(formatOrderCapacityMessage(soldOut), "Sold out for this week");
-  assert.equal(formatOrderCapacityMessage({ ...soldOut, remaining: 27, confirmed: 0 }), "27 orders remaining this week");
+  assert.equal(formatOrderCapacityMessage({ ...soldOut, remaining: 27, confirmedMeals: 0 }), "27 meals remaining this week");
 });
 
 test("paid webhook reconciliation is atomic and duplicate session delivery creates one order", async () => {

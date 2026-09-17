@@ -1,8 +1,8 @@
 export type OrderCapacityAvailability = {
   enabled: boolean;
   limit: number | null;
-  confirmed: number;
-  reserved: number;
+  confirmedMeals: number;
+  reservedMeals: number;
   remaining: number | null;
   ordersOpen: boolean;
 };
@@ -14,7 +14,7 @@ export function formatOrderCapacityMessage(availability: OrderCapacityAvailabili
 
   return availability.remaining === 0
     ? "Sold out for this week"
-    : `${availability.remaining} orders remaining this week`;
+    : `${availability.remaining} meals remaining this week`;
 }
 
 export function isOrderCapacitySoldOut(availability: OrderCapacityAvailability | null): boolean {

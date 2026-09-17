@@ -9,7 +9,8 @@ export type OrderCapacityConfig = {
 
 /**
  * Capacity is intentionally configured in one place. To prepare a future drop,
- * change windowKey and set limit to 50, 75, 100, or null for no cap.
+ * change windowKey and set limit to a total meal count such as 50, 75, 100,
+ * or null for no cap.
  */
 export const ORDER_CAPACITY_CONFIG: Readonly<OrderCapacityConfig> = {
   windowKey: "2026-09-18",

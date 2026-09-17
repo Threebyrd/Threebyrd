@@ -46,9 +46,10 @@ export async function POST(request: Request) {
   const capacityConfig = getOrderCapacityConfig(cutoff.toISOString().slice(0, 10));
   const reservation = capacityConfig.limit === null
     ? null
-    : {
+      : {
         id: reservationId,
         windowKey: capacityConfig.windowKey,
+        mealCount: quote.totalBoxes,
         reservedAt: now,
         expiresAt: now + capacityConfig.reservationTtlSeconds,
       };

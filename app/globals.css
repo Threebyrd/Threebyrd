@@ -170,7 +170,6 @@ h1, h2, h3 { text-wrap: balance; }
 .givingTop h2,
 .teamHeading h2,
 .joinContent h2,
-.upperJoinContent h2,
 .goldOptionsHeader h1 {
   font-family: var(--font-display);
   font-weight: 400;
@@ -191,7 +190,7 @@ h1, h2, h3 { text-wrap: balance; }
 }
 
 .hero h1, .orderIntro h2, .givingTop h2, .joinContent h2 { background: var(--tb-gold-soft); color: var(--tb-ink); }
-.upperJoinContent h2, .teamHeading h2 { background: var(--tb-red); color: var(--tb-paper); }
+.teamHeading h2 { background: var(--tb-red); color: var(--tb-paper); }
 
 .hero h1 { font-size: clamp(4.7rem, 8vw, 8rem); line-height: 0.86; }
 .hero h1 em, .orderIntro h2 em { color: var(--tb-red); font-style: normal; }
@@ -244,11 +243,11 @@ h1, h2, h3 { text-wrap: balance; }
 .heroPhotoLabel b { color: var(--tb-gold); margin-left: 0.35rem; }
 
 .foodTicker { background: var(--tb-gold); border-block: var(--border-ui); contain: inline-size; max-width: 100%; overflow: hidden; white-space: nowrap; }
-.tickerTrack { align-items: center; animation: ticker 30s linear infinite; display: flex; flex: none; min-width: max-content; padding: 0.67rem 0; width: max-content; }
+.tickerTrack { align-items: center; animation: ticker 30s linear infinite; display: flex; flex: none; min-width: max-content; padding: 0.67rem 0; width: max-content; will-change: transform; }
 .tickerTrack span { align-items: center; display: inline-flex; font-size: 0.8rem; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
 .tickerTrack b { color: var(--tb-red); font-size: 1.15rem; margin: 0 1.5rem; }
 .tickerSequence { align-items: center; display: flex; flex-shrink: 0; }
-@keyframes ticker { to { transform: translateX(-50%); } }
+@keyframes ticker { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
 
 
 .orderSection { background: var(--tb-sand); border-bottom: var(--border-ui); padding-block: 104px 112px; scroll-margin-top: 84px; }
@@ -387,15 +386,6 @@ h1, h2, h3 { text-wrap: balance; }
 .macroGrid .macroProtein span, .macroGrid .macroProtein strong { color: var(--tb-ink); }
 .cardUnavailable { color: var(--tb-muted); font-size: 0.68rem; font-weight: 900; margin: auto 0 0; padding-top: 1rem; text-transform: uppercase; }
 
-.upperJoinSection { background: var(--tb-gold-pale); border-bottom: var(--border-ui); padding-block: clamp(2.5rem, 4.5vw, 4rem); scroll-margin-top: 84px; }
-.upperJoinLayout { align-items: center; background: var(--tb-gold-soft); border: var(--border-major); box-shadow: 7px 7px 0 var(--tb-line); display: grid; gap: clamp(2rem, 5vw, 5rem); grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); padding: clamp(1.5rem, 3.2vw, 3.2rem); }
-.upperJoinContent { max-width: 640px; }
-.upperJoinContent h2 { font-size: clamp(3rem, 4.8vw, 4.2rem); }
-.upperJoinContent > p:last-child { color: var(--tb-muted); font-size: 1rem; margin: 1rem 0 0; max-width: 44ch; }
-.upperJoinSection .joinForm label { color: var(--tb-red); }
-.upperJoinSection .joinForm > p { color: var(--tb-muted); }
-.upperJoinSection .joinForm > p.joinFormError { color: var(--tb-red); }
-
 .givingSection { background: var(--tb-ink); border-bottom: var(--border-ui); color: var(--tb-paper); padding-block: 104px 112px; scroll-margin-top: 84px; }
 .givingTop { align-items: end; display: grid; gap: 4rem; grid-template-columns: minmax(0, 1.08fr) minmax(380px, 0.92fr); }
 .givingTop h2, .teamHeading h2, .joinContent h2 { font-size: clamp(3rem, 5vw, 4.7rem); }
@@ -528,7 +518,6 @@ h1, h2, h3 { text-wrap: balance; }
   .heroVisual { justify-self: center; max-width: 660px; }
   .heroPhotoFrame img { aspect-ratio: 5 / 4; }
   .orderLayout, .joinLayout { grid-template-columns: 1fr; }
-  .upperJoinLayout { grid-template-columns: 1fr; }
   .orderSummary { max-width: 780px; width: 100%; }
   .orderSummary { position: static; }
   .orderIntro, .givingTop { align-items: start; gap: 1.5rem; grid-template-columns: 1fr; }
@@ -572,7 +561,7 @@ h1, h2, h3 { text-wrap: balance; }
   .tickerTrack span { font-size: 0.66rem; }
   .tickerTrack b { margin-inline: 1rem; }
   .orderSection, .givingSection, .teamSection { padding-block: 64px 70px; }
-  .orderIntro h2, .givingTop h2, .teamHeading h2, .joinContent h2, .upperJoinContent h2 { font-size: 2.45rem; line-height: 1; min-width: 0; }
+  .orderIntro h2, .givingTop h2, .teamHeading h2, .joinContent h2 { font-size: 2.45rem; line-height: 1; min-width: 0; }
   .orderIntroCopy > p:first-child { font-size: 0.95rem; }
   .orderLayout { margin-top: 2.3rem; }
   .productGrid { grid-template-columns: 1fr; }
@@ -628,8 +617,7 @@ h1, h2, h3 { text-wrap: balance; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
-  .tickerTrack { animation: none; min-width: 100%; transform: none; width: 100%; white-space: normal; }
-  .tickerSequence { flex-wrap: wrap; justify-content: center; width: 100%; }
+  .tickerTrack { animation: none; transform: none; }
   .tickerSequence + .tickerSequence { display: none; }
   .productCard:hover .productPhoto img { transform: none; }
 }

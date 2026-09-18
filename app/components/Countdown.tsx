@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  formatBusinessDate,
+  formatBusinessDateTime,
   getNextFridayCutoffAfter,
   ORDERS_OPEN,
 } from "../order-config";
@@ -62,7 +62,7 @@ export default function Countdown({ initialCutoffIso }: CountdownProps) {
     <div className="summaryCountdown" aria-atomic="true" aria-live="polite">
       <div className="summaryCountdownHeader">
         <p>{statusLabel}</p>
-        <span>{formatBusinessDate(state.cutoff)} · 3:00 PM ET</span>
+        <span>{formatBusinessDateTime(state.cutoff)}</span>
       </div>
       <div className="summaryCountdownDigits" aria-label={`${statusLabel}: ${time.days} days, ${time.hours} hours, ${time.minutes} minutes, ${time.seconds} seconds`}>
         <span><b>{pad(time.days)}</b><small>days</small></span>

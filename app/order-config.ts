@@ -412,6 +412,14 @@ export function getNextFridayCutoffAfter(now = new Date()): Date {
   return wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
 }
 
+export function getOrderCapacityWindowKey(cutoff: Date): string {
+  const parts = businessDateParts(cutoff);
+  const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
+  const daysSinceFriday = (weekday + 2) % 7;
+  const friday = addBusinessDays(parts, -daysSinceFriday);
+  return `${friday.year}-${String(friday.month).padStart(2, "0")}-${String(friday.day).padStart(2, "0")}`;
+}
+
 function configuredCutoffOverride(): Date | null {
   if (typeof process === "undefined") {
     return businessWallTimeToDate(DEFAULT_CUTOFF_OVERRIDE);

@@ -24,7 +24,7 @@ For a capped window, checkout performs this sequence:
 4. Attach the Stripe session ID to the reservation. A Stripe API failure releases the reservation immediately; an abandoned session is released by the scheduled cleanup or after its expiry on the next capacity request.
 5. On a verified paid Checkout webhook, mark the reservation confirmed and insert the order with the existing unique `stripe_session_id` protection. Replayed webhooks do not consume another slot or create another order.
 
-`app/order-capacity-config.ts` is the single window configuration source. Set `limit` to `null` for a future uncapped window, or update it to another meal limit such as 75 or 100 together with a new `windowKey`. The row key keeps windows isolated without changing the existing `orders` table. If the configured key is older than the current Friday cutoff, runtime automatically treats the window as uncapped until the operator explicitly advances the key. A five-minute Worker cron invokes cleanup across all windows.
+`app/order-capacity-config.ts` is the single window configuration source. Set `limit` to `null` for a future uncapped window, or update it to another meal limit such as 75 or 100 together with a new Friday `windowKey`. The row key keeps windows isolated without changing the existing `orders` table. A one-off Saturday cutoff still belongs to the preceding Friday capacity window. If the configured key is older than the current Friday cutoff, runtime automatically treats the window as uncapped until the operator explicitly advances the key. A five-minute Worker cron invokes cleanup across all windows.
 
 The new migration is `drizzle/0002_narrow_stature.sql`. The existing staging database has its `orders` table but an empty legacy `d1_migrations` ledger, so replaying the historical baseline would try to recreate `orders`. Apply only this new schema file to staging:
 
@@ -62,7 +62,7 @@ The product cards derive their visible high-to-low price ranges, compact tier di
 
 The default first-launch cutoff is centrally defined as `2026-09-11T15:00:00` in `app/order-config.ts`. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. `getNextOrderCutoff()` uses that initial override while it is still in the future; afterward it rolls forward to the next Friday at 3:00 PM Eastern. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
 
-For a special week, configure `THREEBYRD_CUTOFF_OVERRIDE` to one business-local value such as `2026-09-18T15:00:00`. Change it in the local environment and in the Sites environment configuration before deploying. Do not scatter dates through React components.
+For a special week, configure `THREEBYRD_CUTOFF_OVERRIDE` to one business-local value such as `2026-09-19T17:00:00`. Set it in the Worker vars and the static Pages build environment before deploying. The runtime automatically resumes the normal Friday schedule after the override passes; do not permanently change the recurring cutoff or scatter dates through React components.
 
 After a cutoff passes, the UI never shows a negative timer and the server rejects stale Checkout attempts. The next page load/cycle uses the next Friday cutoff and describes Saturday as the next cook/delivery date. The site does not promise a particular delivery time, and it does not offer pickup.
 

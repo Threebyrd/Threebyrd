@@ -1,4 +1,4 @@
-import { getNextOrderCutoff, ORDERS_OPEN } from "../../order-config";
+import { getNextOrderCutoff, getOrderCapacityWindowKey, ORDERS_OPEN } from "../../order-config";
 import { getOrderCapacityConfig } from "../../order-capacity-config";
 import { formatOrderCapacityMessage, type OrderCapacityAvailability } from "../../capacity";
 import { getOrderCapacityAvailability } from "../../order-capacity-db";
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
   try {
     const cutoff = getNextOrderCutoff();
-    const capacityConfig = getOrderCapacityConfig(cutoff.toISOString().slice(0, 10));
+    const capacityConfig = getOrderCapacityConfig(getOrderCapacityWindowKey(cutoff));
     const counts = await getOrderCapacityAvailability(await getCapacityDatabase(), capacityConfig);
     const environmentOrdersOpen = process.env.ORDERS_OPEN?.trim().toLowerCase() !== "false";
     const ordersOpen = ORDERS_OPEN && environmentOrdersOpen && Date.now() < cutoff.getTime();

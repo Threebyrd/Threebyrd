@@ -1,11 +1,10 @@
 import Image from "next/image";
 import CountUpTotal from "./components/CountUpTotal";
+import CutoffNotice from "./components/CutoffNotice";
 import JoinForm from "./components/JoinForm";
 import OrderBuilder from "./components/OrderBuilder";
 import {
-  formatBusinessDateTime,
   getNextOrderCutoff,
-  getSaturdayForCutoff,
 } from "./order-config";
 
 const impactStats = [
@@ -191,7 +190,7 @@ export default function Home() {
 
       <footer className="siteFooter">
         <div className="footerTop"><Image src="/assets/threebyrd-logo.png" alt="ThreeByrd Meal Prep official logo" width={3938} height={2591} /><nav aria-label="Footer navigation">{navigation.map((item) => <a href={item.href} key={item.href}>{item.label}</a>)}<a href="#join">Get updates</a></nav></div>
-        <div className="footerBottom"><p>ThreeByrd Meal Prep, formerly SBX Chicken.</p><p>Ithaca, New York · Delivery only</p><p className="footerCutoff">Orders close {formatBusinessDateTime(cutoff)} · next cook {getSaturdayForCutoff(cutoff)}</p><p className="footerContact">For inquiries, contact <a href="mailto:thor@threebyrd.com">thor@threebyrd.com</a></p></div>
+        <div className="footerBottom"><p>ThreeByrd Meal Prep, formerly SBX Chicken.</p><p>Ithaca, New York · Delivery only</p><CutoffNotice initialCutoffIso={cutoff.toISOString()} /><p className="footerContact">For inquiries, contact <a href="mailto:thor@threebyrd.com">thor@threebyrd.com</a></p></div>
       </footer>
     </>
   );

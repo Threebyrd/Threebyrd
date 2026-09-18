@@ -65,6 +65,7 @@ class FakeD1 {
     }
 
     if (query.includes("INSERT INTO order_capacity_reservations")) {
+      assert.match(query, /\)\s*\+\s*\?\s*<=\s*\?/);
       const [id, windowKey, mealCount, reservedAt, expiresAt, countWindowKey, now, requestedMeals, limit] = values;
       const count = this.rows.reduce((total, row) => total + (
         row.windowKey === countWindowKey &&

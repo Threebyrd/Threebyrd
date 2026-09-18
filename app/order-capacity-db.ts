@@ -106,7 +106,7 @@ export async function reserveOrderCapacity(
           status = 'confirmed'
           OR (status = 'reserved' AND expires_at > ?)
         )
-    ) < ?
+    ) + ? <= ?
   `;
 
   const results = await database.batch([

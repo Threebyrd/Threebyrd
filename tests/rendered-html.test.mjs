@@ -29,7 +29,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /class="capacityIndicator"/);
   assert.match(html, /Checking weekly capacity/);
   assert.match(html, /Orders close in|Next order window/);
-  assert.match(html, /Friday, September \d{1,2}(?:<!-- -->)? · 3:00 PM ET/);
+  assert.match(html, /Friday, September \d{1,2}(?:<!-- -->)? at 3:00 PM (?:EDT|EST)/);
   assert.doesNotMatch(html, /Orders are currently closed/);
   assert.match(html, /Order window closed|Continue to secure checkout/);
   assert.match(html, /Friday, September \d{1,2}/);

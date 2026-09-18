@@ -1,4 +1,4 @@
-import { getNextOrderCutoff, ORDERS_OPEN, quoteOrder, type CartItemInput } from "../../order-config";
+import { getNextOrderCutoff, getOrderCapacityWindowKey, ORDERS_OPEN, quoteOrder, type CartItemInput } from "../../order-config";
 import { getOrderCapacityConfig } from "../../order-capacity-config";
 import { attachOrderCapacityReservation, releaseOrderCapacityReservation, reserveOrderCapacity } from "../../order-capacity-db";
 import { getSiteOrigin, getStripe } from "../../stripe";
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
   const now = Math.floor(Date.now() / 1000);
   const reservationId = crypto.randomUUID();
-  const capacityConfig = getOrderCapacityConfig(cutoff.toISOString().slice(0, 10));
+  const capacityConfig = getOrderCapacityConfig(getOrderCapacityWindowKey(cutoff));
   const reservation = capacityConfig.limit === null
     ? null
       : {

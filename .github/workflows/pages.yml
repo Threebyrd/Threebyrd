@@ -39,6 +39,7 @@ jobs:
           GITHUB_PAGES_CUSTOM_DOMAIN: https://threebyrd.com
           NEXT_PUBLIC_APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
           NEXT_PUBLIC_CHECKOUT_API_ORIGIN: https://api.threebyrd.com
+          THREEBYRD_CUTOFF_OVERRIDE: 2026-09-19T17:00:00
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

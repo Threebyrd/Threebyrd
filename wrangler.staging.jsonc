@@ -22,6 +22,7 @@
   "vars": {
     "STRIPE_MODE": "test",
     "ORDERS_OPEN": "false",
+    "THREEBYRD_CUTOFF_OVERRIDE": "2026-09-19T17:00:00",
     "NEXT_PUBLIC_SITE_URL": "https://threebyrd.com",
     "CORS_ALLOWED_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000"
   },

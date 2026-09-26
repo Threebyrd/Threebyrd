@@ -4,7 +4,7 @@
 
 Production ordering is open. The production Wrangler variable `ORDERS_OPEN=true` enables the server-side Checkout path; staging explicitly sets it to `false`. The live Checkout and webhook path has been verified; staging remains isolated in Stripe test mode.
 
-The weekly capacity implementation uses a rolling 50-meal limit and a 30-minute reservation lifetime. Capacity is measured in total meals across all customer carts, not checkout count. Each Saturday cutoff creates an isolated capacity window.
+The capacity infrastructure remains available but production is currently uncapped. If enabled later, limits are measured in total meals across carts and each fulfillment cutoff gets an isolated capacity window.
 
 ## What changed
 
@@ -24,7 +24,7 @@ For a capped window, checkout performs this sequence:
 4. Attach the Stripe session ID to the reservation. A Stripe API failure releases the reservation immediately; an abandoned session is released by the scheduled cleanup or after its expiry on the next capacity request.
 5. On a verified paid Checkout webhook, mark the reservation confirmed and insert the order with the existing unique `stripe_session_id` protection. Replayed webhooks do not consume another slot or create another order.
 
-`app/order-capacity-config.ts` is the single capacity configuration source. The `rolling` window marker applies the configured limit to every calculated Saturday delivery window while keeping D1 rows isolated by window key. Set `limit` to `null` for no cap, or replace `rolling` with a specific `YYYY-MM-DD` cutoff key for a one-off cap. A five-minute Worker cron invokes cleanup across all windows.
+`app/order-capacity-config.ts` is the single capacity configuration source. Set `limit` to `null` to disable enforcement; the D1 schema and cleanup remain available for future use. A five-minute Worker cron invokes cleanup across all windows.
 
 The new migration is `drizzle/0002_narrow_stature.sql`. The existing staging database has its `orders` table but an empty legacy `d1_migrations` ledger, so replaying the historical baseline would try to recreate `orders`. Apply only this new schema file to staging:
 
@@ -60,11 +60,11 @@ The product cards derive their visible high-to-low price ranges, compact tier di
 
 ## Weekly cutoff and next-day delivery
 
-The recurring cutoff is centrally defined as Saturday at 3:00 PM Eastern in `app/order-config.ts`. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
+The recurring cutoff is centrally defined as Friday at 3:00 PM Eastern in `app/order-config.ts`. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
 
-For this one-time shifted window, configure `THREEBYRD_CUTOFF_OVERRIDE=2026-09-26T15:00:00` (Saturday, September 26 at 3:00 PM Eastern). Set it in the Worker vars and the static Pages build environment before deploying. After the override passes, the runtime automatically rolls to the following Saturday and continues weekly; do not scatter dates through React components.
+For this one-time shifted window, configure `THREEBYRD_CUTOFF_OVERRIDE=2026-09-26T15:00:00` (Saturday, September 26 at 3:00 PM Eastern). Set it in the Worker vars and the static Pages build environment before deploying. After the override passes, the runtime automatically returns to the normal Friday cutoff and Saturday delivery; do not scatter dates through React components.
 
-After a cutoff passes, the UI never shows a negative timer and the server immediately rolls to the next Saturday cutoff and next-day Sunday delivery. The site does not promise a particular delivery time, and it does not offer pickup.
+After a cutoff passes, the UI never shows a negative timer and the server immediately rolls to the next Friday cutoff and next-day Saturday delivery. The site does not promise a particular delivery time, and it does not offer pickup.
 
 ## Delivery eligibility
 

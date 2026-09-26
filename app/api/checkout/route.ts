@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   const cutoff = getNextOrderCutoff(new Date());
   if (Date.now() >= cutoff.getTime()) {
-    return Response.json({ error: "This order window has closed. Refresh for the next Saturday cutoff." }, withCheckoutCors(request, { status: 409 }));
+    return Response.json({ error: "This order window has closed. Refresh for the next Friday cutoff." }, withCheckoutCors(request, { status: 409 }));
   }
 
   const cutoffEpoch = Math.floor(cutoff.getTime() / 1000);

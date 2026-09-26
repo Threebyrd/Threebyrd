@@ -429,18 +429,18 @@ function addBusinessDays(parts: BusinessDateParts, days: number): BusinessDatePa
   return { ...parts, year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
 }
 
-/** Return the next Saturday 3:00 PM cutoff in the business timezone. */
-export function getNextSaturdayCutoffAfter(now = new Date()): Date {
+/** Return the next Friday 3:00 PM cutoff in the business timezone. */
+export function getNextFridayCutoffAfter(now = new Date()): Date {
   const parts = businessDateParts(now);
   const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
-  let daysUntilSaturday = (6 - weekday + 7) % 7;
-  const candidate = wallTimeForParts(addBusinessDays(parts, daysUntilSaturday), 15, 0);
+  let daysUntilFriday = (5 - weekday + 7) % 7;
+  const candidate = wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
 
   if (candidate.getTime() <= now.getTime()) {
-    daysUntilSaturday += 7;
+    daysUntilFriday += 7;
   }
 
-  return wallTimeForParts(addBusinessDays(parts, daysUntilSaturday), 15, 0);
+  return wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
 }
 
 export function getOrderCapacityWindowKey(cutoff: Date): string {
@@ -461,7 +461,7 @@ export function getNextOrderCutoff(now = new Date()): Date {
   if (override && now.getTime() < override.getTime()) {
     return override;
   }
-  return getNextSaturdayCutoffAfter(now);
+  return getNextFridayCutoffAfter(now);
 }
 
 export function formatBusinessDate(date: Date): string {

@@ -29,7 +29,7 @@ npm run db:generate
 - `app/page.tsx`: homepage structure, delivery-first positioning, menu, giving-back section, team, and launch list.
 - `app/components/OrderBuilder.tsx`: customizable cart UI, live summary, minimum-order state, and Checkout handoff.
 - `app/capacity.ts`, `app/order-capacity-config.ts`, and `app/order-capacity-db.ts`: shared capacity messaging, weekly cap configuration, and D1 reservation enforcement.
-- `app/components/Countdown.tsx`: browser-safe countdown to the next Saturday 3:00 PM Eastern cutoff.
+- `app/components/Countdown.tsx`: browser-safe countdown to the next Friday 3:00 PM Eastern cutoff.
 - `app/order-config.ts`: trusted product catalog, canonical cart-wide pricing tiers, quote validation, and cutoff recurrence.
 - `app/api/checkout/route.ts`: server-side quote validation and Stripe Checkout Session creation.
 - `app/api/capacity/route.ts`: public, read-only availability for the current ordering window.
@@ -59,7 +59,7 @@ Copy the needed values into `.env.local` for local development. Never commit tha
 
 ## Weekly order capacity
 
-The current ordering window is configured in `app/order-capacity-config.ts` with a rolling 50-meal limit. The limit counts meals, not customer orders: a checkout containing 20 meals consumes 20 units. The Worker reserves the requested meal count atomically in D1 before creating a Stripe Checkout Session, links the reservation to the session, and converts it to `confirmed` only after a paid webhook. Reservations expire after 30 minutes and are also cleaned by the Worker’s five-minute scheduled task. Each Saturday cutoff gets an isolated capacity bucket; set the limit to `null` for an uncapped schedule or replace the rolling marker with a specific date for a one-off cap.
+The capacity infrastructure remains available in `app/order-capacity-config.ts`, but production is currently uncapped (`limit: null`). If a future cap is enabled, the Worker reserves meal units atomically in D1 before creating a Stripe Checkout Session, links the reservation to the session, and converts it to `confirmed` only after a paid webhook.
 
 The browser reads `GET /api/capacity` for display only. The checkout route remains authoritative and returns a sold-out response when the remaining meal capacity is taken by another customer. To prepare a future window, change the stable `windowKey` and set `limit` to the desired meal count; use `null` to disable the cap. Apply the checked-in D1 migrations to each database before deploying code that uses the reservation table.
 

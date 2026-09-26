@@ -22,7 +22,7 @@
 5. Keep the address UI usable without a browser maps key: a native address input with browser autofill semantics, explicit delivery copy, and a server-side normalized address. Optional provider autocomplete can be added later without changing checkout enforcement.
 6. Add a dedicated eligibility endpoint for responsive UX, but repeat the server-side eligibility check immediately before Stripe Checkout creation. The browser's eligibility state is never trusted for payment.
 7. Add concise server-generated Stripe metadata for the Zapier mapping, including the reservation/order ID, zero-filled product quantities, total meals, normalized delivery address, delivery date, and existing cart/pricing fields. D1 remains authoritative for fulfillment.
-8. Replace stale cutoff copy with cutoff-derived wording. Configure this week's one-time business-local override as Saturday, September 26, 2026 at 3:00 PM Eastern in local/staging build configuration, with recurring Saturday 3:00 PM cutoffs after it passes.
+8. Replace stale cutoff copy with cutoff-derived wording. Configure this week's one-time business-local override as Saturday, September 26, 2026 at 3:00 PM Eastern in local/staging build configuration, then return to the normal Friday 3:00 PM cutoff after it passes.
 9. Replace the unfinished Zapier order export with a direct Google Apps Script Web App. Confirmed D1 orders enqueue one idempotent outbox record in the same batch; a scheduled Worker retries the validated D1-derived row independently of Stripe fulfillment.
 
 ## Testing plan

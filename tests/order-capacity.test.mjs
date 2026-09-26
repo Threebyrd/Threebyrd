@@ -214,12 +214,12 @@ function reservation(id, now = 1_000, mealCount = 1) {
 
 const testConfig = { windowKey: "test-window", limit: 50, reservationTtlSeconds: 1_800 };
 
-test("configures a reusable 50-meal window with a 30-minute reservation", () => {
-  assert.equal(ORDER_CAPACITY_CONFIG.limit, 50);
+test("keeps production capacity disabled while preserving the reusable configuration", () => {
+  assert.equal(ORDER_CAPACITY_CONFIG.limit, null);
   assert.equal(ORDER_CAPACITY_CONFIG.reservationTtlSeconds, 1_800);
   assert.equal(typeof ORDER_CAPACITY_CONFIG.windowKey, "string");
-  assert.equal(getOrderCapacityConfig(ORDER_CAPACITY_CONFIG.windowKey).limit, 50);
-  assert.equal(getOrderCapacityConfig("future-window").limit, 50);
+  assert.equal(getOrderCapacityConfig(ORDER_CAPACITY_CONFIG.windowKey).limit, null);
+  assert.equal(getOrderCapacityConfig("future-window").limit, null);
   assert.equal(getOrderCapacityConfig("future-window").windowKey, "future-window");
 });
 

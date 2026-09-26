@@ -174,7 +174,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     }
 
     if (!orderWindowOpen) {
-      setStatusMessage("This order window has closed. Refresh the page for the next Saturday cutoff.");
+      setStatusMessage("This order window has closed. Refresh the page for the next Friday cutoff.");
       return;
     }
 

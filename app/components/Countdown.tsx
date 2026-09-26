@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   formatBusinessDateTime,
   getNextOrderCutoff,
-  ORDERS_OPEN,
 } from "../order-config";
 
 type CountdownProps = {
@@ -54,9 +53,7 @@ export default function Countdown({ initialCutoffIso }: CountdownProps) {
   }, []);
 
   const time = getCountdownParts(state.cutoff, state.now);
-  const closedCycle = state.now > state.cutoff.getTime();
-
-  const statusLabel = !ORDERS_OPEN ? "Ordering opens in" : closedCycle ? "Next order window" : "Orders close in";
+  const statusLabel = "Next delivery cutoff";
 
   return (
     <div className="summaryCountdown" aria-atomic="true" aria-live="polite">

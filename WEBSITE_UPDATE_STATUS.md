@@ -37,8 +37,8 @@ The original staging validation and direct Sheets export work are complete. Hist
 - Added a Cloudflare-edge client-key guard that permits only one active reservation per client/window, without storing raw IP addresses, and returns a safe conflict response for repeated attempts.
 - Added Stripe-session cleanup for the create/attach race: if Stripe creates a session but the reservation cannot be attached, the Worker attempts to expire the session and retains the reservation until normal expiry/reconciliation.
 - Added secret redaction for Stripe, webhook, and Google provider errors before they reach Worker logs.
-- Added a fail-closed capacity loading/error state with retry, fixed the delivery eligibility response contract used by the browser, disabled quantity editing after cutoff, and made mobile anchor navigation close its menu.
-- Added stale-Checkout cutoff guards: new sessions are blocked inside the 30-minute reservation window and webhook reconciliation rejects sessions whose creation/expiry metadata is outside the cutoff.
+- Added a fail-closed capacity loading/error state with retry, fixed the delivery eligibility response contract used by the browser, kept quantity editing available across fulfillment-window rollover, and made mobile anchor navigation close its menu.
+- Removed the stale Checkout cutoff guards. The cutoff now only selects the fulfillment window; checkout remains available at every point in the week, and paid webhook reconciliation no longer compares session timestamps to the wall-clock cutoff.
 - Hardened paid webhook reconciliation so capped sessions must match their exact reservation ID, capacity window, meal count, and Stripe `client_reference_id`; no reservation-less paid event can create a capped order.
 - Made the browser honor the Worker’s runtime `ordersOpen` state before enabling quantity controls or checkout, and reject partial Google geocodes before routing.
 - Hardened the Apps Script sheet writer against formula-like customer text. The updated `google-apps-script/Code.gs` must be redeployed to the staging/production Apps Script projects before relying on that protection.

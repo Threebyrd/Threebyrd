@@ -64,7 +64,7 @@ The recurring cutoff is centrally defined as Friday at 3:00 PM Eastern in `app/o
 
 For this one-time shifted window, configure `THREEBYRD_CUTOFF_OVERRIDE=2026-09-26T15:00:00` (Saturday, September 26 at 3:00 PM Eastern). Set it in the Worker vars and the static Pages build environment before deploying. After the override passes, the runtime automatically returns to the normal Friday cutoff and Saturday delivery; do not scatter dates through React components.
 
-After a cutoff passes, the UI never shows a negative timer and the server immediately rolls to the next Friday cutoff and next-day Saturday delivery. The site does not promise a particular delivery time, and it does not offer pickup.
+The cutoff is a fulfillment-window boundary, not an ordering shutdown. Customers can begin checkout before, at, or after the cutoff; the server assigns each checkout to the next available cutoff and next-day Saturday delivery. The UI never shows a negative timer, and the site does not promise a particular delivery time or offer pickup.
 
 ## Delivery eligibility
 
@@ -77,7 +77,7 @@ The browser uses native address autofill semantics (`address-line1`, `address-le
 The integration follows the Stripe-hosted Checkout Sessions pattern:
 
 1. The browser sends product IDs, quantities, and structured Street Address/City/State/ZIP fields to `POST https://api.threebyrd.com/api/checkout` in production; local development uses the local API unless `NEXT_PUBLIC_CHECKOUT_API_ORIGIN` is set.
-2. The server validates the catalog, cart-wide pricing tier, 3-box minimum, current cutoff, and 20-minute delivery route.
+2. The server validates the catalog, cart-wide pricing tier, 3-box minimum, and 20-minute delivery route, then assigns the cart to the next fulfillment window based on the current business-local cutoff.
 3. The server reconstructs and revalidates the canonical delivery address, recalculates the cart-wide tier, and creates a one-time Checkout Session with dynamic line `price_data`, collects customer email and phone number, and redirects the customer to Stripe. Stripe-hosted address fields are not used as the delivery source of truth.
 4. Stripe redirects to `/success` or `/order?checkout=canceled`.
 5. `POST /api/webhooks/stripe` verifies the Stripe signature, handles completed and asynchronous successful Checkout events, reconciles the verified session against the canonical quote, and records the confirmed order in D1.

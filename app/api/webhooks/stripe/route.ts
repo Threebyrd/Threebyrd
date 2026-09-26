@@ -60,10 +60,10 @@ export async function POST(request: Request) {
     return Response.json({ received: true, deferred: true });
   }
 
-  const cutoffEpoch = session.metadata?.cutoffAt ? Math.floor(Date.parse(session.metadata.cutoffAt) / 1000) : NaN;
-  if (!Number.isFinite(cutoffEpoch) || (session.created && session.created >= cutoffEpoch) || (session.expires_at && session.expires_at > cutoffEpoch)) {
-    console.error("Confirmed Stripe session failed cutoff reconciliation", session.id);
-    return Response.json({ error: "Checkout session is outside the order window." }, { status: 500 });
+  const cutoffAt = session.metadata?.cutoffAt;
+  if (!cutoffAt || Number.isNaN(Date.parse(cutoffAt))) {
+    console.error("Confirmed Stripe session is missing a valid fulfillment window", session.id);
+    return Response.json({ error: "Checkout session is missing its fulfillment window." }, { status: 500 });
   }
 
   const cart = readCartMetadata(session.metadata?.cart);
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
       items: JSON.stringify(cart),
       amountCents: session.amount_total,
       currency: session.currency,
-      cutoffAt: session.metadata?.cutoffAt ?? null,
+      cutoffAt,
       createdAt: session.created,
     }, {
       reservationId,

@@ -21,5 +21,5 @@ export default function CutoffNotice({ initialCutoffIso }: CutoffNoticeProps) {
     return () => window.clearInterval(timer);
   }, []);
 
-  return <p className="footerCutoff">Orders close {formatBusinessDateTime(cutoff)} · next cook {getSaturdayForCutoff(cutoff)}</p>;
+  return <p className="footerCutoff">Next delivery cutoff {formatBusinessDateTime(cutoff)} · delivery {getSaturdayForCutoff(cutoff)}</p>;
 }

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const capacityConfig = getOrderCapacityConfig(getOrderCapacityWindowKey(cutoff));
     const counts = await getOrderCapacityAvailability(await getCapacityDatabase(), capacityConfig);
     const environmentOrdersOpen = process.env.ORDERS_OPEN?.trim().toLowerCase() !== "false";
-    const ordersOpen = ORDERS_OPEN && environmentOrdersOpen && Date.now() < cutoff.getTime();
+    const ordersOpen = ORDERS_OPEN && environmentOrdersOpen;
     const availability: OrderCapacityAvailability = {
       enabled: capacityConfig.limit !== null,
       limit: capacityConfig.limit,
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     }));
   } catch (error) {
     console.error("Order capacity availability is unavailable", safeErrorMessage(error));
-    return Response.json({ error: "Weekly order availability is temporarily unavailable." }, withCapacityCors(request, { status: 503 }));
+    return Response.json({ error: "Checkout availability is temporarily unavailable." }, withCapacityCors(request, { status: 503 }));
   }
 }
 

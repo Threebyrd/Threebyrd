@@ -46,7 +46,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capacity, setCapacity] = useState<OrderCapacityAvailability | null>(null);
   const [capacityError, setCapacityError] = useState(false);
-  const [capacityOverrideSoldOut, setCapacityOverrideSoldOut] = useState(false);
+  const [capacityOverrideBlocked, setCapacityOverrideBlocked] = useState(false);
   const [lastInteractedProductId, setLastInteractedProductId] = useState<ProductId | null>(null);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddressFields>(EMPTY_DELIVERY_ADDRESS);
   const [deliveryCheckState, setDeliveryCheckState] = useState<DeliveryCheckState>("idle");
@@ -69,7 +69,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const nextTierProductNames = nextTierProducts.map((product) => product.name).join(" + ");
   const deliveryAddressKey = JSON.stringify(deliveryAddress);
   const orderingAvailable = ORDERS_OPEN && capacity?.ordersOpen === true;
-  const capacitySoldOut = capacityOverrideSoldOut || isOrderCapacitySoldOut(capacity);
+  const capacityBlocked = capacityOverrideBlocked || isOrderCapacitySoldOut(capacity);
   const capacityRemaining = capacity?.enabled && capacity.remaining !== null ? capacity.remaining : null;
   const capacityShortfall = capacityRemaining === null ? 0 : Math.max(0, quote.totalBoxes - capacityRemaining);
   const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddressKey === checkedDeliveryAddressKey;
@@ -84,7 +84,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       setCapacity(nextCapacity);
       setCapacityError(false);
       if (!isOrderCapacitySoldOut(nextCapacity)) {
-        setCapacityOverrideSoldOut(false);
+        setCapacityOverrideBlocked(false);
       }
       return nextCapacity;
     } catch {
@@ -162,7 +162,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
 
   async function handleCheckout() {
     if (!ORDERS_OPEN) {
-      setStatusMessage("Ordering will be opening soon.");
+      setStatusMessage("Checkout is temporarily unavailable. Please try again later.");
       return;
     }
 
@@ -172,23 +172,23 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     }
 
     if (!capacity) {
-      setStatusMessage("Weekly availability is temporarily unavailable. Refresh and try again.");
+      setStatusMessage("Checkout availability is temporarily unavailable. Refresh and try again.");
       void refreshCapacity();
       return;
     }
 
     if (!capacity.ordersOpen) {
-      setStatusMessage("Ordering is currently closed. Check back for the next ordering window.");
+      setStatusMessage("Checkout is temporarily unavailable. Please try again later.");
       return;
     }
 
-    if (capacitySoldOut) {
-      setStatusMessage("Sold out for this week. Please check back for the next ordering window.");
+    if (capacityBlocked) {
+      setStatusMessage("Checkout capacity is temporarily unavailable. Please adjust your cart and try again.");
       return;
     }
 
     if (capacityShortfall > 0) {
-      setStatusMessage(`Only ${capacityRemaining} meals remain this week. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.`);
+      setStatusMessage(`This cart exceeds the available checkout capacity. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.`);
       return;
     }
 
@@ -212,7 +212,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       const body = await response.json().catch(() => ({})) as { code?: unknown; error?: unknown; url?: unknown };
       if (!response.ok) {
         if (body.code === "CAPACITY_EXHAUSTED") {
-          setCapacityOverrideSoldOut(true);
+          setCapacityOverrideBlocked(true);
           void refreshCapacity();
         }
         throw new Error(typeof body.error === "string" ? body.error : "Checkout is temporarily unavailable.");
@@ -301,23 +301,17 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                     </article>
                     {lastInteractedProductId === product.id && quote.totalBoxes > 0 && (
                       <div className="mobileCartProgress" role="status" aria-live="polite">
-                        {capacityShortfall > 0 ? (
-                          <strong>Only {capacityRemaining} meals remain this week.</strong>
-                        ) : quote.totalBoxes >= MINIMUM_BOXES ? (
+                        {quote.totalBoxes >= MINIMUM_BOXES ? (
                           <strong>3-box minimum met ✓</strong>
                         ) : (
                           <strong>Add {MINIMUM_BOXES - quote.totalBoxes} more {MINIMUM_BOXES - quote.totalBoxes === 1 ? "box" : "boxes"} to reach the 3-box minimum.</strong>
                         )}
-                        {capacityShortfall > 0 ? (
-                          <span>Remove {capacityShortfall} {capacityShortfall === 1 ? "box" : "boxes"} to continue.</span>
-                        ) : quote.totalBoxes >= MINIMUM_BOXES && orderingAvailable && !capacitySoldOut && (
+                        {quote.totalBoxes >= MINIMUM_BOXES && orderingAvailable && !capacityBlocked && capacityShortfall === 0 && (
                           <button type="button" onClick={scrollToSummary}>Review &amp; checkout <span aria-hidden="true">→</span></button>
                         )}
-                        {!capacityShortfall && <span>
-                          {quote.totalBoxes >= MINIMUM_BOXES && (!orderingAvailable || capacitySoldOut)
-                            ? capacitySoldOut ? "Sold out for this week." : "Ordering is currently closed."
-                            : "Or keep scrolling to add more."}
-                        </span>}
+                        {quote.totalBoxes >= MINIMUM_BOXES && (!orderingAvailable || capacityBlocked || capacityShortfall > 0)
+                          ? <span>Checkout is temporarily unavailable. Please try again later.</span>
+                          : <span>Or keep scrolling to add more.</span>}
                       </div>
                     )}
                   </Fragment>
@@ -440,12 +434,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               onCheck={() => void checkDeliveryAddress()}
             />
             <p className="deliveryNote"><span aria-hidden="true">✦</span> Free delivery in Ithaca · no delivery fee.</p>
-            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || !capacity || capacitySoldOut || capacityShortfall > 0 || !deliveryEligible}>
-              {isSubmitting ? "Opening secure checkout…" : !capacity ? capacityError ? "Retry availability" : "Checking availability…" : capacityShortfall > 0 ? `Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue` : capacitySoldOut ? "Sold out for this week" : !ORDERS_OPEN || capacity.ordersOpen === false ? "Ordering closed" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
+            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || !capacity || capacityBlocked || capacityShortfall > 0 || !deliveryEligible}>
+              {isSubmitting ? "Opening secure checkout…" : !capacity ? capacityError ? "Retry checkout availability" : "Checking checkout availability…" : capacityShortfall > 0 ? `Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue` : capacityBlocked ? "Adjust cart to continue" : !ORDERS_OPEN || capacity.ordersOpen === false ? "Checkout temporarily unavailable" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>
             </button>
             <p className={`checkoutStatus${statusMessage ? " hasMessage" : ""}`} role="alert" aria-live="polite">
-              {statusMessage || (!capacity ? capacityError ? "Refresh weekly availability before continuing." : "Checking weekly availability before checkout." : capacityShortfall > 0 ? `Only ${capacityRemaining} meals remain this week. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.` : capacitySoldOut ? "Sold out for this week. Check back for the next ordering window." : !ORDERS_OPEN || capacity.ordersOpen === false ? "Ordering will be opening soon. Check back for updates." : !deliveryEligible ? "Check your Ithaca delivery address to continue." : "Secure checkout collects your payment and delivery details.")}
+              {statusMessage || (!capacity ? capacityError ? "Refresh checkout availability before continuing." : "Checking checkout availability…" : capacityShortfall > 0 ? `This cart exceeds the available checkout capacity. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.` : capacityBlocked ? "Checkout capacity is temporarily unavailable. Please adjust your cart and try again." : !ORDERS_OPEN || capacity.ordersOpen === false ? "Checkout is temporarily unavailable. Please try again later." : !deliveryEligible ? "Check your Ithaca delivery address to continue." : "Secure checkout collects your payment and delivery details.")}
             </p>
           </aside>
         </div>

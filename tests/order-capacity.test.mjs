@@ -292,7 +292,7 @@ test("a single edge client cannot hoard multiple active checkout reservations", 
   assert.deepEqual(await reserveOrderCapacity(database, testConfig, { ...reservation("r-client-3", 2_801, 3), clientKey: "ip:hashed-client" }), { ok: true });
 });
 
-test("replaying confirmation is idempotent and sold-out UI messaging is explicit", async () => {
+test("replaying confirmation is idempotent and capped messaging stays generic", async () => {
   const database = new FakeD1();
   await reserveOrderCapacity(database, testConfig, reservation("r-replay"));
   await attachOrderCapacityReservation(database, "r-replay", "cs_test_replay");
@@ -302,8 +302,8 @@ test("replaying confirmation is idempotent and sold-out UI messaging is explicit
 
   const soldOut = { enabled: true, limit: 1, confirmedMeals: 1, reservedMeals: 0, remaining: 0, ordersOpen: true };
   assert.equal(isOrderCapacitySoldOut(soldOut), true);
-  assert.equal(formatOrderCapacityMessage(soldOut), "Sold out for this week");
-  assert.equal(formatOrderCapacityMessage({ ...soldOut, remaining: 27, confirmedMeals: 0 }), "27 meals remaining this week");
+  assert.equal(formatOrderCapacityMessage(soldOut), "Checkout capacity is currently full.");
+  assert.equal(formatOrderCapacityMessage({ ...soldOut, remaining: 27, confirmedMeals: 0 }), "27 meals available for checkout");
 });
 
 test("paid webhook reconciliation is atomic and duplicate session delivery creates one order", async () => {

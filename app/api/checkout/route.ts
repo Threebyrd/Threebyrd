@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
   const environmentOrdersOpen = process.env.ORDERS_OPEN?.trim().toLowerCase() !== "false";
   if (!ORDERS_OPEN || !environmentOrdersOpen) {
-    return Response.json({ error: "Orders are currently closed. Ordering will be opening soon." }, withCheckoutCors(request, { status: 503 }));
+    return Response.json({ error: "Checkout is temporarily unavailable. Please try again later." }, withCheckoutCors(request, { status: 503 }));
   }
 
   let body: CheckoutRequest;
@@ -36,16 +36,6 @@ export async function POST(request: Request) {
   }
 
   const cutoff = getNextOrderCutoff(new Date());
-  if (Date.now() >= cutoff.getTime()) {
-    return Response.json({ error: "This order window has closed. Refresh for the next Friday cutoff." }, withCheckoutCors(request, { status: 409 }));
-  }
-
-  const cutoffEpoch = Math.floor(cutoff.getTime() / 1000);
-  const secondsUntilCutoff = cutoffEpoch - Math.floor(Date.now() / 1000);
-  if (secondsUntilCutoff < 30 * 60) {
-    return Response.json({ error: "This order window is closing soon. Checkout must be started at least 30 minutes before the cutoff." }, withCheckoutCors(request, { status: 409 }));
-  }
-
   let deliveryCheck;
   try {
     deliveryCheck = await checkDeliveryEligibility(body.deliveryAddress);
@@ -75,7 +65,7 @@ export async function POST(request: Request) {
         clientKey,
         mealCount: quote.totalBoxes,
         reservedAt: now,
-        expiresAt: Math.min(now + capacityConfig.reservationTtlSeconds, cutoffEpoch),
+        expiresAt: now + capacityConfig.reservationTtlSeconds,
       };
 
   let createdSession: { id: string; url: string | null } | null = null;
@@ -90,7 +80,7 @@ export async function POST(request: Request) {
           );
         }
         return Response.json(
-          { error: "Sold out for this week. Please check back for the next ordering window.", code: "CAPACITY_EXHAUSTED" },
+          { error: "Checkout capacity is temporarily unavailable. Please adjust your cart and try again.", code: "CAPACITY_EXHAUSTED" },
           withCheckoutCors(request, { status: 409 }),
         );
       }

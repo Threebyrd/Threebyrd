@@ -28,11 +28,11 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /class="summaryCountdown"/);
   assert.doesNotMatch(html, /class="capacityIndicator"/);
   assert.doesNotMatch(html, /Orders available this week/i);
-  assert.match(html, /Orders close in|Next order window/);
-  assert.match(html, /Saturday, September \d{1,2}(?:<!-- -->)? at 3:00 PM (?:EDT|EST)/);
-  assert.doesNotMatch(html, /Orders are currently closed/);
-  assert.match(html, /Order window closed|Continue to secure checkout|Check your Ithaca delivery address|Checking availability/);
-  assert.match(html, /Saturday, September \d{1,2}/);
+  assert.match(html, /Next delivery cutoff/);
+  assert.match(html, /(?:Friday|Saturday), (?:September|October) \d{1,2}(?:<!-- -->)? at 3:00 PM (?:EDT|EST)/);
+  assert.doesNotMatch(html, /Orders are currently closed|Orders close|Order window closed|Closing soon|Ordering is currently closed|Sold out for this week|Check back for the next ordering window/);
+  assert.match(html, /Continue to secure checkout|Check your Ithaca delivery address|Checking checkout availability/);
+  assert.match(html, /(?:Saturday|Sunday), (?:September|October) \d{1,2}/);
   assert.match(html, /Choose Meal Order/);
   assert.match(html, /3-box minimum/);
   assert.match(html, /Mix and match however you want/);

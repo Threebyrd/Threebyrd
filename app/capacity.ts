@@ -13,8 +13,8 @@ export function formatOrderCapacityMessage(availability: OrderCapacityAvailabili
   }
 
   return availability.remaining === 0
-    ? "Sold out for this week"
-    : `${availability.remaining} meals remaining this week`;
+    ? "Checkout capacity is currently full."
+    : `${availability.remaining} meals available for checkout`;
 }
 
 export function isOrderCapacitySoldOut(availability: OrderCapacityAvailability | null): boolean {

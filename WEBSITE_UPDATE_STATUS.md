@@ -3,8 +3,8 @@
 ## Current production state — 2026-09-26
 
 - The cutoff-rollover hotfix is deployed from commit `3c0ed2b` as Worker version `79aaecb3-aa8e-4213-9590-88fb8acb4b50`; Pages workflow run `36264784314` completed successfully. Checkout remains available before, at, and after each cutoff; the cutoff only assigns the fulfillment window.
-- Production Worker `threebyrd-website` is live at `https://api.threebyrd.com` with `ORDERS_OPEN=true`, `STRIPE_MODE=live`, and uncapped capacity (`ORDER_CAPACITY_CONFIG.limit=null`). The structured-address update is deployed from commit `5f0f92e` as Worker version `8b477d36-a3c7-4748-9c4c-17cd53ed1c5a`. Existing paid orders and D1 data remain intact.
-- GitHub Pages production is live at `https://threebyrd.com` from commit `5f0f92e`; Pages workflow run `36263335605` completed successfully.
+- Production Worker `threebyrd-website` is live at `https://api.threebyrd.com` with `ORDERS_OPEN=true`, `STRIPE_MODE=live`, and uncapped capacity (`ORDER_CAPACITY_CONFIG.limit=null`). The current Worker includes the structured-address and cutoff-rollover updates as version `79aaecb3-aa8e-4213-9590-88fb8acb4b50`. Existing paid orders and D1 data remain intact.
+- GitHub Pages production is live at `https://threebyrd.com` from the hotfix source commit `3c0ed2b` plus the status sync `a705cd0`; Pages workflow run `36264988468` completed successfully.
 - The one-time special window has rolled over. The live site currently assigns orders to Friday, October 2 at 3:00 PM ET → Saturday, October 3; after that, it continuously rolls to the next Friday cutoff and Saturday delivery with no weekly cutoff closure.
 - The current customer update adds structured Street Address, City, State, and ZIP Code fields with native autofill attributes. The Worker reconstructs and validates the structured address server-side; the canonical Google-validated address remains the value propagated to Stripe metadata, D1, webhook fulfillment, and Sheets.
 - The customer-facing availability-status card was removed. Capacity remains dormant infrastructure and is used only for the runtime emergency open/closed gate while production is uncapped.

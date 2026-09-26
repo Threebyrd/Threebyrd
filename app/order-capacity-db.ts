@@ -1,4 +1,12 @@
 import type { OrderCapacityConfig } from "./order-capacity-config";
+import {
+  buildOrderSheetPayload,
+  getConfiguredStripeMode,
+  getRetryDelaySeconds,
+  sendOrderToGoogleSheets,
+  type ConfirmedOrderForSheet,
+  type GoogleSheetsOrderSender,
+} from "./order-sheet-sync.ts";
 
 type PreparedStatement = {
   bind(...values: unknown[]): PreparedStatement;
@@ -18,10 +26,15 @@ export type CapacityDatabase = {
 export type CapacityReservation = {
   id: string;
   windowKey: string;
+  clientKey?: string | null;
   mealCount: number;
   reservedAt: number;
   expiresAt: number;
 };
+
+export type ReservationAttemptResult =
+  | { ok: true }
+  | { ok: false; reason: "capacity_exhausted" | "active_reservation" };
 
 export type ConfirmedOrderRecord = {
   stripeSessionId: string;
@@ -37,19 +50,33 @@ export type ConfirmedOrderRecord = {
   createdAt: number;
 };
 
+export type PendingOrderSheetExport = {
+  order: ConfirmedOrderForSheet;
+  attempts: number;
+  claimToken: string;
+};
+
 const RESERVATION_TABLE = "order_capacity_reservations";
+const ATTACHED_RESERVATION_WEBHOOK_GRACE_SECONDS = 10 * 60;
 
 const releaseExpiredSql = `
   UPDATE ${RESERVATION_TABLE}
   SET status = 'released', released_at = ?
-  WHERE status = 'reserved' AND expires_at <= ?
+  WHERE status = 'reserved' AND (
+    (stripe_session_id IS NULL AND expires_at <= ?)
+    OR (stripe_session_id IS NOT NULL AND expires_at <= ?)
+  )
 `;
 
 export async function cleanupExpiredOrderCapacityReservations(
   database: CapacityDatabase,
   now = Math.floor(Date.now() / 1000),
 ): Promise<void> {
-  await database.prepare(releaseExpiredSql).bind(now, now).run();
+  await database.prepare(releaseExpiredSql).bind(
+    now,
+    now,
+    now - ATTACHED_RESERVATION_WEBHOOK_GRACE_SECONDS,
+  ).run();
 }
 
 export async function getOrderCapacityAvailability(
@@ -67,7 +94,11 @@ export async function getOrderCapacityAvailability(
   `;
 
   const results = await database.batch([
-    database.prepare(releaseExpiredSql).bind(now, now),
+    database.prepare(releaseExpiredSql).bind(
+      now,
+      now,
+      now - ATTACHED_RESERVATION_WEBHOOK_GRACE_SECONDS,
+    ),
     database.prepare(countSql).bind(now, config.windowKey, now),
   ]);
   const counts = (results[1]?.results?.[0] ?? {}) as { confirmed_meals?: unknown; reserved_meals?: unknown };
@@ -85,19 +116,19 @@ export async function reserveOrderCapacity(
   database: CapacityDatabase,
   config: OrderCapacityConfig,
   reservation: CapacityReservation,
-): Promise<boolean> {
+): Promise<ReservationAttemptResult> {
   if (config.limit === null) {
-    return true;
+    return { ok: true };
   }
 
   if (!Number.isSafeInteger(reservation.mealCount) || reservation.mealCount <= 0) {
-    return false;
+    return { ok: false, reason: "capacity_exhausted" };
   }
 
   const reserveSql = `
     INSERT INTO ${RESERVATION_TABLE}
-      (id, window_key, status, meal_count, reserved_at, expires_at)
-    SELECT ?, ?, 'reserved', ?, ?, ?
+      (id, window_key, status, meal_count, client_key, reserved_at, expires_at)
+    SELECT ?, ?, 'reserved', ?, ?, ?, ?
     WHERE (
       SELECT COALESCE(SUM(meal_count), 0)
       FROM ${RESERVATION_TABLE}
@@ -107,24 +138,62 @@ export async function reserveOrderCapacity(
           OR (status = 'reserved' AND expires_at > ?)
         )
     ) + ? <= ?
+      AND (
+        ? IS NULL OR NOT EXISTS (
+          SELECT 1
+          FROM ${RESERVATION_TABLE}
+          WHERE window_key = ?
+            AND client_key = ?
+            AND status = 'reserved'
+            AND expires_at > ?
+        )
+      )
   `;
 
   const results = await database.batch([
-    database.prepare(releaseExpiredSql).bind(reservation.reservedAt, reservation.reservedAt),
+    database.prepare(releaseExpiredSql).bind(
+      reservation.reservedAt,
+      reservation.reservedAt,
+      reservation.reservedAt - ATTACHED_RESERVATION_WEBHOOK_GRACE_SECONDS,
+    ),
     database.prepare(reserveSql).bind(
       reservation.id,
       reservation.windowKey,
       reservation.mealCount,
+      reservation.clientKey ?? null,
       reservation.reservedAt,
       reservation.expiresAt,
       reservation.windowKey,
       reservation.reservedAt,
       reservation.mealCount,
       config.limit,
+      reservation.clientKey ?? null,
+      reservation.windowKey,
+      reservation.clientKey ?? null,
+      reservation.reservedAt,
     ),
   ]);
 
-  return (results[1]?.meta?.changes ?? 0) === 1;
+  if ((results[1]?.meta?.changes ?? 0) === 1) {
+    return { ok: true };
+  }
+
+  if (reservation.clientKey) {
+    const activeClientReservation = await database.prepare(`
+      SELECT 1 AS active
+      FROM ${RESERVATION_TABLE}
+      WHERE window_key = ?
+        AND client_key = ?
+        AND status = 'reserved'
+        AND expires_at > ?
+      LIMIT 1
+    `).bind(reservation.windowKey, reservation.clientKey, reservation.reservedAt).run<{ active?: number }>();
+    if ((activeClientReservation.results?.length ?? 0) > 0) {
+      return { ok: false, reason: "active_reservation" };
+    }
+  }
+
+  return { ok: false, reason: "capacity_exhausted" };
 }
 
 export async function attachOrderCapacityReservation(
@@ -195,27 +264,42 @@ export async function confirmOrderCapacityReservation(
 export async function recordConfirmedOrder(
   database: CapacityDatabase,
   order: ConfirmedOrderRecord,
-  options: { reservationId?: string | null; confirmedAt?: number } = {},
+  options: { reservationId?: string | null; confirmedAt?: number; expectedWindowKey?: string | null; expectedMealCount?: number | null } = {},
 ): Promise<boolean> {
   const reservationId = options.reservationId ?? null;
   const confirmedAt = options.confirmedAt ?? Math.floor(Date.now() / 1000);
+  const expectedWindowKey = options.expectedWindowKey ?? null;
+  const expectedMealCount = options.expectedMealCount ?? null;
+  const reservationMealCount = expectedMealCount ?? 0;
+  if (reservationId && (!expectedWindowKey || typeof expectedMealCount !== "number" || !Number.isSafeInteger(reservationMealCount) || reservationMealCount <= 0)) {
+    return false;
+  }
+
+  const reservationMatch = `
+    (
+      (? IS NULL AND stripe_session_id = ?)
+      OR (
+        ? IS NOT NULL
+        AND id = ?
+        AND window_key = ?
+        AND meal_count = ?
+        AND (stripe_session_id IS NULL OR stripe_session_id = ?)
+      )
+    )
+  `;
   const confirmReservation = database.prepare(`
     UPDATE ${RESERVATION_TABLE}
     SET status = 'confirmed', confirmed_at = ?, released_at = NULL
     WHERE status IN ('reserved', 'confirmed')
-      AND (
-        stripe_session_id = ?
-        OR (
-          ? IS NOT NULL
-          AND id = ?
-          AND (stripe_session_id IS NULL OR stripe_session_id = ?)
-        )
-      )
+      AND ${reservationMatch}
   `).bind(
     confirmedAt,
+    reservationId,
     order.stripeSessionId,
     reservationId,
     reservationId,
+    expectedWindowKey,
+    reservationMealCount,
     order.stripeSessionId,
   );
   const insertOrder = database.prepare(`
@@ -226,13 +310,7 @@ export async function recordConfirmedOrder(
       SELECT 1
       FROM ${RESERVATION_TABLE}
       WHERE status = 'confirmed'
-        AND (
-          stripe_session_id = ?
-          OR (
-            id = ?
-            AND (stripe_session_id IS NULL OR stripe_session_id = ?)
-          )
-        )
+        AND ${reservationMatch}
     )
     ON CONFLICT(stripe_session_id) DO NOTHING
   `).bind(
@@ -249,16 +327,176 @@ export async function recordConfirmedOrder(
     order.cutoffAt,
     order.createdAt,
     reservationId,
+    reservationId,
     order.stripeSessionId,
     reservationId,
+    reservationId,
+    expectedWindowKey,
+    reservationMealCount,
+    order.stripeSessionId,
+  );
+  const enqueueSheetExport = database.prepare(`
+    INSERT INTO order_sheet_exports
+      (order_id, stripe_session_id, status, attempts, next_attempt_at, created_at)
+    SELECT ?, ?, 'pending', 0, ?, ?
+    WHERE EXISTS (
+      SELECT 1 FROM orders WHERE stripe_session_id = ?
+    )
+    ON CONFLICT(stripe_session_id) DO NOTHING
+  `).bind(
+    order.stripeSessionId,
+    order.stripeSessionId,
+    confirmedAt,
+    confirmedAt,
     order.stripeSessionId,
   );
   const existingOrder = database.prepare(`
     SELECT id FROM orders WHERE stripe_session_id = ? LIMIT 1
   `).bind(order.stripeSessionId);
-  const results = await database.batch([confirmReservation, insertOrder, existingOrder]);
+  const results = await database.batch([confirmReservation, insertOrder, enqueueSheetExport, existingOrder]);
 
-  return (results[2]?.results?.length ?? 0) > 0;
+  return (results[3]?.results?.length ?? 0) > 0;
+}
+
+export async function processPendingOrderSheetExports(
+  database: CapacityDatabase,
+  now = Math.floor(Date.now() / 1000),
+  limit = 10,
+  send: GoogleSheetsOrderSender = sendOrderToGoogleSheets,
+): Promise<void> {
+  const pending = await claimPendingOrderSheetExports(database, now, limit);
+
+  for (const item of pending) {
+    let result: Awaited<ReturnType<typeof sendOrderToGoogleSheets>>;
+    try {
+      result = await send(buildOrderSheetPayload(item.order, getConfiguredStripeMode()));
+    } catch {
+      result = { ok: false, reason: "endpoint_rejected" };
+    }
+
+    if (result.ok && typeof result.duplicate === "boolean") {
+      if (result.diagnostics) {
+        console.log("Google Sheets export destination verified", result.diagnostics);
+      }
+      await markOrderSheetExportSynced(database, item.order.id, item.claimToken, now);
+    } else {
+      const reason = result.ok ? "endpoint_rejected" : result.reason;
+      console.error("Google Sheets order export failed", reason);
+      await markOrderSheetExportPending(database, item.order.id, item.claimToken, item.attempts, reason, now);
+    }
+  }
+}
+
+async function claimPendingOrderSheetExports(
+  database: CapacityDatabase,
+  now: number,
+  limit: number,
+): Promise<PendingOrderSheetExport[]> {
+  const result = await database.prepare(`
+    SELECT
+      o.id,
+      o.stripe_session_id,
+      o.status,
+      o.customer_email,
+      o.customer_name,
+      o.customer_phone,
+      o.delivery_address,
+      o.items,
+      o.amount_cents,
+      o.currency,
+      o.cutoff_at,
+      o.created_at,
+      e.attempts
+    FROM order_sheet_exports e
+    INNER JOIN orders o ON o.id = e.order_id
+    WHERE (
+      (e.status = 'pending' AND e.next_attempt_at <= ?)
+      OR (e.status = 'processing' AND e.lease_until <= ?)
+    )
+    ORDER BY e.created_at ASC
+    LIMIT ?
+  `).bind(now, now, Math.max(1, Math.min(50, Math.trunc(limit)))).run<{
+    id: string;
+    stripe_session_id: string;
+    status: string;
+    customer_email: string | null;
+    customer_name: string | null;
+    customer_phone: string | null;
+    delivery_address: string | null;
+    items: string;
+    amount_cents: number;
+    currency: string;
+    cutoff_at: string | null;
+    created_at: number;
+    attempts: number;
+  }>();
+
+  const claimed: PendingOrderSheetExport[] = [];
+  for (const row of result.results ?? []) {
+    const claimToken = crypto.randomUUID();
+    const claimedResult = await database.prepare(`
+      UPDATE order_sheet_exports
+      SET status = 'processing', attempts = attempts + 1, lease_until = ?, claim_token = ?, last_error = NULL
+      WHERE order_id = ?
+        AND (
+          (status = 'pending' AND next_attempt_at <= ?)
+          OR (status = 'processing' AND lease_until <= ?)
+        )
+    `).bind(now + 5 * 60, claimToken, row.id, now, now).run();
+
+    if ((claimedResult.meta?.changes ?? 0) !== 1) {
+      continue;
+    }
+
+    claimed.push({
+      attempts: Number(row.attempts) + 1,
+      claimToken,
+      order: {
+        id: row.id,
+        stripeSessionId: row.stripe_session_id,
+        status: row.status,
+        customerEmail: row.customer_email,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone,
+        deliveryAddress: row.delivery_address,
+        items: row.items,
+        amountCents: Number(row.amount_cents),
+        currency: row.currency,
+        cutoffAt: row.cutoff_at,
+        createdAt: Number(row.created_at),
+      },
+    });
+  }
+
+  return claimed;
+}
+
+async function markOrderSheetExportSynced(database: CapacityDatabase, orderId: string, claimToken: string, now: number): Promise<void> {
+  await database.prepare(`
+    UPDATE order_sheet_exports
+    SET status = 'synced', synced_at = ?, lease_until = NULL, claim_token = NULL, last_error = NULL
+    WHERE order_id = ? AND status = 'processing' AND claim_token = ?
+  `).bind(now, orderId, claimToken).run();
+}
+
+async function markOrderSheetExportPending(
+  database: CapacityDatabase,
+  orderId: string,
+  claimToken: string,
+  attempts: number,
+  reason: string,
+  now: number,
+): Promise<void> {
+  await database.prepare(`
+    UPDATE order_sheet_exports
+    SET status = 'pending', next_attempt_at = ?, lease_until = NULL, claim_token = NULL, last_error = ?
+    WHERE order_id = ? AND status = 'processing' AND claim_token = ?
+  `).bind(
+    now + getRetryDelaySeconds(attempts),
+    reason.slice(0, 80),
+    orderId,
+    claimToken,
+  ).run();
 }
 
 function toCount(value: unknown): number {

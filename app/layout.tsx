@@ -11,11 +11,11 @@ export const metadata: Metadata = {
     canonical: siteUrl("/"),
   },
   description:
-    "Choose from ThreeByrd Chicken and Beef meal prep. Mix and match three or more boxes, delivered straight to your door.",
+    "Choose from ThreeByrd Chicken and Beef meal prep. Mix and match three or more boxes with free delivery in Ithaca.",
   openGraph: {
     title: "ThreeByrd Meal Prep | Chicken + Beef, Delivered",
     description:
-      "Simple, high-protein meal prep with Chicken and Beef, delivered straight to your door.",
+      "Simple, high-protein meal prep with Chicken and Beef, with free delivery in Ithaca.",
     type: "website",
     images: [
       {

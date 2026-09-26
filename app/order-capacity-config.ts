@@ -8,23 +8,27 @@ export type OrderCapacityConfig = {
 };
 
 /**
- * Capacity is intentionally configured in one place. To prepare a future drop,
- * change windowKey and set limit to a total meal count such as 50, 75, 100,
- * or null for no cap.
+ * Capacity is intentionally configured in one place. The rolling marker keeps
+ * the same meal cap for each weekly delivery window; set limit to null for no
+ * cap, or replace windowKey with a specific YYYY-MM-DD to pin a one-off cap.
  */
 export const ORDER_CAPACITY_CONFIG: Readonly<OrderCapacityConfig> = {
-  windowKey: "2026-09-18",
+  windowKey: "rolling",
   limit: 50,
   reservationTtlSeconds: 30 * 60,
 };
 
 /**
- * A stale window configuration fails closed to an uncapped state after its
- * Friday cutoff. Operators must move windowKey forward before enabling a new
- * weekly cap; a limit of null remains the explicit no-cap option.
+ * A rolling configuration gives each calculated cutoff its own isolated D1
+ * bucket. A specific date remains available for one-off windows, and a null
+ * limit remains the explicit no-cap option.
  */
 export function getOrderCapacityConfig(activeWindowKey: string): OrderCapacityConfig {
-  return activeWindowKey === ORDER_CAPACITY_CONFIG.windowKey
-    ? { ...ORDER_CAPACITY_CONFIG }
-    : { ...ORDER_CAPACITY_CONFIG, limit: null };
+  const isRolling = ORDER_CAPACITY_CONFIG.windowKey === "rolling";
+  const isConfiguredWindow = isRolling || activeWindowKey === ORDER_CAPACITY_CONFIG.windowKey;
+  return {
+    ...ORDER_CAPACITY_CONFIG,
+    windowKey: activeWindowKey,
+    limit: isConfiguredWindow ? ORDER_CAPACITY_CONFIG.limit : null,
+  };
 }

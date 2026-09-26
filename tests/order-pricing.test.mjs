@@ -6,7 +6,7 @@ import {
   getNextPricingTier,
   getNextOrderCutoff,
   getOrderCapacityWindowKey,
-  getNextFridayCutoffAfter,
+  getNextSaturdayCutoffAfter,
   getSaturdayForCutoff,
   getCartPricingTier,
   getProduct,
@@ -129,26 +129,40 @@ test("rejects invalid and malformed cart items", () => {
   assert.equal(manipulated.subtotalCents, 4500);
 });
 
-test("keeps Friday 3 PM Eastern DST-safe", () => {
+test("keeps Saturday 3 PM Eastern DST-safe", () => {
 
-  const beforeDst = getNextFridayCutoffAfter(new Date("2026-03-06T21:00:00.000Z"));
-  const afterDst = getNextFridayCutoffAfter(new Date("2026-03-13T21:00:00.000Z"));
-  assert.equal(beforeDst.toISOString(), "2026-03-13T19:00:00.000Z");
-  assert.equal(afterDst.toISOString(), "2026-03-20T19:00:00.000Z");
-  assert.equal(getSaturdayForCutoff(new Date("2026-09-11T19:00:00.000Z")), "Saturday, September 12");
+  const beforeDst = getNextSaturdayCutoffAfter(new Date("2026-03-07T20:00:00.000Z"));
+  const afterDst = getNextSaturdayCutoffAfter(new Date("2026-03-14T20:00:00.000Z"));
+  assert.equal(beforeDst.toISOString(), "2026-03-14T19:00:00.000Z");
+  assert.equal(afterDst.toISOString(), "2026-03-21T19:00:00.000Z");
+  assert.equal(getSaturdayForCutoff(new Date("2026-09-12T19:00:00.000Z")), "Sunday, September 13");
 });
 
-test("uses the one-time Saturday cutoff and resumes Friday scheduling afterward", () => {
+test("uses the one-time Saturday cutoff and resumes Saturday scheduling afterward", () => {
   const previous = process.env.THREEBYRD_CUTOFF_OVERRIDE;
-  process.env.THREEBYRD_CUTOFF_OVERRIDE = "2026-09-19T17:00:00";
+  process.env.THREEBYRD_CUTOFF_OVERRIDE = "2026-09-26T15:00:00";
   try {
-    const beforeCutoff = getNextOrderCutoff(new Date("2026-09-19T20:00:00.000Z"));
-    const afterCutoff = getNextOrderCutoff(new Date("2026-09-19T22:00:00.000Z"));
-    assert.equal(beforeCutoff.toISOString(), "2026-09-19T21:00:00.000Z");
-    assert.equal(getOrderCapacityWindowKey(beforeCutoff), "2026-09-18");
-    assert.equal(getSaturdayForCutoff(beforeCutoff), "Sunday, September 20");
-    assert.equal(afterCutoff.toISOString(), "2026-09-25T19:00:00.000Z");
-    assert.equal(getOrderCapacityWindowKey(afterCutoff), "2026-09-25");
+    const fridayAfternoon = getNextOrderCutoff(new Date("2026-09-25T18:59:00.000Z"));
+    const justBeforeCutoff = getNextOrderCutoff(new Date("2026-09-26T18:59:59.000Z"));
+    const atCutoff = getNextOrderCutoff(new Date("2026-09-26T19:00:00.000Z"));
+    const justAfterCutoff = getNextOrderCutoff(new Date("2026-09-26T19:00:01.000Z"));
+    const sunday = getNextOrderCutoff(new Date("2026-09-27T16:00:00.000Z"));
+    const nextFriday = getNextOrderCutoff(new Date("2026-10-02T18:59:59.000Z"));
+    const nextCutoff = getNextOrderCutoff(new Date("2026-10-03T19:00:00.000Z"));
+
+    assert.equal(fridayAfternoon.toISOString(), "2026-09-26T19:00:00.000Z");
+    assert.equal(justBeforeCutoff.toISOString(), "2026-09-26T19:00:00.000Z");
+    assert.equal(atCutoff.toISOString(), "2026-10-03T19:00:00.000Z");
+    assert.equal(justAfterCutoff.toISOString(), "2026-10-03T19:00:00.000Z");
+    assert.equal(sunday.toISOString(), "2026-10-03T19:00:00.000Z");
+    assert.equal(nextFriday.toISOString(), "2026-10-03T19:00:00.000Z");
+    assert.equal(nextCutoff.toISOString(), "2026-10-10T19:00:00.000Z");
+
+    assert.equal(getOrderCapacityWindowKey(justBeforeCutoff), "2026-09-26");
+    assert.equal(getOrderCapacityWindowKey(atCutoff), "2026-10-03");
+    assert.equal(getSaturdayForCutoff(justBeforeCutoff), "Sunday, September 27");
+    assert.equal(getSaturdayForCutoff(atCutoff), "Sunday, October 4");
+    assert.equal(getSaturdayForCutoff(nextCutoff), "Sunday, October 11");
   } finally {
     if (previous === undefined) delete process.env.THREEBYRD_CUTOFF_OVERRIDE;
     else process.env.THREEBYRD_CUTOFF_OVERRIDE = previous;

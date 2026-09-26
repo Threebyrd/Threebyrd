@@ -4,11 +4,11 @@
 
 Production ordering is open. The production Wrangler variable `ORDERS_OPEN=true` enables the server-side Checkout path; staging explicitly sets it to `false`. The live Checkout and webhook path has been verified; staging remains isolated in Stripe test mode.
 
-The weekly capacity implementation targets the current window (`2026-09-18`) with a 50-meal limit and a 30-minute reservation lifetime. Capacity is measured in total meals across all customer carts, not checkout count.
+The weekly capacity implementation uses a rolling 50-meal limit and a 30-minute reservation lifetime. Capacity is measured in total meals across all customer carts, not checkout count. Each Saturday cutoff creates an isolated capacity window.
 
 ## What changed
 
-The old fixed weekly-plan selector was replaced with a one-time, mix-and-match order builder. Customers can choose Little Chicken, Big Chicken, Little Beef, or Big Beef, mix quantities directly in the order summary, and see the full cart-wide pricing model before checkout. The homepage makes Chicken/Beef choice and Saturday delivery the primary story.
+The old fixed weekly-plan selector was replaced with a one-time, mix-and-match order builder. Customers can choose Little Chicken, Big Chicken, Little Beef, or Big Beef, mix quantities directly in the order summary, and see the full cart-wide pricing model before checkout. The homepage makes Chicken/Beef choice and free Ithaca delivery the primary story.
 
 Important implementation files are `app/order-config.ts`, `app/components/OrderBuilder.tsx`, `app/components/Countdown.tsx`, `app/api/capacity/route.ts`, `app/api/checkout/route.ts`, `app/api/cors.ts`, `app/api/webhooks/stripe/route.ts`, `app/success/page.tsx`, `app/capacity.ts`, `app/order-capacity-config.ts`, `app/order-capacity-db.ts`, `db/schema.ts`, and `drizzle/0001_groovy_avengers.sql` plus `drizzle/0002_narrow_stature.sql`.
 
@@ -24,7 +24,7 @@ For a capped window, checkout performs this sequence:
 4. Attach the Stripe session ID to the reservation. A Stripe API failure releases the reservation immediately; an abandoned session is released by the scheduled cleanup or after its expiry on the next capacity request.
 5. On a verified paid Checkout webhook, mark the reservation confirmed and insert the order with the existing unique `stripe_session_id` protection. Replayed webhooks do not consume another slot or create another order.
 
-`app/order-capacity-config.ts` is the single window configuration source. Set `limit` to `null` for a future uncapped window, or update it to another meal limit such as 75 or 100 together with a new Friday `windowKey`. The row key keeps windows isolated without changing the existing `orders` table. A one-off Saturday cutoff still belongs to the preceding Friday capacity window. If the configured key is older than the current Friday cutoff, runtime automatically treats the window as uncapped until the operator explicitly advances the key. A five-minute Worker cron invokes cleanup across all windows.
+`app/order-capacity-config.ts` is the single capacity configuration source. The `rolling` window marker applies the configured limit to every calculated Saturday delivery window while keeping D1 rows isolated by window key. Set `limit` to `null` for no cap, or replace `rolling` with a specific `YYYY-MM-DD` cutoff key for a one-off cap. A five-minute Worker cron invokes cleanup across all windows.
 
 The new migration is `drizzle/0002_narrow_stature.sql`. The existing staging database has its `orders` table but an empty legacy `d1_migrations` ledger, so replaying the historical baseline would try to recreate `orders`. Apply only this new schema file to staging:
 
@@ -58,26 +58,34 @@ The product cards derive their visible high-to-low price ranges, compact tier di
 | Big Beef | 1115 | 70g | 114g | 41g |
 | Little Beef | 785 | 46g | 83g | 41g |
 
-## Friday cutoff and Saturday delivery
+## Weekly cutoff and next-day delivery
 
-The default first-launch cutoff is centrally defined as `2026-09-11T15:00:00` in `app/order-config.ts`. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. `getNextOrderCutoff()` uses that initial override while it is still in the future; afterward it rolls forward to the next Friday at 3:00 PM Eastern. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
+The recurring cutoff is centrally defined as Saturday at 3:00 PM Eastern in `app/order-config.ts`. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
 
-For a special week, configure `THREEBYRD_CUTOFF_OVERRIDE` to one business-local value such as `2026-09-19T17:00:00`. Set it in the Worker vars and the static Pages build environment before deploying. The runtime automatically resumes the normal Friday schedule after the override passes; do not permanently change the recurring cutoff or scatter dates through React components.
+For this one-time shifted window, configure `THREEBYRD_CUTOFF_OVERRIDE=2026-09-26T15:00:00` (Saturday, September 26 at 3:00 PM Eastern). Set it in the Worker vars and the static Pages build environment before deploying. After the override passes, the runtime automatically rolls to the following Saturday and continues weekly; do not scatter dates through React components.
 
-After a cutoff passes, the UI never shows a negative timer and the server rejects stale Checkout attempts. The next page load/cycle uses the next Friday cutoff and describes Saturday as the next cook/delivery date. The site does not promise a particular delivery time, and it does not offer pickup.
+After a cutoff passes, the UI never shows a negative timer and the server immediately rolls to the next Saturday cutoff and next-day Sunday delivery. The site does not promise a particular delivery time, and it does not offer pickup.
+
+## Delivery eligibility
+
+The checkout flow asks for the `Ithaca delivery address` where this week's meals should actually be delivered. The Worker validates and normalizes the address before creating Checkout: it geocodes the address with Google Maps Platform, calculates a traffic-unaware driving route from `700 W Buffalo St, Ithaca, NY 14850`, and accepts only routes of 20 minutes or less. Traffic-aware routing is intentionally not used so temporary congestion cannot change eligibility. A missing, ambiguous, outside-zone, or provider-failure response never creates a Stripe Checkout Session.
+
+The browser uses native address autofill semantics and a dedicated `/api/delivery-eligibility` check for responsive feedback. The checkout endpoint repeats the same server-side check and ignores any client-supplied eligibility flag. `GOOGLE_MAPS_SERVER_API_KEY` is a Worker secret; it is never included in frontend code or returned in errors. The key needs only the Google Geocoding API and Routes API enabled. Final staging/live route validation remains blocked until that secret is configured.
 
 ## Stripe architecture
 
 The integration follows the Stripe-hosted Checkout Sessions pattern:
 
-1. The browser sends only product IDs and quantities to `POST https://api.threebyrd.com/api/checkout` in production; local development uses the local API unless `NEXT_PUBLIC_CHECKOUT_API_ORIGIN` is set.
-2. The server validates the catalog, cart-wide pricing tier, 3-box minimum, and current cutoff.
+1. The browser sends product IDs, quantities, and the address the customer wants to use for delivery to `POST https://api.threebyrd.com/api/checkout` in production; local development uses the local API unless `NEXT_PUBLIC_CHECKOUT_API_ORIGIN` is set.
+2. The server validates the catalog, cart-wide pricing tier, 3-box minimum, current cutoff, and 20-minute delivery route.
 3. The server recalculates the cart-wide tier and creates a one-time Checkout Session with dynamic line `price_data`, collects email, a US delivery address, and phone number, and redirects the customer to Stripe.
 4. Stripe redirects to `/success` or `/order?checkout=canceled`.
 5. `POST /api/webhooks/stripe` verifies the Stripe signature, handles completed and asynchronous successful Checkout events, reconciles the verified session against the canonical quote, and records the confirmed order in D1.
 6. The D1 unique constraint on `stripe_session_id` makes repeated webhook delivery idempotent. The success page never fulfills an order.
 
 The checkout uses Stripe’s dynamic payment-method behavior; cards and eligible Apple Pay/Google Pay methods are handled by Stripe-hosted Checkout. No raw card data is handled by ThreeByrd. Automatic tax is not enabled yet because the company’s registrations and product tax classification have not been established; have a tax adviser confirm those inputs before enabling it.
+
+Checkout metadata is generated only after server validation. It includes `order_id`, `big_chicken_qty`, `little_chicken_qty`, `big_beef_qty`, `little_beef_qty`, `total_meals`, normalized `delivery_address`, ISO `delivery_date`, and the existing `cart`, `totalBoxes`, `subtotalCents`, `pricingTier`, `cutoffAt`, and capacity reservation fields. This makes the Zapier mapping deterministic while D1 remains the fulfillment source of truth.
 
 No Stripe Products, Prices, Billing subscriptions, or Invoices are created by this code. The flexible cart intentionally does not create a separate Stripe object for every quantity tier. A single controlled live verification payment was processed and refunded separately; its D1 order row remains as an audit record.
 
@@ -106,7 +114,8 @@ STRIPE_MODE=test
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_CHECKOUT_API_ORIGIN=
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-THREEBYRD_CUTOFF_OVERRIDE=2026-09-11T15:00:00
+THREEBYRD_CUTOFF_OVERRIDE=2026-09-26T15:00:00
+GOOGLE_MAPS_SERVER_API_KEY=<Google Maps server key; Worker secret only>
 ```
 
 For staging, set `STRIPE_MODE=test`, use the staging sandbox secrets, use the staging D1 binding, and allow only local or an explicitly approved staging frontend origin. For production at launch, set `STRIPE_MODE=live`, use the live secrets, keep `NEXT_PUBLIC_SITE_URL=https://threebyrd.com`, and keep `CORS_ALLOWED_ORIGINS=https://threebyrd.com`. Set `NEXT_PUBLIC_CHECKOUT_API_ORIGIN=https://api.threebyrd.com` in the GitHub Pages build environment. Store both Stripe values as hosted secrets, not in Git, `.env` files, browser code, or logs. Use separate least-privilege restricted keys for test and live.

@@ -2,6 +2,7 @@ import { getNextOrderCutoff, getOrderCapacityWindowKey, ORDERS_OPEN } from "../.
 import { getOrderCapacityConfig } from "../../order-capacity-config";
 import { formatOrderCapacityMessage, type OrderCapacityAvailability } from "../../capacity";
 import { getOrderCapacityAvailability } from "../../order-capacity-db";
+import { safeErrorMessage } from "../../stripe";
 import { isAllowedCheckoutOrigin, withCapacityCors } from "../cors";
 
 export async function GET(request: Request) {
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
       headers: { "cache-control": "no-store" },
     }));
   } catch (error) {
-    console.error("Order capacity availability is unavailable", error instanceof Error ? error.message : "unknown error");
+    console.error("Order capacity availability is unavailable", safeErrorMessage(error));
     return Response.json({ error: "Weekly order availability is temporarily unavailable." }, withCapacityCors(request, { status: 503 }));
   }
 }

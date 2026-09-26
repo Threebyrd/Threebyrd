@@ -1,6 +1,6 @@
 export const BUSINESS_TIME_ZONE = "America/New_York";
 export const MINIMUM_BOXES = 3;
-export const DEFAULT_CUTOFF_OVERRIDE = "2026-09-11T15:00:00";
+export const DEFAULT_CUTOFF_OVERRIDE = "2026-09-26T15:00:00";
 export const ORDERS_OPEN = true;
 
 export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef";
@@ -111,7 +111,7 @@ export const products: readonly Product[] = [
     name: "Big Chicken",
     protein: "Chicken",
     size: "Big",
-    image: "/assets/big-chicken.webp",
+    image: "/assets/big-chicken.jpg",
     alt: "Big Chicken meal prep boxes with rice and broccoli",
     calories: "970",
     proteinGrams: "70g",
@@ -125,7 +125,7 @@ export const products: readonly Product[] = [
     name: "Big Beef",
     protein: "Beef",
     size: "Big",
-    image: "/assets/big-beef.webp",
+    image: "/assets/big-beef.jpg",
     alt: "Big Beef meal prep boxes with rice and broccoli",
     calories: "1115",
     proteinGrams: "70g",
@@ -139,7 +139,7 @@ export const products: readonly Product[] = [
     name: "Little Chicken",
     protein: "Chicken",
     size: "Little",
-    image: "/assets/little-chicken.webp",
+    image: "/assets/little-chicken.jpg",
     alt: "Little Chicken meal prep boxes with rice and broccoli",
     calories: "660",
     proteinGrams: "47g",
@@ -153,7 +153,7 @@ export const products: readonly Product[] = [
     name: "Little Beef",
     protein: "Beef",
     size: "Little",
-    image: "/assets/little-beef.webp",
+    image: "/assets/little-beef.jpg",
     alt: "Little Beef meal prep boxes with rice and broccoli",
     calories: "785",
     proteinGrams: "46g",
@@ -188,6 +188,36 @@ export type OrderQuote = {
   errors: string[];
   isValid: boolean;
 };
+
+export function buildCheckoutMetadata({
+  quote,
+  reservationId,
+  deliveryAddress,
+  cutoff,
+}: {
+  quote: OrderQuote;
+  reservationId: string;
+  deliveryAddress: string;
+  cutoff: Date;
+}): Record<string, string> {
+  const quantities = Object.fromEntries(products.map((product) => [
+    `${product.id.replaceAll("-", "_")}_qty`,
+    String(quote.lines.find((line) => line.productId === product.id)?.quantity ?? 0),
+  ]));
+
+  return {
+    order_id: reservationId,
+    ...quantities,
+    total_meals: String(quote.totalBoxes),
+    delivery_address: deliveryAddress,
+    delivery_date: getDeliveryDateIso(cutoff),
+    cart: JSON.stringify(quote.lines.map((line) => ({ productId: line.productId, quantity: line.quantity }))),
+    totalBoxes: String(quote.totalBoxes),
+    subtotalCents: String(quote.subtotalCents),
+    pricingTier: quote.pricingTier ?? "3-4",
+    cutoffAt: cutoff.toISOString(),
+  };
+}
 
 export function getProduct(productId: string): Product | undefined {
   return productMap.get(productId as ProductId);
@@ -399,25 +429,23 @@ function addBusinessDays(parts: BusinessDateParts, days: number): BusinessDatePa
   return { ...parts, year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
 }
 
-export function getNextFridayCutoffAfter(now = new Date()): Date {
+/** Return the next Saturday 3:00 PM cutoff in the business timezone. */
+export function getNextSaturdayCutoffAfter(now = new Date()): Date {
   const parts = businessDateParts(now);
   const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
-  let daysUntilFriday = (5 - weekday + 7) % 7;
-  const candidate = wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
+  let daysUntilSaturday = (6 - weekday + 7) % 7;
+  const candidate = wallTimeForParts(addBusinessDays(parts, daysUntilSaturday), 15, 0);
 
   if (candidate.getTime() <= now.getTime()) {
-    daysUntilFriday += 7;
+    daysUntilSaturday += 7;
   }
 
-  return wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
+  return wallTimeForParts(addBusinessDays(parts, daysUntilSaturday), 15, 0);
 }
 
 export function getOrderCapacityWindowKey(cutoff: Date): string {
   const parts = businessDateParts(cutoff);
-  const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
-  const daysSinceFriday = (weekday + 2) % 7;
-  const friday = addBusinessDays(parts, -daysSinceFriday);
-  return `${friday.year}-${String(friday.month).padStart(2, "0")}-${String(friday.day).padStart(2, "0")}`;
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 }
 
 function configuredCutoffOverride(): Date | null {
@@ -433,7 +461,7 @@ export function getNextOrderCutoff(now = new Date()): Date {
   if (override && now.getTime() < override.getTime()) {
     return override;
   }
-  return getNextFridayCutoffAfter(now);
+  return getNextSaturdayCutoffAfter(now);
 }
 
 export function formatBusinessDate(date: Date): string {
@@ -460,4 +488,10 @@ export function formatBusinessDateTime(date: Date): string {
 export function getSaturdayForCutoff(cutoff: Date): string {
   const parts = businessDateParts(cutoff);
   return formatBusinessDate(wallTimeForParts(addBusinessDays(parts, 1), 12, 0));
+}
+
+export function getDeliveryDateIso(cutoff: Date): string {
+  const parts = businessDateParts(cutoff);
+  const deliveryParts = addBusinessDays(parts, 1);
+  return `${deliveryParts.year}-${String(deliveryParts.month).padStart(2, "0")}-${String(deliveryParts.day).padStart(2, "0")}`;
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `order_sheet_exports` ADD `claim_token` text;

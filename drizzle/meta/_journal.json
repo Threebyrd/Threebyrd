@@ -29,6 +29,27 @@
       "when": 1789677253309,
       "tag": "0003_easy_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790346859672,
+      "tag": "0004_marvelous_angel",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790347773005,
+      "tag": "0005_purple_luckman",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790380298093,
+      "tag": "0006_fast_wolverine",
+      "breakpoints": true
     }
   ]
 }

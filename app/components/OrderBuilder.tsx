@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Countdown from "./Countdown";
+import DeliveryAddressForm, { type DeliveryCheckState } from "./DeliveryAddressForm";
 import MacroSnapshot from "./MacroSnapshot";
 import { formatOrderCapacityMessage, isOrderCapacitySoldOut, type OrderCapacityAvailability } from "../capacity";
 import {
@@ -31,6 +32,7 @@ const initialQuantities = Object.fromEntries(products.map((product) => [product.
 const checkoutApiOrigin = (process.env.NEXT_PUBLIC_CHECKOUT_API_ORIGIN ?? "").trim().replace(/\/$/, "");
 const checkoutApiUrl = `${checkoutApiOrigin}/api/checkout`;
 const capacityApiUrl = `${checkoutApiOrigin}/api/capacity`;
+const deliveryEligibilityApiUrl = `${checkoutApiOrigin}/api/delivery-eligibility`;
 
 export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: OrderBuilderProps) {
   const searchParams = useSearchParams();
@@ -42,8 +44,14 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   ));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [capacity, setCapacity] = useState<OrderCapacityAvailability | null>(null);
+  const [capacityError, setCapacityError] = useState(false);
   const [capacityOverrideSoldOut, setCapacityOverrideSoldOut] = useState(false);
   const [lastInteractedProductId, setLastInteractedProductId] = useState<ProductId | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryCheckState, setDeliveryCheckState] = useState<DeliveryCheckState>("idle");
+  const [deliveryMessage, setDeliveryMessage] = useState("Check your address before checkout.");
+  const [deliveryDriveMinutes, setDeliveryDriveMinutes] = useState<number | null>(null);
+  const [checkedDeliveryAddress, setCheckedDeliveryAddress] = useState("");
   const orderSummaryRef = useRef<HTMLElement>(null);
   const [now, setNow] = useState(() => new Date(initialCutoffIso).getTime());
   const quote = useMemo(
@@ -59,10 +67,11 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     : [];
   const nextTierProductNames = nextTierProducts.map((product) => product.name).join(" + ");
   const orderWindowOpen = new Date(initialCutoffIso).getTime() >= now;
-  const orderingAvailable = ORDERS_OPEN && orderWindowOpen;
+  const orderingAvailable = ORDERS_OPEN && orderWindowOpen && capacity?.ordersOpen === true;
   const capacitySoldOut = capacityOverrideSoldOut || isOrderCapacitySoldOut(capacity);
   const capacityRemaining = capacity?.enabled && capacity.remaining !== null ? capacity.remaining : null;
   const capacityShortfall = capacityRemaining === null ? 0 : Math.max(0, quote.totalBoxes - capacityRemaining);
+  const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddress.trim() === checkedDeliveryAddress;
 
   const refreshCapacity = useCallback(async (): Promise<OrderCapacityAvailability | null> => {
     try {
@@ -72,11 +81,13 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       }
       const nextCapacity = await response.json() as OrderCapacityAvailability;
       setCapacity(nextCapacity);
+      setCapacityError(false);
       if (!isOrderCapacitySoldOut(nextCapacity)) {
         setCapacityOverrideSoldOut(false);
       }
       return nextCapacity;
     } catch {
+      setCapacityError(true);
       return null;
     }
   }, []);
@@ -113,6 +124,44 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     setStatusMessage("");
   }
 
+  function handleDeliveryAddressChange(value: string) {
+    setDeliveryAddress(value);
+    if (value.trim() !== checkedDeliveryAddress) {
+      setDeliveryCheckState("idle");
+      setDeliveryDriveMinutes(null);
+      setDeliveryMessage("Check your address before checkout.");
+    }
+  }
+
+  async function checkDeliveryAddress() {
+    setDeliveryCheckState("checking");
+    setDeliveryMessage("");
+    setDeliveryDriveMinutes(null);
+
+    try {
+      const response = await fetch(deliveryEligibilityApiUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address: deliveryAddress }),
+      });
+      const body = await response.json().catch(() => ({})) as { normalizedAddress?: unknown; driveMinutes?: unknown; error?: unknown };
+      if (!response.ok || typeof body.normalizedAddress !== "string") {
+        setDeliveryCheckState(response.status === 503 ? "unavailable" : "ineligible");
+        setDeliveryMessage(typeof body.error === "string" ? body.error : "We could not verify that delivery address.");
+        return;
+      }
+
+      setDeliveryAddress(body.normalizedAddress);
+      setCheckedDeliveryAddress(body.normalizedAddress);
+      setDeliveryDriveMinutes(typeof body.driveMinutes === "number" ? body.driveMinutes : null);
+      setDeliveryCheckState("eligible");
+      setDeliveryMessage("");
+    } catch {
+      setDeliveryCheckState("unavailable");
+      setDeliveryMessage("The delivery checker is temporarily unavailable. Please try again.");
+    }
+  }
+
   async function handleCheckout() {
     if (!ORDERS_OPEN) {
       setStatusMessage("Ordering will be opening soon.");
@@ -125,7 +174,18 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     }
 
     if (!orderWindowOpen) {
-      setStatusMessage("This order window has closed. Refresh the page for the next Friday cutoff.");
+      setStatusMessage("This order window has closed. Refresh the page for the next Saturday cutoff.");
+      return;
+    }
+
+    if (!capacity) {
+      setStatusMessage("Weekly availability is temporarily unavailable. Refresh and try again.");
+      void refreshCapacity();
+      return;
+    }
+
+    if (!capacity.ordersOpen) {
+      setStatusMessage("Ordering is currently closed. Check back for the next ordering window.");
       return;
     }
 
@@ -139,6 +199,11 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       return;
     }
 
+    if (!deliveryEligible) {
+      setStatusMessage("Check your Ithaca delivery address before checkout.");
+      return;
+    }
+
     setIsSubmitting(true);
     setStatusMessage("");
 
@@ -148,6 +213,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           items: quote.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+          deliveryAddress: checkedDeliveryAddress,
         }),
       });
       const body = await response.json().catch(() => ({})) as { code?: unknown; error?: unknown; url?: unknown };
@@ -177,7 +243,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             <h2 className="majorHeading" id="order-title">Chicken.<br />Beef.<br /><em>Your call.</em></h2>
           </div>
           <div className="orderIntroCopy">
-            <p>Choose Little or Big, mix and match across proteins, and get your meals delivered to your door Saturday.</p>
+            <p>Choose Little or Big, mix and match across proteins, and get free delivery in Ithaca.</p>
             <p className="orderRule"><strong>3-box minimum.</strong> Mix and match however you want.</p>
           </div>
         </div>
@@ -232,9 +298,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                           <p className="productAvailability">Not available for purchase yet.</p>
                         ) : (
                           <div className="quantityControl" aria-label={`Quantity for ${product.name}`}>
-                            <button type="button" aria-label={`Remove one ${product.name}`} onClick={() => changeQuantity(product.id, -1)} disabled={!ORDERS_OPEN || quantity === 0}>−</button>
+                            <button type="button" aria-label={`Remove one ${product.name}`} onClick={() => changeQuantity(product.id, -1)} disabled={!orderingAvailable || quantity === 0}>−</button>
                             <output aria-live="polite">{quantity}</output>
-                            <button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={!ORDERS_OPEN || quantity >= 99}>+</button>
+                            <button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={!orderingAvailable || quantity >= 99}>+</button>
                           </div>
                         )}
                         {line && line.pricingTier !== "3-4" && <p className="discountNote">{formatPricingTier(line.pricingTier)} cart tier pricing applied</p>}
@@ -318,7 +384,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             </div>
             <Countdown initialCutoffIso={initialCutoffIso} />
             <div className={`capacityIndicator${capacitySoldOut ? " isSoldOut" : ""}`} role="status" aria-live="polite">
-              {capacity ? formatOrderCapacityMessage(capacity) : "Checking weekly capacity…"}
+              {capacity ? formatOrderCapacityMessage(capacity) : (
+                <>
+                  <span>{capacityError ? "Weekly availability is temporarily unavailable." : "Checking weekly capacity…"}</span>
+                  {capacityError && <button type="button" className="capacityRetry" onClick={() => void refreshCapacity()}>Retry</button>}
+                </>
+              )}
             </div>
             {quote.lines.length > 0 ? (
               <div className="summaryLines">
@@ -330,9 +401,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                     </div>
                     <div className="summaryLineActions">
                       <div className="summaryQuantityControl" aria-label={`Quantity for ${line.name}`}>
-                        <button type="button" aria-label={`Remove one ${line.name}`} onClick={() => changeQuantity(line.productId, -1)} disabled={!ORDERS_OPEN}>−</button>
+                        <button type="button" aria-label={`Remove one ${line.name}`} onClick={() => changeQuantity(line.productId, -1)} disabled={!orderingAvailable}>−</button>
                         <output aria-live="polite">{line.quantity}</output>
-                        <button type="button" aria-label={`Add one ${line.name}`} onClick={() => changeQuantity(line.productId, 1)} disabled={!ORDERS_OPEN || line.quantity >= 99}>+</button>
+                        <button type="button" aria-label={`Add one ${line.name}`} onClick={() => changeQuantity(line.productId, 1)} disabled={!orderingAvailable || line.quantity >= 99}>+</button>
                       </div>
                       <b>{formatMoney(line.amountCents)}</b>
                     </div>
@@ -375,13 +446,21 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               <div className="summaryTotalRow"><span>Delivery</span><strong>$0</strong></div>
               <div className="summaryTotalFinal"><span>Total</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
             </div>
-            <p className="deliveryNote"><span aria-hidden="true">✦</span> Free Saturday delivery to your door.</p>
-            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || capacitySoldOut || capacityShortfall > 0}>
-              {isSubmitting ? "Opening secure checkout…" : capacityShortfall > 0 ? `Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue` : capacitySoldOut ? "Sold out for this week" : !ORDERS_OPEN ? "Ordering closed" : !orderWindowOpen ? "Order window closed" : "Continue to secure checkout"}
+            <DeliveryAddressForm
+              address={deliveryAddress}
+              state={deliveryCheckState}
+              message={deliveryMessage}
+              driveMinutes={deliveryDriveMinutes}
+              onAddressChange={handleDeliveryAddressChange}
+              onCheck={() => void checkDeliveryAddress()}
+            />
+            <p className="deliveryNote"><span aria-hidden="true">✦</span> Free delivery in Ithaca · no delivery fee.</p>
+            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || !capacity || capacitySoldOut || capacityShortfall > 0 || !deliveryEligible}>
+              {isSubmitting ? "Opening secure checkout…" : !capacity ? capacityError ? "Retry availability" : "Checking availability…" : capacityShortfall > 0 ? `Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue` : capacitySoldOut ? "Sold out for this week" : !ORDERS_OPEN || capacity.ordersOpen === false ? "Ordering closed" : !orderWindowOpen ? "Order window closed" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>
             </button>
             <p className={`checkoutStatus${statusMessage ? " hasMessage" : ""}`} role="alert" aria-live="polite">
-              {statusMessage || (capacityShortfall > 0 ? `Only ${capacityRemaining} meals remain this week. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.` : capacitySoldOut ? "Sold out for this week. Check back for the next ordering window." : !ORDERS_OPEN ? "Ordering will be opening soon. Check back for updates." : "Secure checkout collects your delivery details.")}
+              {statusMessage || (!capacity ? capacityError ? "Refresh weekly availability before continuing." : "Checking weekly availability before checkout." : capacityShortfall > 0 ? `Only ${capacityRemaining} meals remain this week. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.` : capacitySoldOut ? "Sold out for this week. Check back for the next ordering window." : !ORDERS_OPEN || capacity.ordersOpen === false ? "Ordering will be opening soon. Check back for updates." : !deliveryEligible ? "Check your Ithaca delivery address to continue." : "Secure checkout collects your payment and delivery details.")}
             </p>
           </aside>
         </div>

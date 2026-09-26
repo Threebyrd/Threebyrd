@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   formatBusinessDateTime,
-  getNextFridayCutoffAfter,
+  getNextOrderCutoff,
   ORDERS_OPEN,
 } from "../order-config";
 
@@ -42,7 +42,7 @@ export default function Countdown({ initialCutoffIso }: CountdownProps) {
       const now = Date.now();
       setState((current) => {
         if (now >= current.cutoff.getTime()) {
-          return { cutoff: getNextFridayCutoffAfter(new Date(now)), now };
+          return { cutoff: getNextOrderCutoff(new Date(now)), now };
         }
         return { ...current, now };
       });

@@ -23,16 +23,16 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   const html = await response.text();
   assert.match(html, /<title>ThreeByrd Meal Prep \| Chicken \+ Beef, Delivered<\/title>/i);
   assert.match(html, /Choose<br\s*\/>\s*<em>your protein/);
-  assert.match(html, /delivered straight to your door/i);
+  assert.match(html, /free delivery in Ithaca/i);
   assert.doesNotMatch(html, /Orders open until/);
   assert.match(html, /class="summaryCountdown"/);
   assert.match(html, /class="capacityIndicator"/);
   assert.match(html, /Checking weekly capacity/);
   assert.match(html, /Orders close in|Next order window/);
-  assert.match(html, /Friday, September \d{1,2}(?:<!-- -->)? at 3:00 PM (?:EDT|EST)/);
+  assert.match(html, /Saturday, September \d{1,2}(?:<!-- -->)? at 3:00 PM (?:EDT|EST)/);
   assert.doesNotMatch(html, /Orders are currently closed/);
-  assert.match(html, /Order window closed|Continue to secure checkout/);
-  assert.match(html, /Friday, September \d{1,2}/);
+  assert.match(html, /Order window closed|Continue to secure checkout|Check your Ithaca delivery address|Checking availability/);
+  assert.match(html, /Saturday, September \d{1,2}/);
   assert.match(html, /Choose Meal Order/);
   assert.match(html, /3-box minimum/);
   assert.match(html, /Mix and match however you want/);
@@ -73,7 +73,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /3 Big Chicken \+ 2 Big Beef = 5 meals total/);
   assert.match(html, /Meal subtotal/);
   assert.match(html, /Delivery.*\$0/s);
-  assert.match(html, /Free Saturday delivery to your door/);
+  assert.match(html, /Free delivery in Ithaca/);
   const productGridIndex = html.indexOf('class="productGrid"');
   const pricingExplainerIndex = html.indexOf('class="pricingExplainer"');
   const orderSummaryIndex = html.indexOf('class="orderSummary"');
@@ -150,11 +150,11 @@ test("passes the open-order gate at the server boundary", async () => {
   const response = await render("/api/checkout", {
     method: "POST",
     headers: { "content-type": "application/json", origin: "https://threebyrd.com" },
-    body: JSON.stringify({ items: [{ productId: "big-chicken", quantity: 3 }] }),
+    body: JSON.stringify({ items: [{ productId: "big-chicken", quantity: 3 }], deliveryAddress: "123 Test Street, Ithaca, NY 14850" }),
   });
   assert.equal(response.status, 503);
   assert.equal(response.headers.get("access-control-allow-origin"), "https://threebyrd.com");
-  assert.match(await response.text(), /Secure checkout is being configured/);
+  assert.match(await response.text(), /delivery checker is temporarily unavailable/);
 });
 
 test("rejects checkout requests from unknown browser origins", async () => {
@@ -181,6 +181,6 @@ test("renders a confirmation route without requiring Stripe secrets", async () =
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Order received/);
-  assert.match(html, /Saturday delivery/);
+  assert.match(html, /Free delivery in Ithaca/);
   assert.doesNotMatch(html, /sk_(?:test|live)_/i);
 });

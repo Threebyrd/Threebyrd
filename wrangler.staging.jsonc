@@ -22,11 +22,11 @@
   "vars": {
     "STRIPE_MODE": "test",
     "ORDERS_OPEN": "false",
-    "THREEBYRD_CUTOFF_OVERRIDE": "2026-09-19T17:00:00",
+    "THREEBYRD_CUTOFF_OVERRIDE": "2026-09-26T15:00:00",
     "NEXT_PUBLIC_SITE_URL": "https://threebyrd.com",
     "CORS_ALLOWED_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000"
   },
   "secrets": {
-    "required": ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]
+    "required": ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "GOOGLE_MAPS_SERVER_API_KEY", "GOOGLE_SHEETS_WEB_APP_URL", "GOOGLE_SHEETS_SYNC_SECRET"]
   }
 }

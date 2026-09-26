@@ -1,10 +1,13 @@
 import Image from "next/image";
 import CountUpTotal from "./components/CountUpTotal";
 import CutoffNotice from "./components/CutoffNotice";
+import HeroCarousel from "./components/HeroCarousel";
 import JoinForm from "./components/JoinForm";
+import MobileMenu from "./components/MobileMenu";
 import OrderBuilder from "./components/OrderBuilder";
 import {
   getNextOrderCutoff,
+  getSaturdayForCutoff,
 } from "./order-config";
 
 const impactStats = [
@@ -58,6 +61,7 @@ const navigation = [
 ];
 
 const cutoff = getNextOrderCutoff();
+const deliveryDay = getSaturdayForCutoff(cutoff);
 
 export default function Home() {
   return (
@@ -82,12 +86,7 @@ export default function Home() {
           {navigation.map((item) => <a href={item.href} key={item.href}>{item.label}</a>)}
         </nav>
         <a className="navCta" href="#order">Build your order</a>
-        <details className="mobileMenu">
-          <summary>Menu</summary>
-          <nav aria-label="Mobile navigation">
-            {navigation.map((item) => <a href={item.href} key={item.href}>{item.label}</a>)}
-          </nav>
-        </details>
+        <MobileMenu items={navigation} />
       </header>
 
       <main>
@@ -97,7 +96,7 @@ export default function Home() {
               <p className="heroKicker"><span>ThreeByrd Meal Prep</span> Formerly SBX Chicken</p>
               <h1 className="majorHeading" id="hero-title">Choose<br /><em>your protein.</em></h1>
               <p className="heroLead">Chicken or Beef. Little or Big.</p>
-              <p className="heroNote">Simple, high-protein meal prep with rice and broccoli, delivered straight to your door.</p>
+              <p className="heroNote">Simple, high-protein meal prep with rice and broccoli. Free delivery in Ithaca.</p>
               <div className="heroChoiceRow" aria-label="Protein choices">
                 <span>Chicken</span><b aria-hidden="true">+</b><span>Beef</span>
               </div>
@@ -105,24 +104,15 @@ export default function Home() {
                 <a className="button buttonPrimary" href="#order">Choose Meal Order <span aria-hidden="true">→</span></a>
               </div>
               <dl className="heroProof" aria-label="ThreeByrd at a glance">
-                <div><dt>Delivery</dt><dd>To your door</dd></div>
+                <div><dt>Delivery</dt><dd>Free in Ithaca</dd></div>
                 <div><dt>Minimum</dt><dd>3 boxes</dd></div>
-                <div><dt>Cook day</dt><dd>Saturday</dd></div>
+                <div><dt>Cook day</dt><dd>{deliveryDay.replace(/^\w+, /, "")}</dd></div>
               </dl>
             </div>
 
             <div className="heroVisual">
-              <div className="heroPhotoFrame">
-                <Image
-                  src="/assets/hero-meal.webp"
-                  alt="ThreeByrd Chicken and Beef meal prep boxes with rice and broccoli"
-                  width={1000}
-                  height={1333}
-                  sizes="(max-width: 1024px) 100vw, 48vw"
-                  priority
-                />
-              </div>
-              <span className="sticker stickerHero">Door-to-door<small>meal prep</small></span>
+              <div className="heroPhotoFrame"><HeroCarousel /></div>
+              <span className="sticker stickerHero">Free delivery<small>Ithaca only</small></span>
               <span className="heroPhotoLabel">Chicken + Beef <b aria-hidden="true">★</b></span>
             </div>
           </div>
@@ -144,7 +134,7 @@ export default function Home() {
         <OrderBuilder initialCutoffIso={cutoff.toISOString()} />
 
         <section id="join" className="joinSection" aria-labelledby="join-title">
-          <div className="sectionShell joinLayout"><div className="joinContent"><p className="sectionLabel sectionLabelLight">Stay in the loop</p><h2 className="majorHeading" id="join-title">Be first at the table.</h2><p>Leave your email, phone number, or both. We will share menu and delivery updates as ThreeByrd grows.</p></div><div className="joinAside"><JoinForm idPrefix="bottom-join" /><div className="socialLinks" aria-label="ThreeByrd social links"><a aria-label="Follow ThreeByrd on Instagram" href="https://www.instagram.com/threebyrd/" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" /></svg><span>Follow ThreeByrd on Instagram</span></a><a aria-label="Follow ThreeByrd on LinkedIn" href="https://www.linkedin.com/company/threebyrd/" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 10.2v6.3M8 7.7v.1M11.5 16.5v-3.4a2.3 2.3 0 0 1 4.6 0v3.4M11.5 10.2v6.3" /></svg><span>Follow ThreeByrd on LinkedIn</span></a></div></div></div>
+          <div className="sectionShell joinLayout"><div className="joinContent"><p className="sectionLabel sectionLabelLight">Stay in the loop</p><h2 className="majorHeading" id="join-title">Be first at the table.</h2><p>Get the next menu and delivery update.</p></div><div className="joinAside"><JoinForm idPrefix="bottom-join" /><div className="socialLinks" aria-label="ThreeByrd social links"><a aria-label="Follow ThreeByrd on Instagram" href="https://www.instagram.com/threebyrd/" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" /></svg><span>Follow ThreeByrd on Instagram</span></a><a aria-label="Follow ThreeByrd on LinkedIn" href="https://www.linkedin.com/company/threebyrd/" target="_blank" rel="noopener noreferrer"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 10.2v6.3M8 7.7v.1M11.5 16.5v-3.4a2.3 2.3 0 0 1 4.6 0v3.4M11.5 10.2v6.3" /></svg><span>Follow ThreeByrd on LinkedIn</span></a></div></div></div>
         </section>
 
         <section id="giving-back" className="givingSection" aria-labelledby="giving-title">

@@ -1,0 +1,2 @@
+ALTER TABLE `order_capacity_reservations` ADD `client_key` text;--> statement-breakpoint
+CREATE INDEX `idx_order_capacity_reservations_window_client_status` ON `order_capacity_reservations` (`window_key`,`client_key`,`status`,`expires_at`);

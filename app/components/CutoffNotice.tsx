@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatBusinessDateTime, getNextFridayCutoffAfter, getSaturdayForCutoff } from "../order-config";
+import { formatBusinessDateTime, getNextOrderCutoff, getSaturdayForCutoff } from "../order-config";
 
 type CutoffNoticeProps = {
   initialCutoffIso: string;
@@ -13,7 +13,7 @@ export default function CutoffNotice({ initialCutoffIso }: CutoffNoticeProps) {
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      setCutoff((current) => now.getTime() >= current.getTime() ? getNextFridayCutoffAfter(now) : current);
+      setCutoff((current) => now.getTime() >= current.getTime() ? getNextOrderCutoff(now) : current);
     };
 
     update();

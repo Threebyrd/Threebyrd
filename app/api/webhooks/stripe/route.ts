@@ -1,7 +1,8 @@
-import type Stripe from "stripe";
 import { recordConfirmedOrder, releaseOrderCapacityReservation } from "../../../../app/order-capacity-db";
+import { getValidatedDeliveryAddressFromMetadata } from "../../../checkout-reconciliation";
 import { getCartPricingTier, quoteOrder, readCartMetadata } from "../../../order-config";
-import { getStripe, getStripeMode, isStripeEventForMode } from "../../../stripe";
+import { getStripe, getStripeMode, isStripeEventForMode, safeErrorMessage } from "../../../stripe";
+import type Stripe from "stripe";
 
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
     const payload = await request.text();
     event = await stripe.webhooks.constructEventAsync(payload, signature, webhookSecret);
   } catch (error) {
-    console.error("Stripe webhook signature verification failed", error instanceof Error ? error.message : "unknown error");
+    console.error("Stripe webhook signature verification failed", safeErrorMessage(error));
     return Response.json({ error: "Invalid webhook signature." }, { status: 400 });
   }
 
@@ -50,13 +51,19 @@ export async function POST(request: Request) {
       });
       return Response.json({ received: true });
     } catch (error) {
-      console.error("Failed Stripe capacity reservation release", error instanceof Error ? error.message : "unknown error");
+      console.error("Failed Stripe capacity reservation release", safeErrorMessage(error));
       return Response.json({ error: "Reservation release failed; Stripe should retry this webhook." }, { status: 500 });
     }
   }
 
   if (event.type === "checkout.session.completed" && session.payment_status !== "paid") {
     return Response.json({ received: true, deferred: true });
+  }
+
+  const cutoffEpoch = session.metadata?.cutoffAt ? Math.floor(Date.parse(session.metadata.cutoffAt) / 1000) : NaN;
+  if (!Number.isFinite(cutoffEpoch) || (session.created && session.created >= cutoffEpoch) || (session.expires_at && session.expires_at > cutoffEpoch)) {
+    console.error("Confirmed Stripe session failed cutoff reconciliation", session.id);
+    return Response.json({ error: "Checkout session is outside the order window." }, { status: 500 });
   }
 
   const cart = readCartMetadata(session.metadata?.cart);
@@ -86,22 +93,41 @@ export async function POST(request: Request) {
   try {
     const database = await getCapacityDatabase();
     const reservationId = session.metadata?.capacityReservationId ?? null;
+    const capacityWindowKey = session.metadata?.capacityWindowKey ?? null;
+    if (capacityWindowKey && (!reservationId || session.client_reference_id !== reservationId)) {
+      console.error("Confirmed Stripe session has an invalid capacity reservation link", session.id);
+      return Response.json({ error: "Checkout reservation could not be verified." }, { status: 500 });
+    }
     const confirmedAt = Math.floor(Date.now() / 1000);
-    const customerName = session.collected_information?.shipping_details?.name ?? session.customer_details?.name ?? null;
-    const deliveryAddress = JSON.stringify(session.collected_information?.shipping_details?.address ?? session.customer_details?.address ?? null);
+    const deliveryAddress = getValidatedDeliveryAddressFromMetadata(session.metadata);
+    if (!deliveryAddress) {
+      console.error("Confirmed Stripe session is missing its server-validated delivery address", session.id);
+      return Response.json({ error: "The delivery address could not be verified; Stripe should retry this webhook." }, { status: 500 });
+    }
+
+    const customerName = session.customer_details?.name ?? null;
+    const deliveryAddressRecord = JSON.stringify({
+      normalizedAddress: deliveryAddress,
+      source: "precheckout-google-validation",
+    });
     const recorded = await recordConfirmedOrder(database, {
       stripeSessionId: session.id,
       stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
       customerEmail: session.customer_details?.email ?? null,
       customerName,
       customerPhone: session.customer_details?.phone ?? null,
-      deliveryAddress,
+      deliveryAddress: deliveryAddressRecord,
       items: JSON.stringify(cart),
       amountCents: session.amount_total,
       currency: session.currency,
       cutoffAt: session.metadata?.cutoffAt ?? null,
       createdAt: session.created,
-    }, { reservationId, confirmedAt });
+    }, {
+      reservationId,
+      confirmedAt,
+      expectedWindowKey: capacityWindowKey,
+      expectedMealCount: quote.totalBoxes,
+    });
 
     if (!recorded) {
       console.error("Confirmed Stripe session could not be linked to an order", session.id);
@@ -110,7 +136,7 @@ export async function POST(request: Request) {
 
     return Response.json({ received: true });
   } catch (error) {
-    console.error("Confirmed Stripe order could not be recorded", error instanceof Error ? error.message : "unknown error");
+    console.error("Confirmed Stripe order could not be recorded", safeErrorMessage(error));
     return Response.json({ error: "Order recording failed; Stripe should retry this webhook." }, { status: 500 });
   }
 }

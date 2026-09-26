@@ -1,11 +1,15 @@
-import { getNextOrderCutoff, getOrderCapacityWindowKey, ORDERS_OPEN, quoteOrder, type CartItemInput } from "../../order-config";
+import { buildCheckoutMetadata, getDeliveryDateIso, getNextOrderCutoff, getOrderCapacityWindowKey, ORDERS_OPEN, quoteOrder, type CartItemInput } from "../../order-config";
 import { getOrderCapacityConfig } from "../../order-capacity-config";
 import { attachOrderCapacityReservation, releaseOrderCapacityReservation, reserveOrderCapacity } from "../../order-capacity-db";
-import { getSiteOrigin, getStripe } from "../../stripe";
+import { getCheckoutClientKey } from "../../checkout-client";
+import { expireCreatedCheckoutSession } from "../../checkout-recovery";
+import { checkDeliveryEligibility, DeliveryEligibilityError } from "../../delivery";
+import { getSiteOrigin, getStripe, safeErrorMessage } from "../../stripe";
 import { isAllowedCheckoutOrigin, withCheckoutCors } from "../cors";
 
 type CheckoutRequest = {
   items?: CartItemInput[];
+  deliveryAddress?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -33,7 +37,25 @@ export async function POST(request: Request) {
 
   const cutoff = getNextOrderCutoff(new Date());
   if (Date.now() >= cutoff.getTime()) {
-    return Response.json({ error: "This order window has closed. Refresh for the next Friday cutoff." }, withCheckoutCors(request, { status: 409 }));
+    return Response.json({ error: "This order window has closed. Refresh for the next Saturday cutoff." }, withCheckoutCors(request, { status: 409 }));
+  }
+
+  const cutoffEpoch = Math.floor(cutoff.getTime() / 1000);
+  const secondsUntilCutoff = cutoffEpoch - Math.floor(Date.now() / 1000);
+  if (secondsUntilCutoff < 30 * 60) {
+    return Response.json({ error: "This order window is closing soon. Checkout must be started at least 30 minutes before the cutoff." }, withCheckoutCors(request, { status: 409 }));
+  }
+
+  let deliveryCheck;
+  try {
+    deliveryCheck = await checkDeliveryEligibility(body.deliveryAddress);
+  } catch (error) {
+    if (error instanceof DeliveryEligibilityError) {
+      const status = error.code === "OUTSIDE_DELIVERY_ZONE" ? 422 : error.code === "PROVIDER_UNAVAILABLE" ? 503 : 400;
+      return Response.json({ error: error.message, code: error.code }, withCheckoutCors(request, { status }));
+    }
+
+    return Response.json({ error: "The delivery checker is temporarily unavailable." }, withCheckoutCors(request, { status: 503 }));
   }
 
   const stripe = getStripe();
@@ -43,21 +65,30 @@ export async function POST(request: Request) {
 
   const now = Math.floor(Date.now() / 1000);
   const reservationId = crypto.randomUUID();
+  const clientKey = await getCheckoutClientKey(request);
   const capacityConfig = getOrderCapacityConfig(getOrderCapacityWindowKey(cutoff));
   const reservation = capacityConfig.limit === null
     ? null
       : {
         id: reservationId,
         windowKey: capacityConfig.windowKey,
+        clientKey,
         mealCount: quote.totalBoxes,
         reservedAt: now,
-        expiresAt: now + capacityConfig.reservationTtlSeconds,
+        expiresAt: Math.min(now + capacityConfig.reservationTtlSeconds, cutoffEpoch),
       };
 
+  let createdSession: { id: string; url: string | null } | null = null;
   try {
     if (reservation) {
       const reserved = await reserveOrderCapacity(await getCapacityDatabase(), capacityConfig, reservation);
-      if (!reserved) {
+      if (!reserved.ok) {
+        if (reserved.reason === "active_reservation") {
+          return Response.json(
+            { error: "You already have a checkout in progress. Finish it or wait for it to expire before starting another.", code: "CHECKOUT_IN_PROGRESS" },
+            withCheckoutCors(request, { status: 409 }),
+          );
+        }
         return Response.json(
           { error: "Sold out for this week. Please check back for the next ordering window.", code: "CAPACITY_EXHAUSTED" },
           withCheckoutCors(request, { status: 409 }),
@@ -66,20 +97,19 @@ export async function POST(request: Request) {
     }
 
     const siteOrigin = getSiteOrigin();
-    const metadata: Record<string, string> = {
-      cart: JSON.stringify(quote.lines.map((line) => ({ productId: line.productId, quantity: line.quantity }))),
-      totalBoxes: String(quote.totalBoxes),
-      subtotalCents: String(quote.subtotalCents),
-      pricingTier: quote.pricingTier ?? "3-4",
-      cutoffAt: cutoff.toISOString(),
-    };
+    const metadata = buildCheckoutMetadata({
+      quote,
+      reservationId,
+      deliveryAddress: deliveryCheck.normalizedAddress,
+      cutoff,
+    });
 
     if (reservation) {
       metadata.capacityReservationId = reservation.id;
       metadata.capacityWindowKey = reservation.windowKey;
     }
 
-    const session = await stripe.checkout.sessions.create({
+    createdSession = await stripe.checkout.sessions.create({
       mode: "payment",
       integration_identifier: `threebyrd_checkout_${randomLetters(8)}`,
       ...(reservation ? { client_reference_id: reservation.id, expires_at: reservation.expiresAt } : {}),
@@ -88,7 +118,7 @@ export async function POST(request: Request) {
           currency: "usd",
           product_data: {
             name: line.name,
-            description: "Meal prep with rice and broccoli · delivered Saturday",
+            description: `Meal prep with rice and broccoli · free delivery ${getDeliveryDateIso(cutoff)}`,
           },
           unit_amount: line.unitAmountCents,
         },
@@ -96,33 +126,39 @@ export async function POST(request: Request) {
       })),
       customer_creation: "always",
       phone_number_collection: { enabled: true },
-      shipping_address_collection: { allowed_countries: ["US"] },
       success_url: `${siteOrigin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteOrigin}/order?checkout=canceled`,
       metadata,
     });
 
-    if (!session.url) {
+    if (!createdSession.url) {
       throw new Error("Stripe did not return a checkout link.");
     }
 
     if (reservation) {
-      const attached = await attachOrderCapacityReservation(await getCapacityDatabase(), reservation.id, session.id);
+      const attached = await attachOrderCapacityReservation(await getCapacityDatabase(), reservation.id, createdSession.id);
       if (!attached) {
         throw new Error("Checkout session could not be linked to its capacity reservation.");
       }
     }
 
-    return Response.json({ url: session.url }, withCheckoutCors(request));
+    return Response.json({ url: createdSession.url }, withCheckoutCors(request));
   } catch (error) {
     if (reservation) {
-      try {
-        await releaseOrderCapacityReservation(await getCapacityDatabase(), { reservationId: reservation.id });
-      } catch (releaseError) {
-        console.error("Checkout capacity reservation cleanup failed", releaseError instanceof Error ? releaseError.message : "unknown error");
+      if (createdSession) {
+        const expired = await expireCreatedCheckoutSession(stripe, createdSession.id);
+        if (!expired) {
+          console.error("Checkout session could not be expired after reservation linking failed");
+        }
+      } else {
+        try {
+          await releaseOrderCapacityReservation(await getCapacityDatabase(), { reservationId: reservation.id });
+        } catch (releaseError) {
+          console.error("Checkout capacity reservation cleanup failed", safeErrorMessage(releaseError));
+        }
       }
     }
-    console.error("Stripe Checkout Session creation failed", error instanceof Error ? error.message : "unknown error");
+    console.error("Stripe Checkout Session creation failed", safeErrorMessage(error));
     return Response.json({ error: "Secure checkout is temporarily unavailable. Please try again." }, withCheckoutCors(request, { status: 502 }));
   }
 }

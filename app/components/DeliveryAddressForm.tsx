@@ -32,9 +32,9 @@ export default function DeliveryAddressForm({
   return (
     <section className="deliveryEligibility" aria-labelledby="delivery-address-title">
       <div className="deliveryEligibilityHeading">
-        <p className="sectionLabel sectionLabelLight">Free delivery in Ithaca</p>
-        <h4 id="delivery-address-title">Where should we deliver your meals?</h4>
-        <p>Enter the address where this week&apos;s meals should go. We deliver within 20 minutes of our kitchen, and we&apos;ll use this verified address for delivery.</p>
+        <p className="sectionLabel sectionLabelLight">Delivery</p>
+        <h4 id="delivery-address-title">Where should we deliver?</h4>
+        <p>Free delivery in Ithaca · verified within 20 minutes of our kitchen.</p>
       </div>
       <div className="deliveryAddressFields">
         <div className="deliveryField deliveryFieldWide">
@@ -103,7 +103,7 @@ export default function DeliveryAddressForm({
           {state === "checking" ? "Checking…" : "Check address"}
         </button>
       </div>
-      <p id="delivery-address-help" className="deliveryAddressHelp">Free delivery only · no delivery fee at checkout.</p>
+      <p id="delivery-address-help" className="deliveryAddressHelp">We verify this address before checkout.</p>
       <p id="delivery-address-status" className={`deliveryAddressStatus is-${state}`} role="status" aria-live="polite">
         {state === "eligible" ? `✓ You’re in our free delivery area${driveMinutes ? ` · about ${driveMinutes} min away` : ""}.` : message}
       </p>

@@ -9,24 +9,9 @@ export default function MacroSnapshot({ product }: MacroSnapshotProps) {
     return null;
   }
 
-  const macros = [
-    { label: "Calories", value: product.calories },
-    { label: "Protein", value: product.proteinGrams, className: "macroProtein" },
-    { label: "Carbs", value: product.carbs },
-    { label: "Fat", value: product.fat },
-  ];
-
   return (
-    <div className="cardNutrition" aria-label={`${product.name} Macro snapshot`}>
-      <h4>Macro snapshot</h4>
-      <div className="macroGrid">
-        {macros.map((macro) => (
-          <div className={macro.className} key={macro.label}>
-            <span>{macro.label}</span>
-            <strong>{macro.value}</strong>
-          </div>
-        ))}
-      </div>
+    <div className="cardNutrition" aria-label={`${product.name}: ${product.calories} calories, ${product.proteinGrams} protein`}>
+      <strong>{product.calories} cal</strong><span aria-hidden="true"> · </span><strong>{product.proteinGrams} protein</strong>
     </div>
   );
 }

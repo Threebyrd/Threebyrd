@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   formatBusinessDateTime,
   getNextOrderCutoff,
+  getSaturdayForCutoff,
 } from "../order-config";
 
 type CountdownProps = {
@@ -54,19 +55,15 @@ export default function Countdown({ initialCutoffIso }: CountdownProps) {
 
   const time = getCountdownParts(state.cutoff, state.now);
   const statusLabel = "Next delivery cutoff";
+  const delivery = getSaturdayForCutoff(state.cutoff);
 
   return (
     <div className="summaryCountdown" aria-atomic="true" aria-live="polite">
-      <div className="summaryCountdownHeader">
-        <p>{statusLabel}</p>
-        <span>{formatBusinessDateTime(state.cutoff)}</span>
+      <div className="summarySchedule">
+        <div><span>Order by</span><strong>{formatBusinessDateTime(state.cutoff)}</strong></div>
+        <div><span>Delivery</span><strong>{delivery}</strong></div>
       </div>
-      <div className="summaryCountdownDigits" aria-label={`${statusLabel}: ${time.days} days, ${time.hours} hours, ${time.minutes} minutes, ${time.seconds} seconds`}>
-        <span><b>{pad(time.days)}</b><small>days</small></span>
-        <span><b>{pad(time.hours)}</b><small>hours</small></span>
-        <span><b>{pad(time.minutes)}</b><small>minutes</small></span>
-        <span><b>{pad(time.seconds)}</b><small>seconds</small></span>
-      </div>
+      <p className="summaryCountdownRemaining" aria-label={`${statusLabel}: ${time.days} days, ${time.hours} hours, ${time.minutes} minutes, ${time.seconds} seconds`}>Next cutoff in {pad(time.days)}d {pad(time.hours)}h {pad(time.minutes)}m</p>
     </div>
   );
 }

@@ -17,7 +17,6 @@ import {
   getNextPricingTier,
   MINIMUM_BOXES,
   ORDERS_OPEN,
-  priceRangeFor,
   products,
   quoteOrder,
   unitAmountAtTier,
@@ -55,6 +54,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const [checkedDeliveryAddressKey, setCheckedDeliveryAddressKey] = useState<string | null>(null);
   const deliveryCheckRequestRef = useRef(0);
   const orderSummaryRef = useRef<HTMLElement>(null);
+  const productGridRef = useRef<HTMLDivElement>(null);
   const quote = useMemo(
     () => quoteOrder(Object.entries(quantities).map(([productId, quantity]) => ({ productId, quantity }))),
     [quantities],
@@ -66,13 +66,47 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       || CART_PRICING_TIERS[nextTier.tier].prices[product.id] < CART_PRICING_TIERS[quote.pricingTier].prices[product.id]
     ))
     : [];
-  const nextTierProductNames = nextTierProducts.map((product) => product.name).join(" + ");
   const deliveryAddressKey = JSON.stringify(deliveryAddress);
   const orderingAvailable = ORDERS_OPEN && capacity?.ordersOpen === true;
   const capacityBlocked = capacityOverrideBlocked || isOrderCapacitySoldOut(capacity);
   const capacityRemaining = capacity?.enabled && capacity.remaining !== null ? capacity.remaining : null;
   const capacityShortfall = capacityRemaining === null ? 0 : Math.max(0, quote.totalBoxes - capacityRemaining);
   const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddressKey === checkedDeliveryAddressKey;
+  const pricingMilestones = [
+    { value: 3, label: "Minimum" },
+    { value: 5, label: "Lower prices" },
+    { value: 10, label: "Best standard prices" },
+  ];
+  const funnelCopy = quote.totalBoxes < MINIMUM_BOXES
+    ? {
+      current: quote.totalBoxes === 0 ? "Start your order" : `${quote.totalBoxes} meal${quote.totalBoxes === 1 ? "" : "s"} selected`,
+      prompt: `Add ${MINIMUM_BOXES - quote.totalBoxes} more ${MINIMUM_BOXES - quote.totalBoxes === 1 ? "meal" : "meals"} to start your order`,
+      target: "",
+    }
+    : quote.totalBoxes < 5
+      ? {
+        current: "3-meal minimum met ✓",
+        prompt: `Add ${5 - quote.totalBoxes} more ${5 - quote.totalBoxes === 1 ? "meal" : "meals"}`,
+        target: "to unlock 5-meal pricing",
+      }
+      : quote.totalBoxes < 10
+        ? {
+          current: "5-meal pricing unlocked ✓",
+          prompt: `Add ${10 - quote.totalBoxes} more ${10 - quote.totalBoxes === 1 ? "meal" : "meals"}`,
+          target: "to unlock best standard pricing",
+        }
+        : {
+          current: "Best standard pricing unlocked ✓",
+          prompt: quote.totalBoxes >= 20 ? "Ordering for a group?" : "",
+          target: quote.totalBoxes >= 20 ? "Contact us for custom pricing" : "",
+        };
+  const mobileCartHint = quote.totalBoxes < MINIMUM_BOXES
+    ? `Add ${MINIMUM_BOXES - quote.totalBoxes} more to start`
+    : quote.totalBoxes < 5
+      ? `Add ${5 - quote.totalBoxes} more → better pricing`
+      : quote.totalBoxes < 10
+        ? `Add ${10 - quote.totalBoxes} more → best pricing`
+        : "Best pricing ✓";
 
   const refreshCapacity = useCallback(async (): Promise<OrderCapacityAvailability | null> => {
     try {
@@ -107,6 +141,13 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     if (!summary) return;
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     summary.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
+  }
+
+  function scrollToProducts() {
+    const grid = productGridRef.current;
+    if (!grid) return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    grid.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "center" });
   }
 
   function changeQuantity(productId: ProductId, delta: number) {
@@ -233,11 +274,29 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
         <div className="orderIntro">
           <div>
             <p className="sectionLabel">Build your order</p>
-            <h2 className="majorHeading" id="order-title">Chicken.<br />Beef.<br /><em>Your call.</em></h2>
+            <h2 className="majorHeading" id="order-title">Pick your<br /><em>meals.</em></h2>
           </div>
           <div className="orderIntroCopy">
-            <p>Choose Little or Big, mix and match across proteins, and get free delivery in Ithaca.</p>
-            <p className="orderRule"><strong>3-box minimum.</strong> Mix and match however you want.</p>
+            <p>Minimum 3 · Better pricing at 5 · Best pricing at 10</p>
+          </div>
+        </div>
+
+        <div className="orderFunnel" aria-label="Pricing milestones">
+          <div className="orderFunnelHeader">
+            <strong>{funnelCopy.current}</strong>
+            {funnelCopy.prompt && <span>{funnelCopy.prompt} {funnelCopy.target}</span>}
+          </div>
+          <div className="orderFunnelMilestones">
+            {pricingMilestones.map((milestone) => {
+              const complete = quote.totalBoxes >= milestone.value;
+              const next = !complete && pricingMilestones.find((item) => quote.totalBoxes < item.value)?.value === milestone.value;
+              return (
+                <div className={`funnelMilestone${complete ? " isComplete" : ""}${next ? " isNext" : ""}`} key={milestone.value}>
+                  <strong>{milestone.value}</strong>
+                  <span>{milestone.label}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -246,24 +305,27 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             className="mobileCartControl"
             type="button"
             onClick={scrollToSummary}
-            aria-label={`Review your order: ${quote.totalBoxes} ${quote.totalBoxes === 1 ? "box" : "boxes"}, ${formatMoney(quote.subtotalCents)}`}
+            aria-label={`Review your order: ${quote.totalBoxes} ${quote.totalBoxes === 1 ? "meal" : "meals"}, ${formatMoney(quote.subtotalCents)}`}
           >
             <span className="mobileCartIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M4 5h2l1.4 9.1a2 2 0 0 0 2 1.7h7.8a2 2 0 0 0 1.9-1.4L21 8H7" /><circle cx="10" cy="19" r="1" /><circle cx="18" cy="19" r="1" /></svg>
             </span>
-            <span className="mobileCartDetails"><strong>{quote.totalBoxes} {quote.totalBoxes === 1 ? "box" : "boxes"}</strong><small>{formatMoney(quote.subtotalCents)} subtotal</small></span>
+            <span className="mobileCartDetails"><strong>{quote.totalBoxes} {quote.totalBoxes === 1 ? "meal" : "meals"} · {formatMoney(quote.subtotalCents)}</strong><small>{mobileCartHint}</small></span>
             <span className="mobileCartArrow" aria-hidden="true">↓</span>
           </button>
         )}
 
         <div className="orderLayout">
           <div className="productColumn">
-            <div className="productGrid" aria-label="Available meals">
+              <div className="productGrid" aria-label="Available meals" ref={productGridRef}>
               {products.map((product) => {
                 const quantity = quantities[product.id];
                 const disabled = !product.purchasable;
                 const line = quote.lines.find((item) => item.productId === product.id);
-                const priceRange = priceRangeFor(product);
+                const basePrice = unitAmountAtTier(product, "3-4") ?? 0;
+                const currentPrice = line?.unitAmountCents ?? basePrice;
+                const fiveMealPrice = unitAmountAtTier(product, "5-9") ?? basePrice;
+                const tenMealPrice = unitAmountAtTier(product, "10+") ?? basePrice;
                 return (
                   <Fragment key={product.id}>
                     <article className={`productCard productCard${product.protein} productCard-${product.id}${disabled ? " isComingSoon" : ""}`}>
@@ -277,15 +339,14 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                             <p className="productProtein">{product.protein}</p>
                             <h3>{product.name}</h3>
                           </div>
-                          {priceRange ? (
-                            <div className="productPriceRange" aria-label={`${product.name} price range ${formatCompactMoney(priceRange.highestCents)} to ${formatCompactMoney(priceRange.lowestCents)} per meal`}>
-                              <strong>{formatCompactMoney(priceRange.highestCents)} → {formatCompactMoney(priceRange.lowestCents)}</strong>
-                              <span>/ meal</span>
-                              <small>depending on total cart size</small>
+                          {!disabled ? (
+                            <div className="productPriceRange" aria-label={`${product.name}: ${formatCompactMoney(basePrice)} per meal at 3 to 4 meals, ${formatCompactMoney(fiveMealPrice)} at 5 to 9, ${formatCompactMoney(tenMealPrice)} at 10 or more`}>
+                              <strong>{formatCompactMoney(currentPrice)}</strong>
+                              <span>per meal</span>
+                              <small>5+ {formatCompactMoney(fiveMealPrice)} · 10+ {formatCompactMoney(tenMealPrice)}</small>
                             </div>
                           ) : <strong>—</strong>}
                         </div>
-                        <p className="productDescription">{product.description}</p>
                         <MacroSnapshot product={product} />
                         {disabled ? (
                           <p className="productAvailability">Not available for purchase yet.</p>
@@ -296,22 +357,17 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                             <button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={!orderingAvailable || quantity >= 99}>+</button>
                           </div>
                         )}
-                        {line && line.pricingTier !== "3-4" && <p className="discountNote">{formatPricingTier(line.pricingTier)} cart tier pricing applied</p>}
                       </div>
                     </article>
                     {lastInteractedProductId === product.id && quote.totalBoxes > 0 && (
                       <div className="mobileCartProgress" role="status" aria-live="polite">
-                        {quote.totalBoxes >= MINIMUM_BOXES ? (
-                          <strong>3-box minimum met ✓</strong>
-                        ) : (
-                          <strong>Add {MINIMUM_BOXES - quote.totalBoxes} more {MINIMUM_BOXES - quote.totalBoxes === 1 ? "box" : "boxes"} to reach the 3-box minimum.</strong>
-                        )}
+                        <strong>{funnelCopy.current}</strong>
+                        {funnelCopy.prompt && <span>{funnelCopy.prompt} {funnelCopy.target}</span>}
                         {quote.totalBoxes >= MINIMUM_BOXES && orderingAvailable && !capacityBlocked && capacityShortfall === 0 && (
                           <button type="button" onClick={scrollToSummary}>Review &amp; checkout <span aria-hidden="true">→</span></button>
                         )}
-                        {quote.totalBoxes >= MINIMUM_BOXES && (!orderingAvailable || capacityBlocked || capacityShortfall > 0)
-                          ? <span>Checkout is temporarily unavailable. Please try again later.</span>
-                          : <span>Or keep scrolling to add more.</span>}
+                        {quote.totalBoxes >= MINIMUM_BOXES && (!orderingAvailable || capacityBlocked || capacityShortfall > 0) && <span>Checkout is temporarily unavailable. Please try again later.</span>}
+                        {quote.totalBoxes > 0 && quote.totalBoxes < MINIMUM_BOXES && <button type="button" onClick={scrollToProducts}>Keep building <span aria-hidden="true">↓</span></button>}
                       </div>
                     )}
                   </Fragment>
@@ -321,21 +377,16 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
 
             <section className="pricingExplainer" aria-labelledby="pricing-explainer-title">
               <p className="sectionLabel">Cart-wide pricing</p>
-              <h3 id="pricing-explainer-title">Order more. Pay less per meal.</h3>
-              <p className="pricingIntro">Mix and match any meals — your total cart size determines the price of every meal.</p>
-              <ol className="pricingSteps" aria-label="Cart pricing tiers">
-                {CART_PRICING_TIER_ORDER.map((tier) => (
-                  <li key={tier}>
-                    <strong>{formatPricingTier(tier)} meals</strong>
-                    <span>{tier === "10+" ? "best standard price" : "cart tier"}</span>
-                  </li>
-                ))}
+              <h3 id="pricing-explainer-title">More meals = lower prices.</h3>
+              <p className="pricingIntro">One cart. One tier. Mix and match freely.</p>
+              <ol className="pricingSteps" aria-label="Cart pricing milestones">
+                <li><strong>3 meals</strong><span>start here</span></li>
+                <li><strong>5 meals</strong><span>lower prices</span></li>
+                <li><strong>10 meals</strong><span>best standard prices</span></li>
+                <li><strong>20+</strong><span><a href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">group order?</a></span></li>
               </ol>
-              <p className="pricingNote">Mix proteins and sizes freely. Every meal gets its corresponding price from the tier your full cart reaches.</p>
-              <p className="pricingExample"><strong>Example:</strong> 3 Big Chicken + 2 Big Beef = 5 meals total, so both products receive 5–9 pricing.</p>
-              <p className="customPricingNote">Ordering 20+ meals? <a href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">Reach out</a> for custom pricing.</p>
               <details className="pricingDisclosure">
-                <summary>See all tier prices</summary>
+                <summary>See exact prices</summary>
                 <div className="pricingTableWrap">
                   <table className="pricingTable">
                     <caption className="srOnly">Exact per-meal pricing by total cart size</caption>
@@ -365,9 +416,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             <div className="summaryHeader">
               <div>
                 <p className="sectionLabel">Your order</p>
-                <h3 id="summary-title">Ready when you are.</h3>
+                <h3 id="summary-title">Review + checkout</h3>
               </div>
-              <span className="boxCount">{quote.totalBoxes} {quote.totalBoxes === 1 ? "box" : "boxes"}</span>
+              <span className="boxCount">{quote.totalBoxes} {quote.totalBoxes === 1 ? "meal" : "meals"}</span>
             </div>
             <Countdown initialCutoffIso={initialCutoffIso} />
             {quote.lines.length > 0 ? (
@@ -376,7 +427,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                   <div className="summaryLine" key={line.productId}>
                     <div className="summaryLineInfo">
                       <strong>{line.name}</strong>
-                      <span>{line.quantity} × {formatCompactMoney(line.unitAmountCents)}{quote.pricingTier ? ` · ${formatPricingTier(quote.pricingTier)} tier` : ""}</span>
+                      <span>{line.quantity} × {formatCompactMoney(line.unitAmountCents)}</span>
                     </div>
                     <div className="summaryLineActions">
                       <div className="summaryQuantityControl" aria-label={`Quantity for ${line.name}`}>
@@ -392,33 +443,16 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             ) : (
               <p className="summaryEmpty">Your mix of Chicken and Beef will show up here.</p>
             )}
-            <div className="nextTierMessage" role="status" aria-live="polite">
-              {quote.pricingTier ? (
-                <p className="nextTierCurrent">Current pricing: <strong>{formatPricingTier(quote.pricingTier)} meals</strong></p>
-              ) : (
-                <p className="nextTierCurrent">Pricing starts at <strong>3–4 meals</strong>.</p>
-              )}
-              {nextTier ? (
-                <>
-                  <p className="nextTierPrompt">Add <strong>{nextTier.mealsUntil} more {nextTier.mealsUntil === 1 ? "meal" : "meals"}</strong> to unlock <strong>{formatPricingTier(nextTier.tier)} pricing{nextTierProducts.length < products.length ? ` on ${nextTierProductNames}` : ""}:</strong></p>
-                  {nextTierProducts.length > 0 && <div className="nextTierPrices">
-                    {nextTierProducts.map((product) => (
-                      <span key={product.id}>
-                        <small>{product.name}</small>
-                        <b>{formatCompactMoney(CART_PRICING_TIERS[nextTier.tier].prices[product.id])}</b>
-                      </span>
-                    ))}
-                  </div>}
-                </>
-              ) : (
-                <p className="nextTierBest">Best standard pricing unlocked.</p>
-              )}
-            </div>
-            {quote.totalBoxes >= 20 && <p className="customPricingNote summaryCustomPricing">Ordering 20+ meals? <a href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">Reach out</a> for custom pricing.</p>}
-            <div className={`minimumStatus${quote.totalBoxes >= 3 ? " isComplete" : ""}`} role="status" aria-live="polite">
-              {quote.totalBoxes >= 3
-                ? "3-box minimum met."
-                : `Add ${3 - quote.totalBoxes} more ${3 - quote.totalBoxes === 1 ? "box" : "boxes"} to reach the 3-box minimum.`}
+            <div className="cartUpsell" role="status" aria-live="polite">
+              <strong>{funnelCopy.current}</strong>
+              {funnelCopy.prompt && <p>{funnelCopy.prompt} {funnelCopy.target}</p>}
+              {nextTier && quote.totalBoxes >= MINIMUM_BOXES && nextTierProducts.length > 0 && <div className="cartUpsellPrices">
+                {nextTierProducts.map((product) => (
+                  <span key={product.id}><small>{product.name}</small><b>{formatCompactMoney(CART_PRICING_TIERS[nextTier.tier].prices[product.id])}</b></span>
+                ))}
+              </div>}
+              {quote.totalBoxes < MINIMUM_BOXES && <button type="button" className="cartBuildButton" onClick={scrollToProducts}>Choose meals <span aria-hidden="true">↓</span></button>}
+              {quote.totalBoxes >= 20 && <a className="cartGroupLink" href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">Contact us for group pricing →</a>}
             </div>
             <div className="summaryTotal">
               <div className="summaryTotalRow"><span>Meal subtotal</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
@@ -433,14 +467,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               onAddressChange={handleDeliveryAddressChange}
               onCheck={() => void checkDeliveryAddress()}
             />
-            <p className="deliveryNote"><span aria-hidden="true">✦</span> Free delivery in Ithaca · no delivery fee.</p>
+            <p className="deliveryNote"><span aria-hidden="true">✦</span> FREE DELIVERY IN ITHACA</p>
             <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || !capacity || capacityBlocked || capacityShortfall > 0 || !deliveryEligible}>
               {isSubmitting ? "Opening secure checkout…" : !capacity ? capacityError ? "Retry checkout availability" : "Checking checkout availability…" : capacityShortfall > 0 ? `Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue` : capacityBlocked ? "Adjust cart to continue" : !ORDERS_OPEN || capacity.ordersOpen === false ? "Checkout temporarily unavailable" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>
             </button>
-            <p className={`checkoutStatus${statusMessage ? " hasMessage" : ""}`} role="alert" aria-live="polite">
-              {statusMessage || (!capacity ? capacityError ? "Refresh checkout availability before continuing." : "Checking checkout availability…" : capacityShortfall > 0 ? `This cart exceeds the available checkout capacity. Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue.` : capacityBlocked ? "Checkout capacity is temporarily unavailable. Please adjust your cart and try again." : !ORDERS_OPEN || capacity.ordersOpen === false ? "Checkout is temporarily unavailable. Please try again later." : !deliveryEligible ? "Check your Ithaca delivery address to continue." : "Secure checkout collects your payment and delivery details.")}
-            </p>
+            {statusMessage && <p className="checkoutStatus hasMessage" role="alert" aria-live="polite">{statusMessage}</p>}
           </aside>
         </div>
       </div>

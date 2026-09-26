@@ -2,11 +2,12 @@
 
 ## Current production state — 2026-09-26
 
-- Production Worker `threebyrd-website` is live at `https://api.threebyrd.com` with `ORDERS_OPEN=true`, `STRIPE_MODE=live`, and uncapped capacity (`ORDER_CAPACITY_CONFIG.limit=null`). Existing paid orders and D1 data remain intact.
-- GitHub Pages production is live at `https://threebyrd.com`; the schedule hotfix is deployed from commit `9870d6c` and Worker version `73291cf4-db43-41e6-bb65-e9a5ba8093db`.
+- Production Worker `threebyrd-website` is live at `https://api.threebyrd.com` with `ORDERS_OPEN=true`, `STRIPE_MODE=live`, and uncapped capacity (`ORDER_CAPACITY_CONFIG.limit=null`). The structured-address update is deployed from commit `5f0f92e` as Worker version `8b477d36-a3c7-4748-9c4c-17cd53ed1c5a`. Existing paid orders and D1 data remain intact.
+- GitHub Pages production is live at `https://threebyrd.com` from commit `5f0f92e`; Pages workflow run `36263335605` completed successfully.
 - The current special window is Saturday, September 26 at 3:00 PM ET → Sunday, September 27. After it passes, the recurring schedule is Friday at 3:00 PM ET → Saturday, with no weekly cutoff closure.
 - The current customer update adds structured Street Address, City, State, and ZIP Code fields with native autofill attributes. The Worker reconstructs and validates the structured address server-side; the canonical Google-validated address remains the value propagated to Stripe metadata, D1, webhook fulfillment, and Sheets.
 - The customer-facing availability-status card was removed. Capacity remains dormant infrastructure and is used only for the runtime emergency open/closed gate while production is uncapped.
+- Read-only post-deploy verification confirms 5 confirmed production orders, 29 confirmed meals, and 0 active reservations; no checkout session or payment was created by this update.
 - This status section supersedes the historical staging-only deployment notes below; those notes are retained as an audit trail.
 
 ## Current phase

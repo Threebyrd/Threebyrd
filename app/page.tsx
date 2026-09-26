@@ -41,12 +41,14 @@ const pressLinks = [
   {
     source: "WBNG",
     title: "Cornell students to distribute 200 free meals Saturday",
+    summary: "Coverage of a planned 200-meal Ithaca giveaway and an earlier 110-meal event.",
     date: "Apr. 30, 2026",
     href: "https://www.wbng.com/2026/04/30/cornell-students-distribute-200-free-meals-saturday/",
   },
   {
     source: "14850",
     title: "Cornell student meal-prep startup offering free meals",
+    summary: "Local coverage of the student-founded meal-prep project and its community giveaway.",
     date: "May 2026",
     href: "https://www.14850.com/050145866-cornell-sbx-chicken-giveaway/",
   },
@@ -121,12 +123,15 @@ export default function Home() {
           <div className="sectionShell">
             <div className="givingTop">
               <div><p className="sectionLabel sectionLabelLight">Giving back</p><h2 className="majorHeading" id="giving-title">Meals made for Ithaca.</h2></div>
-              <p>ThreeByrd gives back with Cornell community partners.</p>
+              <div className="givingStory">
+                <p>ThreeByrd is an Ithaca-born meal-prep project built around feeding our community.</p>
+                <p>With support from Cornell student organizations, we have held two major free-meal giveaways with Friendship Donations Network and Ithaca Catholic Worker House—one serving 110 meals and another planned for 200 meals.</p>
+              </div>
             </div>
             <div className="impactRow">{impactStats.map((stat) => <div className="impactStat" key={stat.label}>{stat.countUp ? <CountUpTotal /> : <strong>{stat.value}</strong>}<span>{stat.label}</span></div>)}</div>
             <div className="pressBlock" aria-labelledby="press-title">
               <div className="pressHeading"><span>Local proof</span><h3 id="press-title">In the news</h3></div>
-              <div className="pressList">{pressLinks.map((press) => <a href={press.href} key={press.href} target="_blank" rel="noreferrer"><span>{press.source}</span><div><strong>{press.title}</strong></div><small>{press.date} <b aria-hidden="true">↗</b></small></a>)}</div>
+              <div className="pressList">{pressLinks.map((press) => <a href={press.href} key={press.href} target="_blank" rel="noreferrer"><span>{press.source}</span><div><strong>{press.title}</strong><p>{press.summary}</p></div><small>{press.date} <b aria-hidden="true">↗</b></small></a>)}</div>
             </div>
           </div>
         </section>

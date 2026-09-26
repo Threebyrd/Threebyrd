@@ -3,10 +3,11 @@
 :root {
   --tb-red: #5A1115;
   --tb-red-action: #5A1115;
-  --tb-gold: #966307;
-  --tb-gold-dark: #704805;
-  --tb-gold-soft: #D7B56D;
-  --tb-gold-pale: #F3E7C9;
+  /* Canonical opaque premium gold; all core accents use this token. */
+  --tb-gold: #D6A21E;
+  --tb-gold-dark: #8A5700;
+  --tb-gold-soft: #E4C15A;
+  --tb-gold-pale: #F5E9C7;
   --tb-paper: #FBF7EF;
   --tb-surface: #FFFFFF;
   --tb-ink: #211B18;
@@ -321,7 +322,7 @@ h1, h2, h3 { text-wrap: balance; }
 .productPriceRange { align-items: flex-end; color: var(--tb-red); display: flex; flex-direction: column; flex-shrink: 0; line-height: 1; max-width: 12rem; text-align: right; }
 .productPriceRange strong { font-family: var(--font-display); font-size: clamp(1.25rem, 2.5vw, 2rem); font-weight: 400; white-space: nowrap; }
 .productPriceRange span { font-size: 0.58rem; font-weight: 900; margin-top: 0.22rem; text-transform: uppercase; }
-.productPriceRange small { color: var(--tb-muted); font-family: var(--font-body); font-size: 0.52rem; font-weight: 750; line-height: 1.15; margin-top: 0.25rem; max-width: 11ch; text-transform: none; }
+.productPriceRange small { color: var(--tb-muted); font-family: var(--font-body); font-size: 0.52rem; font-weight: 750; line-height: 1.15; margin-top: 0.25rem; max-width: 18ch; text-transform: none; }
 .quantityControl { align-items: center; display: grid; gap: 0.8rem; grid-template-columns: 48px 1fr 48px; margin-top: auto; padding-top: 1.2rem; }
 .quantityControl button { background: var(--tb-red); border: var(--border-ui); border-radius: 50%; color: var(--tb-paper); cursor: pointer; font-size: 1.7rem; height: 48px; line-height: 1; width: 48px; }
 .quantityControl button:hover:not(:disabled) { background: var(--tb-gold); color: var(--tb-ink); }
@@ -404,8 +405,17 @@ h1, h2, h3 { text-wrap: balance; }
 .closedOrderNotice strong { font-size: 0.8rem; text-transform: uppercase; }
 .closedOrderNotice span { font-size: 0.74rem; margin-top: 0.25rem; }
 
-.cardNutrition { align-items: center; background: var(--tb-ink); border: var(--border-ui); color: var(--tb-paper); display: flex; font-size: 0.66rem; gap: 0.25rem; margin-top: 0.9rem; padding: 0.52rem 0.6rem; }
-.cardNutrition strong { color: var(--tb-gold-soft); font-weight: 900; }
+.cardNutrition { background: var(--tb-ink); border: var(--border-ui); color: var(--tb-paper); margin-top: 0.9rem; }
+.cardNutrition h4 { border-bottom: 1px solid rgba(251, 247, 239, 0.45); color: var(--tb-gold-soft); font-size: 0.64rem; font-weight: 900; padding: 0.5rem 0.58rem; text-transform: uppercase; }
+.macroGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.macroGrid div { min-height: 64px; padding: 0.56rem; }
+.macroGrid div:nth-child(even) { border-left: 1px solid rgba(251, 247, 239, 0.42); }
+.macroGrid div:nth-child(n + 3) { border-top: 1px solid rgba(251, 247, 239, 0.42); }
+.macroGrid span, .macroGrid strong { display: block; }
+.macroGrid span { color: rgba(251, 247, 239, 0.68); font-size: 0.57rem; font-weight: 850; text-transform: uppercase; }
+.macroGrid strong { color: var(--tb-paper); font-family: var(--font-display); font-size: 1.15rem; font-weight: 400; line-height: 1; margin-top: 0.25rem; }
+.macroGrid .macroProtein { background: var(--tb-gold); }
+.macroGrid .macroProtein span, .macroGrid .macroProtein strong { color: var(--tb-ink); }
 .cardUnavailable { color: var(--tb-muted); font-size: 0.68rem; font-weight: 900; margin: auto 0 0; padding-top: 1rem; text-transform: uppercase; }
 
 .givingSection { background: var(--tb-ink); border-bottom: var(--border-ui); color: var(--tb-paper); padding-block: 104px 112px; scroll-margin-top: 84px; }
@@ -414,7 +424,9 @@ h1, h2, h3 { text-wrap: balance; }
 .givingTop h2 { min-width: min(100%, 380px); }
 .teamHeading h2 { min-width: min(100%, 440px); }
 .joinContent h2 { min-width: min(100%, 420px); }
-.givingTop > p { color: rgba(251, 247, 239, 0.8); font-size: 1rem; margin-bottom: 0.35rem; }
+.givingTop > p, .givingStory { color: rgba(251, 247, 239, 0.8); font-size: 1rem; margin-bottom: 0.35rem; }
+.givingStory { display: grid; gap: 0.8rem; }
+.givingStory p { margin: 0; }
 .impactRow { background: var(--tb-red); border: var(--border-major); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 3.5rem; }
 .impactStat { padding: 1.7rem 1.5rem; }
 .impactStat + .impactStat { border-left: 3px solid var(--tb-gold-soft); }
@@ -427,6 +439,7 @@ h1, h2, h3 { text-wrap: balance; }
 .pressHeading h3 { color: var(--tb-paper); font-family: var(--font-display); font-size: 2rem; font-weight: 400; line-height: 1; margin: 0.6rem 0 0; text-transform: uppercase; }
 .pressList { border-top: 2px solid rgba(251, 247, 239, 0.5); }
 .pressList a { align-items: center; border-bottom: 2px solid rgba(251, 247, 239, 0.5); display: grid; gap: 1.5rem; grid-template-columns: 70px minmax(0, 1fr) 120px; min-height: 114px; padding: 1rem 0; transition: color 180ms ease, padding 180ms ease; }
+.pressList a > div { min-width: 0; }
 .pressList a:hover { color: var(--tb-gold-soft); padding-left: 0.55rem; }
 .pressList > a > span { color: var(--tb-gold-soft); font-weight: 900; }
 .pressList strong { display: block; line-height: 1.3; }
@@ -597,7 +610,7 @@ h1, h2, h3 { text-wrap: balance; }
   .quantityControl output { font-size: 2.6rem; }
   .productPriceRange { max-width: 9.5rem; }
   .productPriceRange strong { font-size: 1.2rem; }
-  .productPriceRange small { font-size: 0.48rem; }
+  .productPriceRange small { font-size: 0.48rem; max-width: 18ch; }
   .orderSummary { padding: 1rem; }
   .summaryHeader h3 { font-size: 1.8rem; }
   .summarySchedule strong { font-size: 0.68rem; }

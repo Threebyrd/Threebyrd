@@ -50,6 +50,10 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.equal((html.match(/class="joinSection"/g) ?? []).length, 1);
   assert.equal((html.match(/<p class="sectionLabel sectionLabelLight">Stay in the loop<\/p>/g) ?? []).length, 1);
   assert.equal((html.match(/class="cardNutrition"/g) ?? []).length, 4);
+  assert.equal((html.match(/class="macroGrid"/g) ?? []).length, 4);
+  for (const macro of ["Calories", "Protein", "Carbs", "Fat"]) {
+    assert.match(html, new RegExp(`>${macro}<`));
+  }
   assert.match(html, /970/);
   assert.match(html, /70g/);
   assert.match(html, /660/);
@@ -58,6 +62,11 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /785/);
   assert.match(html, /46g/);
   assert.match(html, /More meals = lower prices/);
+  assert.match(html, /aria-label="Big Chicken: \$8\.50 to \$10 per meal based on total order size"/);
+  assert.match(html, /aria-label="Big Beef: \$9\.50 to \$11 per meal based on total order size"/);
+  assert.match(html, /aria-label="Little Chicken: \$7 to \$8 per meal based on total order size"/);
+  assert.match(html, /aria-label="Little Beef: \$8 to \$9 per meal based on total order size"/);
+  assert.equal((html.match(/<small>based on total order size<\/small>/g) ?? []).length, 4);
   assert.match(html, /One cart\. One tier\. Mix and match freely\./);
   assert.match(html, /See exact prices/);
   assert.match(html, /3 meals/);
@@ -93,6 +102,13 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /For inquiries, contact <a href="mailto:thor@threebyrd\.com">thor@threebyrd\.com<\/a>/);
   assert.doesNotMatch(html, /Our story|From SBX Chicken|Started with meal prep\.|Built around four choices\.|Delivered for busy days\./i);
   assert.match(html, /Giving back/);
+  assert.match(html, /Ithaca-born/);
+  assert.match(html, /Cornell student organizations/);
+  assert.match(html, /Friendship Donations Network/);
+  assert.match(html, /Ithaca Catholic Worker House/);
+  assert.match(html, /110 meals/);
+  assert.match(html, /200 meals/);
+  assert.match(html, /Coverage of a planned 200-meal Ithaca giveaway/);
   assert.match(html, /Meet the team/);
   assert.doesNotMatch(html, /How ordering works|Pick your protein|Pick your quantity/);
   assert.doesNotMatch(html, /processSection|processCard|processImage/);

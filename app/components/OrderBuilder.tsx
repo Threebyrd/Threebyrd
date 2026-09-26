@@ -17,6 +17,7 @@ import {
   getNextPricingTier,
   MINIMUM_BOXES,
   ORDERS_OPEN,
+  priceRangeFor,
   products,
   quoteOrder,
   unitAmountAtTier,
@@ -321,11 +322,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               {products.map((product) => {
                 const quantity = quantities[product.id];
                 const disabled = !product.purchasable;
-                const line = quote.lines.find((item) => item.productId === product.id);
-                const basePrice = unitAmountAtTier(product, "3-4") ?? 0;
-                const currentPrice = line?.unitAmountCents ?? basePrice;
-                const fiveMealPrice = unitAmountAtTier(product, "5-9") ?? basePrice;
-                const tenMealPrice = unitAmountAtTier(product, "10+") ?? basePrice;
+                const priceRange = priceRangeFor(product);
                 return (
                   <Fragment key={product.id}>
                     <article className={`productCard productCard${product.protein} productCard-${product.id}${disabled ? " isComingSoon" : ""}`}>
@@ -339,11 +336,11 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                             <p className="productProtein">{product.protein}</p>
                             <h3>{product.name}</h3>
                           </div>
-                          {!disabled ? (
-                            <div className="productPriceRange" aria-label={`${product.name}: ${formatCompactMoney(basePrice)} per meal at 3 to 4 meals, ${formatCompactMoney(fiveMealPrice)} at 5 to 9, ${formatCompactMoney(tenMealPrice)} at 10 or more`}>
-                              <strong>{formatCompactMoney(currentPrice)}</strong>
-                              <span>per meal</span>
-                              <small>5+ {formatCompactMoney(fiveMealPrice)} · 10+ {formatCompactMoney(tenMealPrice)}</small>
+                          {priceRange ? (
+                            <div className="productPriceRange" aria-label={`${product.name}: ${formatCompactMoney(priceRange.lowestCents)} to ${formatCompactMoney(priceRange.highestCents)} per meal based on total order size`}>
+                              <strong>{formatCompactMoney(priceRange.lowestCents)} → {formatCompactMoney(priceRange.highestCents)}</strong>
+                              <span>/ meal</span>
+                              <small>based on total order size</small>
                             </div>
                           ) : <strong>—</strong>}
                         </div>

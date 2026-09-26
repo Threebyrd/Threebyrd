@@ -14,7 +14,7 @@ Important implementation files are `app/order-config.ts`, `app/components/OrderB
 
 ## Weekly capacity and reservations
 
-Capacity counts total meals in completed customer orders. The public `GET /api/capacity` endpoint returns the display data needed by the frontend: whether a cap is enabled, the meal limit, `confirmedMeals`, active `reservedMeals`, remaining meals, and the existing `ordersOpen` state. It does not calculate or accept payment totals.
+Capacity counts total meals in completed customer orders when a future cap is enabled. Production is currently uncapped; the public `GET /api/capacity` endpoint is used only for the runtime emergency open/closed gate and no remaining-capacity indicator is rendered. It does not calculate or accept payment totals.
 
 For a capped window, checkout performs this sequence:
 
@@ -68,17 +68,17 @@ After a cutoff passes, the UI never shows a negative timer and the server immedi
 
 ## Delivery eligibility
 
-The checkout flow asks for the `Ithaca delivery address` where this week's meals should actually be delivered. The Worker validates and normalizes the address before creating Checkout: it geocodes the address with Google Maps Platform, calculates a traffic-unaware driving route from `700 W Buffalo St, Ithaca, NY 14850`, and accepts only routes of 20 minutes or less. Traffic-aware routing is intentionally not used so temporary congestion cannot change eligibility. A missing, ambiguous, outside-zone, or provider-failure response never creates a Stripe Checkout Session.
+The checkout flow asks for separate Street Address, City, State, and ZIP Code fields for the `Ithaca delivery address` where this week's meals should actually be delivered. The Worker reconstructs, validates, and normalizes those fields before creating Checkout: it geocodes the address with Google Maps Platform, calculates a traffic-unaware driving route from `700 W Buffalo St, Ithaca, NY 14850`, and accepts only routes of 20 minutes or less. Traffic-aware routing is intentionally not used so temporary congestion cannot change eligibility. A missing, ambiguous, outside-zone, or provider-failure response never creates a Stripe Checkout Session.
 
-The browser uses native address autofill semantics and a dedicated `/api/delivery-eligibility` check for responsive feedback. The checkout endpoint repeats the same server-side check and ignores any client-supplied eligibility flag. `GOOGLE_MAPS_SERVER_API_KEY` is a Worker secret; it is never included in frontend code or returned in errors. The key needs only the Google Geocoding API and Routes API enabled. Final staging/live route validation remains blocked until that secret is configured.
+The browser uses native address autofill semantics (`address-line1`, `address-level2`, `address-level1`, and `postal-code`) and a dedicated `/api/delivery-eligibility` check for responsive feedback. Editing any field invalidates the previous check. The checkout endpoint repeats the same server-side reconstruction and eligibility check and ignores any client-supplied eligibility flag. `GOOGLE_MAPS_SERVER_API_KEY` is a Worker secret; it is never included in frontend code or returned in errors. The key needs only the Google Geocoding API and Routes API enabled.
 
 ## Stripe architecture
 
 The integration follows the Stripe-hosted Checkout Sessions pattern:
 
-1. The browser sends product IDs, quantities, and the address the customer wants to use for delivery to `POST https://api.threebyrd.com/api/checkout` in production; local development uses the local API unless `NEXT_PUBLIC_CHECKOUT_API_ORIGIN` is set.
+1. The browser sends product IDs, quantities, and structured Street Address/City/State/ZIP fields to `POST https://api.threebyrd.com/api/checkout` in production; local development uses the local API unless `NEXT_PUBLIC_CHECKOUT_API_ORIGIN` is set.
 2. The server validates the catalog, cart-wide pricing tier, 3-box minimum, current cutoff, and 20-minute delivery route.
-3. The server recalculates the cart-wide tier and creates a one-time Checkout Session with dynamic line `price_data`, collects email, a US delivery address, and phone number, and redirects the customer to Stripe.
+3. The server reconstructs and revalidates the canonical delivery address, recalculates the cart-wide tier, and creates a one-time Checkout Session with dynamic line `price_data`, collects customer email and phone number, and redirects the customer to Stripe. Stripe-hosted address fields are not used as the delivery source of truth.
 4. Stripe redirects to `/success` or `/order?checkout=canceled`.
 5. `POST /api/webhooks/stripe` verifies the Stripe signature, handles completed and asynchronous successful Checkout events, reconciles the verified session against the canonical quote, and records the confirmed order in D1.
 6. The D1 unique constraint on `stripe_session_id` makes repeated webhook delivery idempotent. The success page never fulfills an order.

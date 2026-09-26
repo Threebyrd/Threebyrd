@@ -6,7 +6,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import Countdown from "./Countdown";
 import DeliveryAddressForm, { type DeliveryCheckState } from "./DeliveryAddressForm";
 import MacroSnapshot from "./MacroSnapshot";
-import { formatOrderCapacityMessage, isOrderCapacitySoldOut, type OrderCapacityAvailability } from "../capacity";
+import { isOrderCapacitySoldOut, type OrderCapacityAvailability } from "../capacity";
+import { EMPTY_DELIVERY_ADDRESS, type DeliveryAddressField, type DeliveryAddressFields } from "../delivery-address";
 import {
   CART_PRICING_TIERS,
   CART_PRICING_TIER_ORDER,
@@ -47,13 +48,13 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const [capacityError, setCapacityError] = useState(false);
   const [capacityOverrideSoldOut, setCapacityOverrideSoldOut] = useState(false);
   const [lastInteractedProductId, setLastInteractedProductId] = useState<ProductId | null>(null);
-  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddressFields>(EMPTY_DELIVERY_ADDRESS);
   const [deliveryCheckState, setDeliveryCheckState] = useState<DeliveryCheckState>("idle");
   const [deliveryMessage, setDeliveryMessage] = useState("Check your address before checkout.");
   const [deliveryDriveMinutes, setDeliveryDriveMinutes] = useState<number | null>(null);
-  const [checkedDeliveryAddress, setCheckedDeliveryAddress] = useState("");
+  const [checkedDeliveryAddressKey, setCheckedDeliveryAddressKey] = useState<string | null>(null);
+  const deliveryCheckRequestRef = useRef(0);
   const orderSummaryRef = useRef<HTMLElement>(null);
-  const [now, setNow] = useState(() => new Date(initialCutoffIso).getTime());
   const quote = useMemo(
     () => quoteOrder(Object.entries(quantities).map(([productId, quantity]) => ({ productId, quantity }))),
     [quantities],
@@ -66,12 +67,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     ))
     : [];
   const nextTierProductNames = nextTierProducts.map((product) => product.name).join(" + ");
-  const orderWindowOpen = new Date(initialCutoffIso).getTime() >= now;
-  const orderingAvailable = ORDERS_OPEN && orderWindowOpen && capacity?.ordersOpen === true;
+  const deliveryAddressKey = JSON.stringify(deliveryAddress);
+  const orderingAvailable = ORDERS_OPEN && capacity?.ordersOpen === true;
   const capacitySoldOut = capacityOverrideSoldOut || isOrderCapacitySoldOut(capacity);
   const capacityRemaining = capacity?.enabled && capacity.remaining !== null ? capacity.remaining : null;
   const capacityShortfall = capacityRemaining === null ? 0 : Math.max(0, quote.totalBoxes - capacityRemaining);
-  const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddress.trim() === checkedDeliveryAddress;
+  const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddressKey === checkedDeliveryAddressKey;
 
   const refreshCapacity = useCallback(async (): Promise<OrderCapacityAvailability | null> => {
     try {
@@ -90,13 +91,6 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       setCapacityError(true);
       return null;
     }
-  }, []);
-
-  useEffect(() => {
-    const update = () => setNow(Date.now());
-    update();
-    const timer = window.setInterval(update, 1000);
-    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -124,16 +118,19 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     setStatusMessage("");
   }
 
-  function handleDeliveryAddressChange(value: string) {
-    setDeliveryAddress(value);
-    if (value.trim() !== checkedDeliveryAddress) {
-      setDeliveryCheckState("idle");
-      setDeliveryDriveMinutes(null);
-      setDeliveryMessage("Check your address before checkout.");
-    }
+  function handleDeliveryAddressChange(field: DeliveryAddressField, value: string) {
+    deliveryCheckRequestRef.current += 1;
+    setDeliveryAddress((current) => ({ ...current, [field]: value }));
+    setCheckedDeliveryAddressKey(null);
+    setDeliveryCheckState("idle");
+    setDeliveryDriveMinutes(null);
+    setDeliveryMessage("Check your address before checkout.");
   }
 
   async function checkDeliveryAddress() {
+    const requestId = ++deliveryCheckRequestRef.current;
+    const requestAddress = { ...deliveryAddress };
+    const requestAddressKey = JSON.stringify(requestAddress);
     setDeliveryCheckState("checking");
     setDeliveryMessage("");
     setDeliveryDriveMinutes(null);
@@ -142,21 +139,22 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       const response = await fetch(deliveryEligibilityApiUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address: deliveryAddress }),
+        body: JSON.stringify({ address: requestAddress }),
       });
       const body = await response.json().catch(() => ({})) as { normalizedAddress?: unknown; driveMinutes?: unknown; error?: unknown };
+      if (requestId !== deliveryCheckRequestRef.current) return;
       if (!response.ok || typeof body.normalizedAddress !== "string") {
         setDeliveryCheckState(response.status === 503 ? "unavailable" : "ineligible");
         setDeliveryMessage(typeof body.error === "string" ? body.error : "We could not verify that delivery address.");
         return;
       }
 
-      setDeliveryAddress(body.normalizedAddress);
-      setCheckedDeliveryAddress(body.normalizedAddress);
+      setCheckedDeliveryAddressKey(requestAddressKey);
       setDeliveryDriveMinutes(typeof body.driveMinutes === "number" ? body.driveMinutes : null);
       setDeliveryCheckState("eligible");
       setDeliveryMessage("");
     } catch {
+      if (requestId !== deliveryCheckRequestRef.current) return;
       setDeliveryCheckState("unavailable");
       setDeliveryMessage("The delivery checker is temporarily unavailable. Please try again.");
     }
@@ -170,11 +168,6 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
 
     if (!quote.isValid) {
       setStatusMessage(quote.errors[0] ?? "Add meals to continue.");
-      return;
-    }
-
-    if (!orderWindowOpen) {
-      setStatusMessage("This order window has closed. Refresh the page for the next Friday cutoff.");
       return;
     }
 
@@ -213,7 +206,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           items: quote.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
-          deliveryAddress: checkedDeliveryAddress,
+          deliveryAddress,
         }),
       });
       const body = await response.json().catch(() => ({})) as { code?: unknown; error?: unknown; url?: unknown };
@@ -383,14 +376,6 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               <span className="boxCount">{quote.totalBoxes} {quote.totalBoxes === 1 ? "box" : "boxes"}</span>
             </div>
             <Countdown initialCutoffIso={initialCutoffIso} />
-            <div className={`capacityIndicator${capacitySoldOut ? " isSoldOut" : ""}`} role="status" aria-live="polite">
-              {capacity ? formatOrderCapacityMessage(capacity) : (
-                <>
-                  <span>{capacityError ? "Weekly availability is temporarily unavailable." : "Checking weekly capacity…"}</span>
-                  {capacityError && <button type="button" className="capacityRetry" onClick={() => void refreshCapacity()}>Retry</button>}
-                </>
-              )}
-            </div>
             {quote.lines.length > 0 ? (
               <div className="summaryLines">
                 {quote.lines.map((line) => (
@@ -456,7 +441,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             />
             <p className="deliveryNote"><span aria-hidden="true">✦</span> Free delivery in Ithaca · no delivery fee.</p>
             <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !orderingAvailable || isSubmitting || !capacity || capacitySoldOut || capacityShortfall > 0 || !deliveryEligible}>
-              {isSubmitting ? "Opening secure checkout…" : !capacity ? capacityError ? "Retry availability" : "Checking availability…" : capacityShortfall > 0 ? `Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue` : capacitySoldOut ? "Sold out for this week" : !ORDERS_OPEN || capacity.ordersOpen === false ? "Ordering closed" : !orderWindowOpen ? "Order window closed" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
+              {isSubmitting ? "Opening secure checkout…" : !capacity ? capacityError ? "Retry availability" : "Checking availability…" : capacityShortfall > 0 ? `Remove ${capacityShortfall} ${capacityShortfall === 1 ? "box" : "boxes"} to continue` : capacitySoldOut ? "Sold out for this week" : !ORDERS_OPEN || capacity.ordersOpen === false ? "Ordering closed" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>
             </button>
             <p className={`checkoutStatus${statusMessage ? " hasMessage" : ""}`} role="alert" aria-live="polite">

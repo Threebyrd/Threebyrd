@@ -9,7 +9,7 @@ export type OrderCapacityAvailability = {
 
 export function formatOrderCapacityMessage(availability: OrderCapacityAvailability): string {
   if (!availability.enabled || availability.limit === null || availability.remaining === null) {
-    return "Orders available this week";
+    return "";
   }
 
   return availability.remaining === 0

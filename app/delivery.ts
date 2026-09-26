@@ -1,3 +1,5 @@
+import { formatDeliveryAddressFields } from "./delivery-address.ts";
+
 export const DELIVERY_ORIGIN_ADDRESS = "700 W Buffalo St, Ithaca, NY 14850, United States";
 export const MAX_DELIVERY_DRIVE_MINUTES = 20;
 const MAX_DELIVERY_DRIVE_SECONDS = MAX_DELIVERY_DRIVE_MINUTES * 60;
@@ -37,6 +39,9 @@ type GoogleRoutesResponse = {
 type FetchLike = typeof fetch;
 
 export function normalizeDeliveryAddress(value: unknown): string | null {
+  const structuredAddress = formatDeliveryAddressFields(value);
+  if (structuredAddress) return structuredAddress;
+
   if (typeof value !== "string") return null;
 
   const normalized = value.trim().replace(/\s+/g, " ");

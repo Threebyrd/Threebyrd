@@ -1,8 +1,17 @@
 # ThreeByrd website update status
 
+## Current production state — 2026-09-26
+
+- Production Worker `threebyrd-website` is live at `https://api.threebyrd.com` with `ORDERS_OPEN=true`, `STRIPE_MODE=live`, and uncapped capacity (`ORDER_CAPACITY_CONFIG.limit=null`). Existing paid orders and D1 data remain intact.
+- GitHub Pages production is live at `https://threebyrd.com`; the schedule hotfix is deployed from commit `9870d6c` and Worker version `73291cf4-db43-41e6-bb65-e9a5ba8093db`.
+- The current special window is Saturday, September 26 at 3:00 PM ET → Sunday, September 27. After it passes, the recurring schedule is Friday at 3:00 PM ET → Saturday, with no weekly cutoff closure.
+- The current customer update adds structured Street Address, City, State, and ZIP Code fields with native autofill attributes. The Worker reconstructs and validates the structured address server-side; the canonical Google-validated address remains the value propagated to Stripe metadata, D1, webhook fulfillment, and Sheets.
+- The customer-facing availability-status card was removed. Capacity remains dormant infrastructure and is used only for the runtime emergency open/closed gate while production is uncapped.
+- This status section supersedes the historical staging-only deployment notes below; those notes are retained as an audit trail.
+
 ## Current phase
 
-Local implementation is complete and the current Worker build is deployed to staging only. The Apps Script `/exec` URL returns HTTP 302. The staging Worker sends the initial request as POST, follows the allowlisted Google redirect chain with GET, and never replays the POST body to `script.googleusercontent.com`. The deployed staging diagnostic and one final end-to-end test export both pass. This update has not been deployed to the production Worker, GitHub Pages, Stripe, Cloudflare DNS, or production D1.
+The original staging validation and direct Sheets export work are complete. Historical staging notes below describe the validation sequence at the time; production deployment status is recorded above.
 
 ### Final staging Sheets redirect validation — 2026-09-26
 

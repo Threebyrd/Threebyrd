@@ -343,10 +343,6 @@ h1, h2, h3 { text-wrap: balance; }
 .summaryCountdownDigits b, .summaryCountdownDigits small { display: block; }
 .summaryCountdownDigits b { color: var(--tb-gold-soft); font-family: var(--font-display); font-size: clamp(1.65rem, 3.2vw, 2.3rem); font-variant-numeric: tabular-nums; font-weight: 400; line-height: 0.95; min-width: 2ch; }
 .summaryCountdownDigits small { color: rgba(251, 247, 239, 0.68); font-size: 0.58rem; font-weight: 900; text-transform: uppercase; }
-.capacityIndicator { background: rgba(251, 247, 239, 0.11); border: 1px solid rgba(251, 247, 239, 0.6); color: var(--tb-gold-soft); font-size: 0.72rem; font-weight: 900; margin-top: 0.9rem; padding: 0.65rem 0.7rem; text-transform: uppercase; }
-.capacityIndicator > span { display: inline-block; margin-right: 0.7rem; }
-.capacityRetry { background: transparent; border: 1px solid currentColor; color: inherit; cursor: pointer; font: inherit; padding: 0.25rem 0.45rem; text-transform: uppercase; }
-.capacityIndicator.isSoldOut { background: var(--tb-gold-soft); border-color: var(--tb-gold-soft); color: var(--tb-red); }
 .summaryLines { border-top: 1px solid rgba(251, 247, 239, 0.45); margin-top: 1.2rem; }
 .summaryLine { align-items: flex-start; border-bottom: 1px solid rgba(251, 247, 239, 0.45); display: flex; gap: 0.55rem; justify-content: space-between; padding: 0.8rem 0; }
 .summaryLineInfo { min-width: 0; padding-top: 0.15rem; }
@@ -388,10 +384,14 @@ h1, h2, h3 { text-wrap: balance; }
 .deliveryEligibilityHeading h4 { color: var(--tb-paper); font-size: 1rem; margin: 0; }
 .deliveryEligibilityHeading p:last-child { color: rgba(251, 247, 239, 0.72); font-size: 0.7rem; margin: 0.35rem 0 0; }
 .deliveryEligibility .sectionLabel { margin-bottom: 0.35rem; }
-.deliveryEligibility > label { color: var(--tb-gold-soft); display: block; font-size: 0.66rem; font-weight: 900; margin-top: 0.9rem; text-transform: uppercase; }
-.deliveryAddressControls { display: grid; gap: 0.45rem; grid-template-columns: minmax(0, 1fr) auto; margin-top: 0.35rem; }
-.deliveryAddressControls input { background: var(--tb-paper); border: var(--border-ui); color: var(--tb-ink); font-size: 0.82rem; min-height: 46px; min-width: 0; padding: 0.65rem; width: 100%; }
+.deliveryAddressFields { display: grid; gap: 0.65rem; margin-top: 0.9rem; }
+.deliveryAddressFieldRow { display: grid; gap: 0.65rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.deliveryField { display: grid; gap: 0.3rem; min-width: 0; }
+.deliveryField label { color: var(--tb-gold-soft); font-size: 0.66rem; font-weight: 900; text-transform: uppercase; }
+.deliveryField input, .deliveryField select { background: var(--tb-paper); border: var(--border-ui); border-radius: 0; color: var(--tb-ink); font: inherit; font-size: 0.82rem; min-height: 46px; min-width: 0; padding: 0.65rem; width: 100%; }
+.deliveryAddressControls { margin-top: 0.65rem; }
 .deliveryAddressControls button { background: var(--tb-gold-soft); border: var(--border-ui); color: var(--tb-red); cursor: pointer; font-size: 0.64rem; font-weight: 900; min-height: 46px; padding: 0.6rem 0.7rem; text-transform: uppercase; }
+.deliveryAddressControls button { width: 100%; }
 .deliveryAddressControls button:disabled { cursor: not-allowed; opacity: 0.5; }
 .deliveryAddressHelp, .deliveryAddressStatus { font-size: 0.62rem; margin: 0.45rem 0 0; }
 .deliveryAddressHelp { color: rgba(251, 247, 239, 0.58); }
@@ -618,8 +618,7 @@ h1, h2, h3 { text-wrap: balance; }
   .summaryQuantityControl { gap: 0.1rem; grid-template-columns: 42px 2rem 42px; }
   .summaryQuantityControl button { height: 42px; width: 42px; }
   .summaryLineActions > b { min-width: 3.8rem; }
-  .deliveryAddressControls { grid-template-columns: 1fr; }
-  .deliveryAddressControls button { width: 100%; }
+  .deliveryAddressFieldRow { grid-template-columns: 1fr; }
   .impactRow { grid-template-columns: 1fr; }
   .impactStat { align-items: center; display: flex; justify-content: space-between; padding: 1.1rem; }
   .impactStat + .impactStat { border-left: 0; border-top: 2px solid var(--tb-gold-soft); }

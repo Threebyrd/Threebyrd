@@ -26,8 +26,8 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /free delivery in Ithaca/i);
   assert.doesNotMatch(html, /Orders open until/);
   assert.match(html, /class="summaryCountdown"/);
-  assert.match(html, /class="capacityIndicator"/);
-  assert.match(html, /Checking weekly capacity/);
+  assert.doesNotMatch(html, /class="capacityIndicator"/);
+  assert.doesNotMatch(html, /Orders available this week/i);
   assert.match(html, /Orders close in|Next order window/);
   assert.match(html, /Saturday, September \d{1,2}(?:<!-- -->)? at 3:00 PM (?:EDT|EST)/);
   assert.doesNotMatch(html, /Orders are currently closed/);
@@ -74,6 +74,10 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /Meal subtotal/);
   assert.match(html, /Delivery.*\$0/s);
   assert.match(html, /Free delivery in Ithaca/);
+  assert.match(html, /id="delivery-street"[^>]*autoComplete="address-line1"[^>]*name="streetAddress"/i);
+  assert.match(html, /id="delivery-city"[^>]*autoComplete="address-level2"[^>]*name="city"/i);
+  assert.match(html, /id="delivery-state"[^>]*name="state"[^>]*autoComplete="address-level1"/i);
+  assert.match(html, /id="delivery-zip"[^>]*autoComplete="postal-code"[^>]*name="zipCode"/i);
   const productGridIndex = html.indexOf('class="productGrid"');
   const pricingExplainerIndex = html.indexOf('class="pricingExplainer"');
   const orderSummaryIndex = html.indexOf('class="orderSummary"');
@@ -146,15 +150,15 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.equal((html.match(/class="founderCard/g) ?? []).length, 0);
 });
 
-test("passes the open-order gate at the server boundary", async () => {
+test("does not use the weekly cutoff as an order shutdown", async () => {
   const response = await render("/api/checkout", {
     method: "POST",
     headers: { "content-type": "application/json", origin: "https://threebyrd.com" },
-    body: JSON.stringify({ items: [{ productId: "big-chicken", quantity: 3 }], deliveryAddress: "123 Test Street, Ithaca, NY 14850" }),
+    body: JSON.stringify({ items: [] }),
   });
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 400);
   assert.equal(response.headers.get("access-control-allow-origin"), "https://threebyrd.com");
-  assert.match(await response.text(), /delivery checker is temporarily unavailable/);
+  assert.match(await response.text(), /Add 3 more boxes|at least three boxes/i);
 });
 
 test("rejects checkout requests from unknown browser origins", async () => {

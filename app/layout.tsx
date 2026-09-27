@@ -19,9 +19,10 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: siteUrl("/og.png"),
+        url: siteUrl("/og/threebyrd-share.png"),
         width: 1200,
         height: 630,
+        type: "image/png",
         alt: "ThreeByrd Meal Prep social preview",
       },
     ],
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     title: "ThreeByrd Meal Prep | Chicken + Beef, Delivered",
     description:
       "Build a one-time Chicken or Beef meal-prep order. Minimum 3 meals, delivered free in Ithaca.",
-    images: [siteUrl("/og.png")],
+    images: [siteUrl("/og/threebyrd-share.png")],
   },
   icons: {
     icon: [

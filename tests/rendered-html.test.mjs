@@ -22,6 +22,13 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>ThreeByrd Meal Prep \| Chicken \+ Beef, Delivered<\/title>/i);
+  assert.match(html, /property="og:image" content="https:\/\/threebyrd\.com\/og\/threebyrd-share\.png"/i);
+  assert.match(html, /property="og:image:width" content="1200"/i);
+  assert.match(html, /property="og:image:height" content="630"/i);
+  assert.match(html, /property="og:type" content="website"/i);
+  assert.match(html, /name="twitter:card" content="summary_large_image"/i);
+  assert.match(html, /name="twitter:image" content="https:\/\/threebyrd\.com\/og\/threebyrd-share\.png"/i);
+  assert.doesNotMatch(html, /(?:og|twitter)[^>]+https:\/\/threebyrd\.com\/og\.png/i);
   assert.match(html, /High-protein<br\s*\/>\s*<em>meal prep\./);
   assert.match(html, /free delivery in Ithaca/i);
   assert.doesNotMatch(html, /Orders open until/);

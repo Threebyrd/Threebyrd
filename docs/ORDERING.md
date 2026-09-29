@@ -14,7 +14,7 @@ Important implementation files are `app/order-config.ts`, `app/components/OrderB
 
 ## Weekly capacity and reservations
 
-Capacity counts total meals in completed customer orders when a future cap is enabled. Production is currently uncapped; the public `GET /api/capacity` endpoint is used only for the runtime emergency open/closed gate and no remaining-capacity indicator is rendered. It does not calculate or accept payment totals.
+Capacity counts total meals in completed customer orders when a future cap is enabled. Production is currently uncapped; the order builder does not call the public `GET /api/capacity` endpoint and no availability or remaining-capacity indicator is rendered. The checkout endpoint enforces the runtime emergency open/closed gate at submission. It does not calculate or accept payment totals.
 
 For a capped window, checkout performs this sequence:
 

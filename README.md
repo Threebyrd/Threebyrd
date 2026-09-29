@@ -61,7 +61,7 @@ Copy the needed values into `.env.local` for local development. Never commit tha
 
 The capacity infrastructure remains available in `app/order-capacity-config.ts`, but production is currently uncapped (`limit: null`). If a future cap is enabled, the Worker reserves meal units atomically in D1 before creating a Stripe Checkout Session, links the reservation to the session, and converts it to `confirmed` only after a paid webhook.
 
-The browser reads `GET /api/capacity` only for the runtime emergency open/closed gate. Production is uncapped, so no remaining-capacity indicator is shown and capacity never blocks checkout. To prepare a future capped window, change the stable `windowKey` and set `limit` to the desired meal count; use `null` to disable the cap. Apply the checked-in D1 migrations to each database before deploying code that uses the reservation table.
+The order builder does not fetch `GET /api/capacity`; the checkout endpoint enforces the runtime emergency open/closed gate when the customer submits an order. Production is uncapped, so no remaining-capacity indicator is shown and capacity never blocks checkout. To prepare a future capped window, change the stable `windowKey` and set `limit` to the desired meal count; use `null` to disable the cap. Apply the checked-in D1 migrations to each database before deploying code that uses the reservation table.
 
 ## Current scope
 

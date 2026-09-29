@@ -211,9 +211,6 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             <p className="sectionLabel">Build your order</p>
             <h2 className="majorHeading" id="order-title">Pick your<br /><em>meals.</em></h2>
           </div>
-          <div className="orderIntroCopy">
-            <p>Minimum 3 · Better pricing at 5 · Best pricing at 10</p>
-          </div>
         </div>
 
         <div className="orderFunnel" aria-label="Pricing milestones">
@@ -226,7 +223,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               const complete = quote.totalBoxes >= milestone.value;
               const next = !complete && pricingMilestones.find((item) => quote.totalBoxes < item.value)?.value === milestone.value;
               return (
-                <div className={`funnelMilestone${complete ? " isComplete" : ""}${next ? " isNext" : ""}`} key={milestone.value}>
+                <div className={`funnelMilestone${milestone.value === 5 ? " funnelMilestoneGold" : ""}${complete ? " isComplete" : ""}${next ? " isNext" : ""}`} key={milestone.value}>
                   <strong>{milestone.value}</strong>
                   <span>{milestone.label}</span>
                 </div>

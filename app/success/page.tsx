@@ -1,8 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getNextOrderCutoff, getSaturdayForCutoff } from "../order-config";
-
-const deliveryDay = getSaturdayForCutoff(getNextOrderCutoff());
+import ConfirmationDelivery from "../components/ConfirmationDelivery";
 
 export default function SuccessPage() {
   return (
@@ -13,8 +11,8 @@ export default function SuccessPage() {
         </Link>
         <p className="sectionLabel">Order received</p>
         <h1>That&apos;s a wrap.</h1>
-        <p className="successLead">Thanks for ordering. Stripe has returned you here, and your payment is being confirmed securely before your order is prepared for {deliveryDay.toLowerCase()} cooking and delivery.</p>
-        <div className="successDelivery"><strong>{deliveryDay} delivery</strong><span>Free delivery in Ithaca · no pickup · no promised delivery time</span></div>
+        <p className="successLead">Thanks for ordering. Stripe has returned you here, and your payment is being confirmed securely before your order is prepared for the delivery date assigned at checkout.</p>
+        <div className="successDelivery"><ConfirmationDelivery /><span>Free delivery in Ithaca · no pickup · no promised delivery time</span></div>
         <Link className="button buttonPrimary" href="/" prefetch={false}>Back to ThreeByrd <span aria-hidden="true">→</span></Link>
       </div>
     </main>

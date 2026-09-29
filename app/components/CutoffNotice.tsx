@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatBusinessDateTime, getNextOrderCutoff, getSaturdayForCutoff } from "../order-config";
+import { formatBusinessDateTime, getNextOrderCutoff, getDeliveryDayForCutoff } from "../order-config";
 
 type CutoffNoticeProps = {
   initialCutoffIso: string;
@@ -21,5 +21,5 @@ export default function CutoffNotice({ initialCutoffIso }: CutoffNoticeProps) {
     return () => window.clearInterval(timer);
   }, []);
 
-  return <p className="footerCutoff">Next delivery cutoff {formatBusinessDateTime(cutoff)} · delivery {getSaturdayForCutoff(cutoff)}</p>;
+  return <p className="footerCutoff">Next delivery cutoff {formatBusinessDateTime(cutoff)} · delivery {getDeliveryDayForCutoff(cutoff)}</p>;
 }

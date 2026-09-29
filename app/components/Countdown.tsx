@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   formatBusinessDateTime,
   getNextOrderCutoff,
-  getSaturdayForCutoff,
+  getDeliveryDayForCutoff,
 } from "../order-config";
 
 type CountdownProps = {
@@ -55,7 +55,7 @@ export default function Countdown({ initialCutoffIso }: CountdownProps) {
 
   const time = getCountdownParts(state.cutoff, state.now);
   const statusLabel = "Next delivery cutoff";
-  const delivery = getSaturdayForCutoff(state.cutoff);
+  const delivery = getDeliveryDayForCutoff(state.cutoff);
 
   return (
     <div className="summaryCountdown" aria-atomic="true" aria-live="polite">

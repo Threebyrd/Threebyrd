@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       })),
       customer_creation: "always",
       phone_number_collection: { enabled: true },
-      success_url: `${siteOrigin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${siteOrigin}/success?session_id={CHECKOUT_SESSION_ID}&delivery_date=${metadata.delivery_date}`,
       cancel_url: `${siteOrigin}/order?checkout=canceled`,
       metadata,
     });

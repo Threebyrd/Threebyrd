@@ -5,9 +5,9 @@ import { getNextOrderCutoff } from "../app/order-config.ts";
 
 test("checkout keeps accepting carts on both sides of the fulfillment cutoff", () => {
   const previous = process.env.THREEBYRD_CUTOFF_OVERRIDE;
-  process.env.THREEBYRD_CUTOFF_OVERRIDE = "2026-09-26T15:00:00";
+  process.env.THREEBYRD_CUTOFF_OVERRIDE = "2026-10-03T15:00:00";
   try {
-    const cutoff = new Date("2026-09-26T19:00:00.000Z");
+    const cutoff = new Date("2026-10-03T19:00:00.000Z");
     const moments = [
       new Date(cutoff.getTime() - 31 * 60_000),
       new Date(cutoff.getTime() - 29 * 60_000),
@@ -25,9 +25,9 @@ test("checkout keeps accepting carts on both sides of the fulfillment cutoff", (
         cutoff.toISOString(),
         cutoff.toISOString(),
         cutoff.toISOString(),
-        "2026-10-02T19:00:00.000Z",
-        "2026-10-02T19:00:00.000Z",
-        "2026-10-02T19:00:00.000Z",
+        "2026-10-10T19:00:00.000Z",
+        "2026-10-10T19:00:00.000Z",
+        "2026-10-10T19:00:00.000Z",
       ],
     );
   } finally {

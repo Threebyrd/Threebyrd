@@ -1,6 +1,6 @@
 export const BUSINESS_TIME_ZONE = "America/New_York";
 export const MINIMUM_BOXES = 3;
-export const DEFAULT_CUTOFF_OVERRIDE = "2026-09-26T15:00:00";
+export const DEFAULT_CUTOFF_OVERRIDE = "";
 export const ORDERS_OPEN = true;
 
 export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef";
@@ -429,18 +429,18 @@ function addBusinessDays(parts: BusinessDateParts, days: number): BusinessDatePa
   return { ...parts, year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
 }
 
-/** Return the next Friday 3:00 PM cutoff in the business timezone. */
-export function getNextFridayCutoffAfter(now = new Date()): Date {
+/** Return the next Saturday 3:00 PM cutoff in the business timezone. */
+export function getNextSaturdayCutoffAfter(now = new Date()): Date {
   const parts = businessDateParts(now);
   const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
-  let daysUntilFriday = (5 - weekday + 7) % 7;
-  const candidate = wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
+  let daysUntilSaturday = (6 - weekday + 7) % 7;
+  const candidate = wallTimeForParts(addBusinessDays(parts, daysUntilSaturday), 15, 0);
 
   if (candidate.getTime() <= now.getTime()) {
-    daysUntilFriday += 7;
+    daysUntilSaturday += 7;
   }
 
-  return wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
+  return wallTimeForParts(addBusinessDays(parts, daysUntilSaturday), 15, 0);
 }
 
 export function getOrderCapacityWindowKey(cutoff: Date): string {
@@ -449,11 +449,11 @@ export function getOrderCapacityWindowKey(cutoff: Date): string {
 }
 
 function configuredCutoffOverride(): Date | null {
-  if (typeof process === "undefined") {
-    return businessWallTimeToDate(DEFAULT_CUTOFF_OVERRIDE);
+  if (typeof window !== "undefined") {
+    return businessWallTimeToDate(process.env.NEXT_PUBLIC_THREEBYRD_CUTOFF_OVERRIDE ?? DEFAULT_CUTOFF_OVERRIDE);
   }
 
-  return businessWallTimeToDate(process.env.THREEBYRD_CUTOFF_OVERRIDE ?? DEFAULT_CUTOFF_OVERRIDE);
+  return businessWallTimeToDate(process.env.THREEBYRD_CUTOFF_OVERRIDE ?? process.env.NEXT_PUBLIC_THREEBYRD_CUTOFF_OVERRIDE ?? DEFAULT_CUTOFF_OVERRIDE);
 }
 
 export function getNextOrderCutoff(now = new Date()): Date {
@@ -461,7 +461,7 @@ export function getNextOrderCutoff(now = new Date()): Date {
   if (override && now.getTime() < override.getTime()) {
     return override;
   }
-  return getNextFridayCutoffAfter(now);
+  return getNextSaturdayCutoffAfter(now);
 }
 
 export function formatBusinessDate(date: Date): string {
@@ -485,7 +485,7 @@ export function formatBusinessDateTime(date: Date): string {
   }).format(date);
 }
 
-export function getSaturdayForCutoff(cutoff: Date): string {
+export function getDeliveryDayForCutoff(cutoff: Date): string {
   const parts = businessDateParts(cutoff);
   return formatBusinessDate(wallTimeForParts(addBusinessDays(parts, 1), 12, 0));
 }

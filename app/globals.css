@@ -252,10 +252,8 @@ h1, h2, h3 { text-wrap: balance; }
 .orderPage { background: var(--tb-sand); min-height: 100svh; }
 .orderPageBack { background: var(--tb-paper); border: var(--border-ui); display: inline-block; font-size: 0.75rem; font-weight: 900; margin: 1.2rem var(--gutter) 0; padding: 0.65rem 0.8rem; text-transform: uppercase; }
 .orderPage .orderSection { border-top: var(--border-ui); margin-top: 1.2rem; }
-.orderIntro { align-items: end; display: grid; gap: 3rem; grid-template-columns: minmax(0, 1fr) minmax(320px, 0.62fr); }
+.orderIntro { display: block; }
 .orderIntro h2 { font-size: clamp(3.5rem, 5.8vw, 5.8rem); }
-.orderIntroCopy { min-width: 0; }
-.orderIntroCopy > p:first-child { color: var(--tb-red); font-size: 1rem; font-weight: 900; margin: 0 0 0.35rem; text-transform: uppercase; }
 .orderRule { border-left: 4px solid var(--tb-red); color: var(--tb-red); font-size: 0.82rem; margin: 1.2rem 0 0; padding-left: 0.8rem; }
 .orderLayout { align-items: start; display: grid; gap: 2rem; grid-template-columns: minmax(0, 1.45fr) minmax(310px, 0.55fr); margin-top: 3.2rem; }
 .productColumn { min-width: 0; }
@@ -270,6 +268,8 @@ h1, h2, h3 { text-wrap: balance; }
 .funnelMilestone.isComplete { background: var(--tb-gold); }
 .funnelMilestone.isNext { background: var(--tb-red); box-shadow: 3px 3px 0 var(--tb-line); transform: translateY(-2px); }
 .funnelMilestone.isNext strong, .funnelMilestone.isNext span { color: var(--tb-paper); }
+.funnelMilestone.funnelMilestoneGold { background: var(--tb-gold); }
+.funnelMilestone.funnelMilestoneGold strong, .funnelMilestone.funnelMilestoneGold span { color: var(--tb-ink); }
 .mobileCartControl, .mobileCartProgress { display: none; }
 .mobileCartControl { align-items: center; background: var(--tb-red); border: var(--border-ui); box-shadow: var(--shadow-hard); color: var(--tb-paper); gap: 0.55rem; min-height: 50px; padding: 0.55rem 0.7rem; position: fixed; right: max(var(--gutter), calc(env(safe-area-inset-right) + 0.75rem)); top: calc(70px + env(safe-area-inset-top) + 0.65rem); z-index: 40; }
 .mobileCartControl:hover { background: var(--tb-gold); color: var(--tb-ink); }
@@ -596,7 +596,6 @@ h1, h2, h3 { text-wrap: balance; }
   .mobileCartProgress > span { grid-column: 1 / -1; }
   .orderSection, .givingSection, .teamSection { padding-block: 64px 70px; }
   .orderIntro h2, .givingTop h2, .teamHeading h2, .joinContent h2 { font-size: 2.45rem; line-height: 1; min-width: 0; }
-  .orderIntroCopy > p:first-child { font-size: 0.95rem; }
   .orderLayout { margin-top: 2.3rem; }
   .productGrid { grid-template-columns: 1fr; }
   .pricingExplainer { padding: 0.9rem; }
@@ -654,4 +653,9 @@ h1, h2, h3 { text-wrap: balance; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
   .productCard:hover .productPhoto img { transform: none; }
+}
+
+@media (max-width: 400px) {
+  .funnelMilestone { align-items: flex-start; flex-direction: column; }
+  .funnelMilestone span { max-width: 100%; overflow-wrap: anywhere; }
 }

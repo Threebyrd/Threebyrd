@@ -29,7 +29,7 @@ npm run db:generate
 - `app/page.tsx`: homepage structure, delivery-first positioning, menu, giving-back section, team, and launch list.
 - `app/components/OrderBuilder.tsx`: customizable cart UI, live summary, structured delivery-address validation, minimum-order state, and Checkout handoff.
 - `app/capacity.ts`, `app/order-capacity-config.ts`, and `app/order-capacity-db.ts`: shared capacity messaging, weekly cap configuration, and D1 reservation enforcement.
-- `app/components/Countdown.tsx`: browser-safe countdown to the next Friday 3:00 PM Eastern cutoff.
+- `app/components/Countdown.tsx`: browser-safe countdown to the next Saturday 3:00 PM Eastern cutoff.
 - `app/order-config.ts`: trusted product catalog, canonical cart-wide pricing tiers, quote validation, and cutoff recurrence.
 - `app/api/checkout/route.ts`: server-side quote validation and Stripe Checkout Session creation.
 - `app/api/capacity/route.ts`: public, read-only availability for the current ordering window.
@@ -53,7 +53,7 @@ Copy the needed values into `.env.local` for local development. Never commit tha
 - `NEXT_PUBLIC_SITE_URL`: trusted site origin used in Stripe success/cancel URLs.
 - `NEXT_PUBLIC_CHECKOUT_API_ORIGIN`: public API origin used by the static frontend, normally `https://api.threebyrd.com` in production.
 - `CORS_ALLOWED_ORIGINS`: comma-separated browser origins allowed to call the checkout API.
-- `THREEBYRD_CUTOFF_OVERRIDE`: optional business-local wall time such as `2026-09-26T15:00:00`; see `docs/ORDERING.md`.
+- `THREEBYRD_CUTOFF_OVERRIDE`: optional business-local wall time such as `2026-10-03T15:00:00`; see `docs/ORDERING.md`.
 - `NEXT_PUBLIC_APPS_SCRIPT_URL`: existing optional launch-list endpoint.
 - `GOOGLE_MAPS_SERVER_API_KEY`: Worker secret used only for Google Geocoding and traffic-unaware Routes API delivery eligibility checks.
 

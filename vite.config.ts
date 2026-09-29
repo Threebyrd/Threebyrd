@@ -49,6 +49,9 @@ export default defineConfig(async ({ mode }) => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    define: {
+      "process.env.NEXT_PUBLIC_THREEBYRD_CUTOFF_OVERRIDE": JSON.stringify(process.env.THREEBYRD_CUTOFF_OVERRIDE ?? process.env.NEXT_PUBLIC_THREEBYRD_CUTOFF_OVERRIDE ?? ""),
+    },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

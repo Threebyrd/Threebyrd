@@ -38,6 +38,33 @@ type GoogleRoutesResponse = {
 
 type FetchLike = typeof fetch;
 
+const PROVIDER_RETRY_DELAYS_MS = [150, 450];
+
+function isRetryableProviderStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+async function fetchProvider(
+  input: Parameters<FetchLike>[0],
+  init: Parameters<FetchLike>[1],
+  fetchImpl: FetchLike,
+): Promise<Response> {
+  for (let attempt = 0; attempt <= PROVIDER_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      const response = await fetchImpl(input, init);
+      if (!isRetryableProviderStatus(response.status) || attempt === PROVIDER_RETRY_DELAYS_MS.length) {
+        return response;
+      }
+    } catch {
+      if (attempt === PROVIDER_RETRY_DELAYS_MS.length) throw providerError();
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, PROVIDER_RETRY_DELAYS_MS[attempt]));
+  }
+
+  throw providerError();
+}
+
 export function normalizeDeliveryAddress(value: unknown): string | null {
   const structuredAddress = formatDeliveryAddressFields(value);
   if (structuredAddress) return structuredAddress;
@@ -99,12 +126,11 @@ export async function checkDeliveryEligibility(
   geocodeUrl.searchParams.set("region", "us");
   geocodeUrl.searchParams.set("key", apiKey);
 
-  let geocodeResponse: Response;
-  try {
-    geocodeResponse = await fetchImpl(geocodeUrl, { headers: { accept: "application/json" } });
-  } catch {
-    throw providerError();
-  }
+  const geocodeResponse = await fetchProvider(
+    geocodeUrl,
+    { headers: { accept: "application/json" } },
+    fetchImpl,
+  );
 
   if (!geocodeResponse.ok) throw providerError();
 
@@ -134,9 +160,9 @@ export async function checkDeliveryEligibility(
     throw new DeliveryEligibilityError("INVALID_ADDRESS", "Please enter a complete US street address for delivery.");
   }
 
-  let routeResponse: Response;
-  try {
-    routeResponse = await fetchImpl("https://routes.googleapis.com/directions/v2:computeRoutes", {
+  const routeResponse = await fetchProvider(
+    "https://routes.googleapis.com/directions/v2:computeRoutes",
+    {
       method: "POST",
       headers: {
         accept: "application/json",
@@ -152,10 +178,9 @@ export async function checkDeliveryEligibility(
         languageCode: "en-US",
         units: "IMPERIAL",
       }),
-    });
-  } catch {
-    throw providerError();
-  }
+    },
+    fetchImpl,
+  );
 
   if (!routeResponse.ok) throw providerError();
 

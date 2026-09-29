@@ -6,6 +6,7 @@ import { Fragment, useMemo, useRef, useState } from "react";
 import Countdown from "./Countdown";
 import DeliveryAddressForm, { type DeliveryCheckState } from "./DeliveryAddressForm";
 import MacroSnapshot from "./MacroSnapshot";
+import { requestDeliveryEligibility } from "../delivery-client";
 import { EMPTY_DELIVERY_ADDRESS, type DeliveryAddressField, type DeliveryAddressFields } from "../delivery-address";
 import {
   CART_PRICING_TIERS,
@@ -141,15 +142,10 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     setDeliveryDriveMinutes(null);
 
     try {
-      const response = await fetch(deliveryEligibilityApiUrl, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address: requestAddress }),
-      });
-      const body = await response.json().catch(() => ({})) as { normalizedAddress?: unknown; driveMinutes?: unknown; error?: unknown };
+      const { body, ok, status } = await requestDeliveryEligibility(deliveryEligibilityApiUrl, requestAddress);
       if (requestId !== deliveryCheckRequestRef.current) return;
-      if (!response.ok || typeof body.normalizedAddress !== "string") {
-        setDeliveryCheckState(response.status === 503 ? "unavailable" : "ineligible");
+      if (!ok || typeof body.normalizedAddress !== "string") {
+        setDeliveryCheckState(status === 503 ? "unavailable" : "ineligible");
         setDeliveryMessage(typeof body.error === "string" ? body.error : "We could not verify that delivery address.");
         return;
       }

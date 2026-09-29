@@ -3,6 +3,7 @@ import { isAllowedCheckoutOrigin, withCheckoutCors } from "../cors";
 
 export async function POST(request: Request) {
   if (!isAllowedCheckoutOrigin(request)) {
+    console.warn(JSON.stringify({ event: "delivery_check_failure", provider: "server", category: "cors_origin_denied" }));
     return Response.json({ error: "This delivery checker origin is not allowed." }, withCheckoutCors(request, { status: 403 }));
   }
 
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await checkDeliveryEligibility(body.address);
+    const result = await checkDeliveryEligibility(body?.address);
     return Response.json(result, withCheckoutCors(request));
   } catch (error) {
     if (error instanceof DeliveryEligibilityError) {
@@ -22,11 +23,15 @@ export async function POST(request: Request) {
       return Response.json({ error: error.message, code: error.code }, withCheckoutCors(request, { status }));
     }
 
+    console.error(JSON.stringify({ event: "delivery_check_failure", provider: "server", category: "unexpected_error" }));
     return Response.json({ error: "The delivery checker is temporarily unavailable." }, withCheckoutCors(request, { status: 503 }));
   }
 }
 
 export function OPTIONS(request: Request) {
-  if (!isAllowedCheckoutOrigin(request)) return new Response(null, { status: 403 });
+  if (!isAllowedCheckoutOrigin(request)) {
+    console.warn(JSON.stringify({ event: "delivery_check_failure", provider: "server", category: "cors_preflight_denied" }));
+    return new Response(null, { status: 403 });
+  }
   return new Response(null, withCheckoutCors(request, { status: 204 }));
 }

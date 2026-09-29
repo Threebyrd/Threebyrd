@@ -186,3 +186,48 @@ test("fails closed after bounded Google retries are exhausted", async () => {
     else process.env.GOOGLE_MAPS_SERVER_API_KEY = previous;
   }
 });
+
+for (const status of ['REQUEST_DENIED', 'OVER_DAILY_LIMIT', 'UNKNOWN_ERROR', 'OVER_QUERY_LIMIT']) {
+  test(`Geocoding ${status} with empty results is a provider failure, never an invalid address`, async () => {
+    const previous = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = 'server-test-key';
+    const logs = [];
+    const warn = console.warn;
+    console.warn = (entry) => logs.push(JSON.parse(entry));
+    let attempts = 0;
+    try {
+      await assert.rejects(checkDeliveryEligibility('700 W Buffalo St, Ithaca, NY 14850', async () => {
+        attempts++;
+        return Response.json({ status, results: [], error_message: 'sensitive-provider-message' });
+      }), error => error.code === 'PROVIDER_UNAVAILABLE');
+      assert.equal(attempts, ['UNKNOWN_ERROR', 'OVER_QUERY_LIMIT'].includes(status) ? 3 : 1);
+      assert.equal(logs[0].provider, 'google_geocoding');
+      assert.equal(logs[0].category, status);
+      assert.doesNotMatch(JSON.stringify(logs), /Buffalo|server-test-key|sensitive-provider-message/);
+    } finally {
+      console.warn = warn;
+      if (previous === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
+      else process.env.GOOGLE_MAPS_SERVER_API_KEY = previous;
+    }
+  });
+}
+
+test('retries an HTTP 200 Geocoding UNKNOWN_ERROR and verifies the recovered route', async () => {
+  const previous = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+  process.env.GOOGLE_MAPS_SERVER_API_KEY = 'server-test-key';
+  let attempts = 0;
+  try {
+    const result = await checkDeliveryEligibility('700 W Buffalo St, Ithaca, NY 14850', async input => {
+      if (String(input).includes('/geocode/')) {
+        attempts++;
+        return Response.json(attempts === 1 ? { status: 'UNKNOWN_ERROR', results: [] } : geocode);
+      }
+      return Response.json({ routes: [{ staticDuration: '60s' }] });
+    });
+    assert.equal(result.eligible, true);
+    assert.equal(attempts, 2);
+  } finally {
+    if (previous === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    else process.env.GOOGLE_MAPS_SERVER_API_KEY = previous;
+  }
+});

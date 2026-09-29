@@ -44,24 +44,47 @@ function isRetryableProviderStatus(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
-async function fetchProvider(
+type Provider = "google_geocoding" | "google_routes";
+
+// Never log provider bodies, URLs, exception messages, or customer input.
+function logProvider(provider: Provider, category: string, attempt: number, httpStatus?: number) {
+  console.warn(JSON.stringify({ event: "delivery_provider_failure", provider, category, attempt, httpStatus }));
+}
+
+async function fetchProvider<T>(
+  provider: Provider,
   input: Parameters<FetchLike>[0],
   init: Parameters<FetchLike>[1],
   fetchImpl: FetchLike,
-): Promise<Response> {
+): Promise<T> {
   for (let attempt = 0; attempt <= PROVIDER_RETRY_DELAYS_MS.length; attempt += 1) {
+    let response: Response;
+    let data: unknown;
     try {
-      const response = await fetchImpl(input, init);
-      if (!isRetryableProviderStatus(response.status) || attempt === PROVIDER_RETRY_DELAYS_MS.length) {
-        return response;
-      }
+      response = await fetchImpl(input, { ...init, signal: AbortSignal.timeout(8000) });
+      data = response.ok ? await response.json().catch(() => null) : null;
     } catch {
+      logProvider(provider, "network_or_timeout", attempt + 1);
       if (attempt === PROVIDER_RETRY_DELAYS_MS.length) throw providerError();
+      await new Promise((resolve) => setTimeout(resolve, PROVIDER_RETRY_DELAYS_MS[attempt]));
+      continue;
     }
-
+    if (response.ok && (!data || typeof data !== "object" || Array.isArray(data))) {
+      logProvider(provider, "invalid_json_response", attempt + 1, response.status);
+      throw providerError();
+    }
+    const status = data && typeof data === "object" && "status" in data ? data.status : undefined;
+    const googleFailure = provider === "google_geocoding" && status !== "OK" && status !== "ZERO_RESULTS";
+    if (response.ok && !googleFailure) return data as T;
+    const knownStatuses = ["UNKNOWN_ERROR", "OVER_QUERY_LIMIT", "OVER_DAILY_LIMIT", "REQUEST_DENIED", "INVALID_REQUEST"];
+    const category = googleFailure && typeof status === "string" && knownStatuses.includes(status)
+      ? status : response.status === 429 ? "quota_or_rate_limit" : response.status === 401 || response.status === 403
+        ? "authorization_denied" : response.ok ? "invalid_response" : "http_error";
+    logProvider(provider, category, attempt + 1, response.status);
+    const retryable = isRetryableProviderStatus(response.status) || (response.ok && (status === "UNKNOWN_ERROR" || status === "OVER_QUERY_LIMIT"));
+    if (!retryable || attempt === PROVIDER_RETRY_DELAYS_MS.length) throw providerError();
     await new Promise((resolve) => setTimeout(resolve, PROVIDER_RETRY_DELAYS_MS[attempt]));
   }
-
   throw providerError();
 }
 
@@ -117,6 +140,7 @@ export async function checkDeliveryEligibility(
 
   const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY?.trim();
   if (!apiKey) {
+    console.error(JSON.stringify({ event: "delivery_provider_failure", provider: "configuration", category: "missing_credential" }));
     throw providerError();
   }
 
@@ -126,25 +150,20 @@ export async function checkDeliveryEligibility(
   geocodeUrl.searchParams.set("region", "us");
   geocodeUrl.searchParams.set("key", apiKey);
 
-  const geocodeResponse = await fetchProvider(
+  const geocode = await fetchProvider<GoogleGeocodeResponse>(
+    "google_geocoding",
     geocodeUrl,
     { headers: { accept: "application/json" } },
     fetchImpl,
   );
 
-  if (!geocodeResponse.ok) throw providerError();
-
-  let geocode: GoogleGeocodeResponse;
-  try {
-    geocode = await geocodeResponse.json() as GoogleGeocodeResponse;
-  } catch {
-    throw providerError();
-  }
-
-  if (geocode.status === "ZERO_RESULTS" || !geocode.results?.length) {
+  if (geocode.status === "ZERO_RESULTS") {
     throw new DeliveryEligibilityError("INVALID_ADDRESS", "We couldn’t find that delivery address. Check the street, city, and ZIP code.");
   }
-  if (geocode.status !== "OK") throw providerError();
+  if (geocode.status !== "OK" || !Array.isArray(geocode.results) || !geocode.results.length) {
+    logProvider("google_geocoding", "invalid_response", 1);
+    throw providerError();
+  }
 
   const result = geocode.results[0];
   const location = result.geometry?.location;
@@ -160,7 +179,8 @@ export async function checkDeliveryEligibility(
     throw new DeliveryEligibilityError("INVALID_ADDRESS", "Please enter a complete US street address for delivery.");
   }
 
-  const routeResponse = await fetchProvider(
+  const route = await fetchProvider<GoogleRoutesResponse>(
+    "google_routes",
     "https://routes.googleapis.com/directions/v2:computeRoutes",
     {
       method: "POST",
@@ -182,17 +202,11 @@ export async function checkDeliveryEligibility(
     fetchImpl,
   );
 
-  if (!routeResponse.ok) throw providerError();
-
-  let route: GoogleRoutesResponse;
-  try {
-    route = await routeResponse.json() as GoogleRoutesResponse;
-  } catch {
+  const seconds = parseDurationSeconds(route?.routes?.[0]?.staticDuration ?? route?.routes?.[0]?.duration);
+  if (seconds === null) {
+    logProvider("google_routes", "missing_or_invalid_duration", 1);
     throw providerError();
   }
-
-  const seconds = parseDurationSeconds(route.routes?.[0]?.staticDuration ?? route.routes?.[0]?.duration);
-  if (seconds === null) throw providerError();
 
   const driveMinutes = Math.ceil(seconds / 60);
   if (seconds > MAX_DELIVERY_DRIVE_SECONDS) {

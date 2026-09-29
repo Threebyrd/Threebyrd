@@ -157,7 +157,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     } catch {
       if (requestId !== deliveryCheckRequestRef.current) return;
       setDeliveryCheckState("unavailable");
-      setDeliveryMessage("The delivery checker is temporarily unavailable. Please try again.");
+      setDeliveryMessage("We couldn’t connect to the delivery checker. Check your connection or try another network, then try again.");
     }
   }
 

@@ -1,6 +1,6 @@
 export const BUSINESS_TIME_ZONE = "America/New_York";
 export const MINIMUM_BOXES = 3;
-export const DEFAULT_CUTOFF_OVERRIDE = "2026-09-26T15:00:00";
+export const DEFAULT_CUTOFF_OVERRIDE = "2026-10-03T17:00:00";
 export const ORDERS_OPEN = true;
 
 export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef";

@@ -36,7 +36,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.doesNotMatch(html, /class="capacityIndicator"/);
   assert.doesNotMatch(html, /Orders available this week/i);
   assert.match(html, /Next delivery cutoff/);
-  assert.match(html, /(?:Friday|Saturday), (?:September|October) \d{1,2}(?:<!-- -->)? at 3:00 PM (?:EDT|EST)/);
+  assert.match(html, /(?:Friday|Saturday), (?:September|October) \d{1,2}(?:<!-- -->)? at (?:3:00 PM|5:00 PM) (?:EDT|EST)/);
   assert.doesNotMatch(html, /Orders are currently closed|Orders close|Order window closed|Closing soon|Ordering is currently closed|Sold out for this week|Check back for the next ordering window/);
   assert.match(html, /Continue to secure checkout|Check your Ithaca delivery address|Checking checkout availability/);
   assert.match(html, /(?:Saturday|Sunday), (?:September|October) \d{1,2}/);

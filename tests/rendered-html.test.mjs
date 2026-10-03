@@ -36,15 +36,14 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.doesNotMatch(html, /class="capacityIndicator"/);
   assert.doesNotMatch(html, /Orders available this week/i);
   assert.match(html, /Next delivery cutoff/);
-  assert.match(html, /(?:Friday|Saturday), (?:September|October) \d{1,2}(?:<!-- -->)? at (?:3:00 PM|5:00 PM) (?:EDT|EST)/);
+  assert.match(html, /Saturday, \w+ \d{1,2}(?:<!-- -->)? at (?:3:00 PM|5:00 PM) (?:EDT|EST)/);
   assert.doesNotMatch(html, /Orders are currently closed|Orders close|Order window closed|Closing soon|Ordering is currently closed|Sold out for this week|Check back for the next ordering window/);
-  assert.match(html, /Continue to secure checkout|Check your Ithaca delivery address|Checking checkout availability/);
-  assert.match(html, /(?:Saturday|Sunday), (?:September|October) \d{1,2}/);
+  assert.match(html, /Continue to secure checkout|Check delivery address/);
+  assert.match(html, /Sunday, \w+ \d{1,2}/);
   assert.match(html, /Build your order/);
   assert.match(html, /3 meal minimum/);
-  assert.match(html, /Minimum 3/);
-  assert.match(html, /Better pricing at 5/);
-  assert.match(html, /Best pricing at 10/);
+  assert.doesNotMatch(html, /Minimum 3 · Better pricing at 5 · Best pricing at 10/);
+  assert.match(html, /funnelMilestoneGold/);
   assert.match(html, /Get the next drop/);
   assert.equal((html.match(/class="joinForm/g) ?? []).length, 1);
   assert.match(html, /id="bottom-join-email"[^>]*name="email"/);
@@ -101,6 +100,13 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.equal((html.match(/class="pricingTable"/g) ?? []).length, 1);
   assert.equal((html.match(/class="productPriceRange"/g) ?? []).length, 4);
   assert.equal((html.match(/aria-label="Add one /g) ?? []).length, 4);
+  assert.doesNotMatch(html, /checkout availability|Checking availability|Adjust cart to continue/i);
+  const addButtons = [...html.matchAll(/<button\b[^>]*aria-label="Add one [^"]+"[^>]*>/g)];
+  assert.equal(addButtons.length, 4);
+  for (const [button] of addButtons) {
+    assert.doesNotMatch(button, /\bdisabled(?:=|\s|>)/, "building a cart must not wait for the availability API");
+  }
+  assert.match(html, /<button[^>]*class="checkoutButton"[^>]*disabled/, "checkout still requires a valid cart and verified delivery address");
   assert.equal((html.match(/aria-label="Remove one /g) ?? []).length, 4);
   assert.match(html, /Follow ThreeByrd on Instagram/);
   assert.match(html, /https:\/\/www\.instagram\.com\/threebyrd\//);
@@ -200,6 +206,8 @@ test("renders a confirmation route without requiring Stripe secrets", async () =
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Order received/);
+  assert.match(html, /delivery date assigned at checkout/);
+  assert.doesNotMatch(html, /Sunday,|Saturday,/);
   assert.match(html, /Free delivery in Ithaca/);
   assert.doesNotMatch(html, /sk_(?:test|live)_/i);
 });

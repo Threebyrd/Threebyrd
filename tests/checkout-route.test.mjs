@@ -31,3 +31,15 @@ test("handles a controlled CORS preflight", () => {
   assert.equal(headers.get("access-control-allow-origin"), "http://localhost:3000");
   assert.equal(headers.get("access-control-allow-methods"), "POST, OPTIONS");
 });
+
+for (const userAgent of ['Mozilla/5.0 Chrome/130.0', 'Mozilla/5.0 Firefox/130.0', 'Mozilla/5.0 Version/18.0 Mobile Safari/604.1']) {
+  test(`delivery CORS allows browser headers: ${userAgent}`, () => {
+    const req = new Request('https://api.threebyrd.com/api/delivery-eligibility', {
+      method: 'OPTIONS', headers: { origin: 'https://threebyrd.com', 'user-agent': userAgent,
+        'accept-language': 'en-US,en;q=0.9', 'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type', 'sec-fetch-mode': 'cors', 'sec-fetch-site': 'same-site' },
+    });
+    assert.equal(isAllowedCheckoutOrigin(req), true);
+    assert.equal(new Headers(withCheckoutCors(req).headers).get('access-control-allow-origin'), 'https://threebyrd.com');
+  });
+}

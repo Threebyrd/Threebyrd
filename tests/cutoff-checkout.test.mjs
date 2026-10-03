@@ -25,9 +25,9 @@ test("checkout keeps accepting carts on both sides of the fulfillment cutoff", (
         cutoff.toISOString(),
         cutoff.toISOString(),
         cutoff.toISOString(),
-        "2026-10-09T19:00:00.000Z",
-        "2026-10-09T19:00:00.000Z",
-        "2026-10-09T19:00:00.000Z",
+        "2026-10-10T19:00:00.000Z",
+        "2026-10-10T19:00:00.000Z",
+        "2026-10-10T19:00:00.000Z",
       ],
     );
   } finally {

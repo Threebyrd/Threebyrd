@@ -7,7 +7,7 @@ import MobileMenu from "./components/MobileMenu";
 import OrderBuilder from "./components/OrderBuilder";
 import {
   getNextOrderCutoff,
-  getSaturdayForCutoff,
+  getDeliveryDayForCutoff,
 } from "./order-config";
 
 const impactStats = [
@@ -61,7 +61,7 @@ const navigation = [
 ];
 
 const cutoff = getNextOrderCutoff();
-const deliveryDay = getSaturdayForCutoff(cutoff);
+const deliveryDay = getDeliveryDayForCutoff(cutoff);
 
 export default function Home() {
   return (

@@ -14,7 +14,7 @@ Important implementation files are `app/order-config.ts`, `app/components/OrderB
 
 ## Weekly capacity and reservations
 
-Capacity counts total meals in completed customer orders when a future cap is enabled. Production is currently uncapped; the public `GET /api/capacity` endpoint is used only for the runtime emergency open/closed gate and no remaining-capacity indicator is rendered. It does not calculate or accept payment totals.
+Capacity counts total meals in completed customer orders when a future cap is enabled. Production is currently uncapped; the order builder does not call the public `GET /api/capacity` endpoint and no availability or remaining-capacity indicator is rendered. The checkout endpoint enforces the runtime emergency open/closed gate at submission. It does not calculate or accept payment totals.
 
 For a capped window, checkout performs this sequence:
 
@@ -60,11 +60,11 @@ The product cards derive their visible high-to-low price ranges, compact tier di
 
 ## Weekly cutoff and next-day delivery
 
-The recurring cutoff is centrally defined as Friday at 3:00 PM Eastern in `app/order-config.ts`. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
+The recurring cutoff is centrally defined as Saturday at 3:00 PM Eastern in `app/order-config.ts`. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
 
-For this one-time shifted window, configure `THREEBYRD_CUTOFF_OVERRIDE=2026-09-26T15:00:00` (Saturday, September 26 at 3:00 PM Eastern). Set it in the Worker vars and the static Pages build environment before deploying. After the override passes, the runtime automatically returns to the normal Friday cutoff and Saturday delivery; do not scatter dates through React components.
+No override is needed for the recurring schedule: the upcoming cutoff is Saturday, October 3, 2026 at 3:00 PM EDT, with Sunday, October 4 delivery. The expired September override has been removed. Optional `THREEBYRD_CUTOFF_OVERRIDE` values must be set identically in Worker vars and the frontend build environment; Vite embeds the public wall time for browser calculations. After an override passes, Saturday recurrence resumes. Leave the override unset for normal operation.
 
-The cutoff is a fulfillment-window boundary, not an ordering shutdown. Customers can begin checkout before, at, or after the cutoff; the server assigns each checkout to the next available cutoff and next-day Saturday delivery. The UI never shows a negative timer, and the site does not promise a particular delivery time or offer pickup.
+The cutoff is a fulfillment-window boundary, not an ordering shutdown. Customers can begin checkout before, at, or after the cutoff; the server assigns each checkout to the next available cutoff and next-day Sunday delivery. The UI never shows a negative timer, and the site does not promise a particular delivery time or offer pickup.
 
 ## Delivery eligibility
 
@@ -84,6 +84,8 @@ The integration follows the Stripe-hosted Checkout Sessions pattern:
 6. The D1 unique constraint on `stripe_session_id` makes repeated webhook delivery idempotent. The success page never fulfills an order.
 
 The checkout uses Stripe’s dynamic payment-method behavior; cards and eligible Apple Pay/Google Pay methods are handled by Stripe-hosted Checkout. No raw card data is handled by ThreeByrd. Automatic tax is not enabled yet because the company’s registrations and product tax classification have not been established; have a tax adviser confirm those inputs before enabling it.
+
+The success redirect carries the assigned delivery date as display-only context, so returning after cutoff still shows the original delivery day. Older return URLs without a date show neutral confirmation text. Fulfillment continues to use stored metadata, never URL parameters.
 
 Checkout metadata is generated only after server validation. It includes `order_id`, `big_chicken_qty`, `little_chicken_qty`, `big_beef_qty`, `little_beef_qty`, `total_meals`, normalized `delivery_address`, ISO `delivery_date`, and the existing `cart`, `totalBoxes`, `subtotalCents`, `pricingTier`, `cutoffAt`, and capacity reservation fields. This makes the Zapier mapping deterministic while D1 remains the fulfillment source of truth.
 
@@ -114,7 +116,7 @@ STRIPE_MODE=test
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_CHECKOUT_API_ORIGIN=
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-THREEBYRD_CUTOFF_OVERRIDE=2026-09-26T15:00:00
+# THREEBYRD_CUTOFF_OVERRIDE=2026-10-03T15:00:00 # optional only
 GOOGLE_MAPS_SERVER_API_KEY=<Google Maps server key; Worker secret only>
 ```
 

@@ -16,7 +16,12 @@ export async function POST(request: Request) {
 
   try {
     const result = await checkDeliveryEligibility(body?.address);
-    return Response.json(result, withCheckoutCors(request));
+    const publicResult = {
+      eligible: result.eligible,
+      normalizedAddress: result.normalizedAddress,
+      driveMinutes: result.driveMinutes,
+    };
+    return Response.json(publicResult, withCheckoutCors(request));
   } catch (error) {
     if (error instanceof DeliveryEligibilityError) {
       const status = error.code === "OUTSIDE_DELIVERY_ZONE" ? 422 : error.code === "PROVIDER_UNAVAILABLE" ? 503 : 400;

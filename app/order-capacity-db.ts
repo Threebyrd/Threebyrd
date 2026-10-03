@@ -45,9 +45,18 @@ export type ConfirmedOrderRecord = {
   deliveryAddress: string;
   items: string;
   amountCents: number;
+  subtotalCents: number | null;
+  taxCents: number;
   currency: string;
   cutoffAt: string | null;
   createdAt: number;
+  automaticTaxStatus?: string | null;
+  taxBehavior?: string;
+  productTaxCode?: string | null;
+  discountCents?: number;
+  stripeCouponId?: string | null;
+  stripePromotionCodeId?: string | null;
+  stripePaymentStatus?: string;
 };
 
 export type PendingOrderSheetExport = {
@@ -271,6 +280,13 @@ export async function recordConfirmedOrder(
   const expectedWindowKey = options.expectedWindowKey ?? null;
   const expectedMealCount = options.expectedMealCount ?? null;
   const reservationMealCount = expectedMealCount ?? 0;
+  const automaticTaxStatus = order.automaticTaxStatus ?? null;
+  const taxBehavior = order.taxBehavior ?? "exclusive";
+  const productTaxCode = order.productTaxCode ?? null;
+  const discountCents = order.discountCents ?? 0;
+  const stripeCouponId = order.stripeCouponId ?? null;
+  const stripePromotionCodeId = order.stripePromotionCodeId ?? null;
+  const stripePaymentStatus = order.stripePaymentStatus ?? "paid";
   if (reservationId && (!expectedWindowKey || typeof expectedMealCount !== "number" || !Number.isSafeInteger(reservationMealCount) || reservationMealCount <= 0)) {
     return false;
   }
@@ -304,8 +320,8 @@ export async function recordConfirmedOrder(
   );
   const insertOrder = database.prepare(`
     INSERT INTO orders
-      (id, stripe_session_id, stripe_payment_intent_id, status, customer_email, customer_name, customer_phone, delivery_address, items, amount_cents, currency, cutoff_at, created_at)
-    SELECT ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?
+      (id, stripe_session_id, stripe_payment_intent_id, status, customer_email, customer_name, customer_phone, delivery_address, items, amount_cents, subtotal_cents, tax_cents, currency, cutoff_at, created_at, automatic_tax_status, tax_behavior, product_tax_code, discount_cents, stripe_coupon_id, stripe_promotion_code_id, stripe_payment_status)
+    SELECT ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     WHERE ? IS NULL OR EXISTS (
       SELECT 1
       FROM ${RESERVATION_TABLE}
@@ -323,9 +339,18 @@ export async function recordConfirmedOrder(
     order.deliveryAddress,
     order.items,
     order.amountCents,
+    order.subtotalCents,
+    order.taxCents,
     order.currency,
     order.cutoffAt,
     order.createdAt,
+    automaticTaxStatus,
+    taxBehavior,
+    productTaxCode,
+    discountCents,
+    stripeCouponId,
+    stripePromotionCodeId,
+    stripePaymentStatus,
     reservationId,
     reservationId,
     order.stripeSessionId,
@@ -403,6 +428,8 @@ async function claimPendingOrderSheetExports(
       o.delivery_address,
       o.items,
       o.amount_cents,
+      o.subtotal_cents,
+      o.tax_cents,
       o.currency,
       o.cutoff_at,
       o.created_at,
@@ -425,6 +452,8 @@ async function claimPendingOrderSheetExports(
     delivery_address: string | null;
     items: string;
     amount_cents: number;
+    subtotal_cents: number | null;
+    tax_cents: number;
     currency: string;
     cutoff_at: string | null;
     created_at: number;
@@ -461,6 +490,8 @@ async function claimPendingOrderSheetExports(
         deliveryAddress: row.delivery_address,
         items: row.items,
         amountCents: Number(row.amount_cents),
+        subtotalCents: row.subtotal_cents == null ? null : Number(row.subtotal_cents),
+        taxCents: row.tax_cents == null ? null : Number(row.tax_cents),
         currency: row.currency,
         cutoffAt: row.cutoff_at,
         createdAt: Number(row.created_at),

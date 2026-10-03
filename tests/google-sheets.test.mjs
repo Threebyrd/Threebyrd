@@ -77,7 +77,7 @@ test("builds the exact validated mixed-cart Sheets row payload", () => {
     stripeSessionId: "cs_test_123",
     paymentStatus: "paid",
     orderStatus: "New",
-    notes: "",
+    notes: "Stripe Tax: $0.00",
   });
 });
 

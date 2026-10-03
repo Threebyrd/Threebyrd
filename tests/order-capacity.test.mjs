@@ -98,7 +98,8 @@ class FakeD1 {
     }
 
     if (query.includes("INSERT INTO orders")) {
-      const [sessionId, , , , , , , , amountCents, , , , reservationId] = values;
+      const [sessionId, , , , , , , , amountCents] = values;
+      const reservationId = values.find((value) => value === "r-order");
       const reservationConfirmed = reservationId === null || this.rows.some((row) => (
         row.status === "confirmed" && (row.id === reservationId || row.stripeSessionId === sessionId)
       ));
@@ -319,6 +320,8 @@ test("paid webhook reconciliation is atomic and duplicate session delivery creat
     deliveryAddress: "{}",
     items: "[{\"productId\":\"big-chicken\",\"quantity\":3}]",
     amountCents: 3_000,
+    subtotalCents: 3_000,
+    taxCents: 0,
     currency: "usd",
     cutoffAt: "2026-09-18T19:00:00.000Z",
     createdAt: 1_200,

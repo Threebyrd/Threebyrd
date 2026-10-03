@@ -2,6 +2,7 @@ import { recordConfirmedOrder, releaseOrderCapacityReservation } from "../../../
 import { getValidatedDeliveryAddressFromMetadata } from "../../../checkout-reconciliation";
 import { getCartPricingTier, quoteOrder, readCartMetadata } from "../../../order-config";
 import { getStripe, getStripeMode, isStripeEventForMode, safeErrorMessage } from "../../../stripe";
+import { STRIPE_MEAL_TAX_CODE } from "../../../stripe-tax";
 import type Stripe from "stripe";
 
 export async function POST(request: Request) {
@@ -75,6 +76,18 @@ export async function POST(request: Request) {
   const metadataTotalBoxes = Number(session.metadata?.totalBoxes);
   const metadataSubtotalCents = Number(session.metadata?.subtotalCents);
   const metadataPricingTier = session.metadata?.pricingTier;
+  const stripeSubtotalCents = session.amount_subtotal;
+  const stripeTaxCents = session.total_details?.amount_tax ?? null;
+  const stripeDiscountCents = session.total_details?.amount_discount ?? 0;
+  const stripeShippingCents = session.total_details?.amount_shipping ?? 0;
+  const stripeTotalCents = session.amount_total;
+  const expectedStripeTotalCents = stripeSubtotalCents === null || stripeSubtotalCents === undefined || stripeTaxCents === null || stripeTotalCents === null || stripeTotalCents === undefined
+    ? null
+    : stripeSubtotalCents - stripeDiscountCents + stripeShippingCents + stripeTaxCents;
+  if (stripeSubtotalCents === null || stripeSubtotalCents === undefined || stripeTaxCents === null || stripeTotalCents === null || stripeTotalCents === undefined) {
+    console.error("Confirmed Stripe session is missing authoritative tax totals", session.id);
+    return Response.json({ error: "Checkout session tax totals could not be verified." }, { status: 500 });
+  }
   if (
     session.mode !== "payment" ||
     session.payment_status !== "paid" ||
@@ -84,7 +97,13 @@ export async function POST(request: Request) {
     metadataSubtotalCents !== quote.subtotalCents ||
     metadataPricingTier !== quote.pricingTier ||
     session.currency !== "usd" ||
-    session.amount_total !== quote.subtotalCents
+    session.automatic_tax?.enabled !== true ||
+    session.automatic_tax.status === "failed" ||
+    stripeSubtotalCents !== quote.subtotalCents ||
+    !Number.isSafeInteger(stripeTaxCents) ||
+    stripeTaxCents < 0 ||
+    expectedStripeTotalCents === null ||
+    stripeTotalCents !== expectedStripeTotalCents
   ) {
     console.error("Confirmed Stripe session failed order reconciliation", session.id);
     return Response.json({ error: "Checkout session could not be reconciled." }, { status: 500 });
@@ -118,10 +137,19 @@ export async function POST(request: Request) {
       customerPhone: session.customer_details?.phone ?? null,
       deliveryAddress: deliveryAddressRecord,
       items: JSON.stringify(cart),
-      amountCents: session.amount_total,
+      amountCents: stripeTotalCents,
+      subtotalCents: stripeSubtotalCents,
+      taxCents: stripeTaxCents,
       currency: session.currency,
       cutoffAt,
       createdAt: session.created,
+      automaticTaxStatus: session.automatic_tax.status ?? null,
+      taxBehavior: "exclusive",
+      productTaxCode: STRIPE_MEAL_TAX_CODE,
+      discountCents: stripeDiscountCents,
+      stripeCouponId: null,
+      stripePromotionCodeId: null,
+      stripePaymentStatus: session.payment_status,
     }, {
       reservationId,
       confirmedAt,

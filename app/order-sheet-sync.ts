@@ -30,6 +30,8 @@ export type ConfirmedOrderForSheet = {
   deliveryAddress: string | null;
   items: string;
   amountCents: number;
+  subtotalCents?: number | null;
+  taxCents?: number | null;
   currency: string;
   cutoffAt: string | null;
   createdAt: number;
@@ -80,7 +82,16 @@ const retryMaxSeconds = 6 * 60 * 60;
 export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode: "test" | "live"): GoogleSheetsOrderPayload {
   const items = parseItems(order.items);
   const quote = quoteOrder(items);
-  if (!quote.isValid || quote.subtotalCents !== order.amountCents || order.currency.toLowerCase() !== "usd") {
+  const subtotalCents = order.subtotalCents ?? quote.subtotalCents;
+  const taxCents = order.taxCents ?? Math.max(0, order.amountCents - subtotalCents);
+  if (
+    !quote.isValid ||
+    subtotalCents !== quote.subtotalCents ||
+    !Number.isSafeInteger(taxCents) ||
+    taxCents < 0 ||
+    order.amountCents !== subtotalCents + taxCents ||
+    order.currency.toLowerCase() !== "usd"
+  ) {
     throw new Error("Confirmed order failed Google Sheets export validation.");
   }
 
@@ -112,7 +123,7 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     stripeSessionId: order.stripeSessionId,
     paymentStatus: "paid",
     orderStatus: "New",
-    notes: "",
+    notes: `Stripe Tax: $${(taxCents / 100).toFixed(2)}`,
   };
 }
 

@@ -5,6 +5,7 @@ import { getCheckoutClientKey } from "../../checkout-client";
 import { expireCreatedCheckoutSession } from "../../checkout-recovery";
 import { checkDeliveryEligibility, DeliveryEligibilityError } from "../../delivery";
 import { getSiteOrigin, getStripe, safeErrorMessage } from "../../stripe";
+import { STRIPE_MEAL_TAX_BEHAVIOR, STRIPE_MEAL_TAX_CODE } from "../../stripe-tax";
 import { isAllowedCheckoutOrigin, withCheckoutCors } from "../cors";
 
 type CheckoutRequest = {
@@ -99,22 +100,30 @@ export async function POST(request: Request) {
       metadata.capacityWindowKey = reservation.windowKey;
     }
 
+    const customer = await stripe.customers.create({
+      address: deliveryCheck.taxAddress,
+    });
+
     createdSession = await stripe.checkout.sessions.create({
       mode: "payment",
       integration_identifier: `threebyrd_checkout_${randomLetters(8)}`,
       ...(reservation ? { client_reference_id: reservation.id, expires_at: reservation.expiresAt } : {}),
+      automatic_tax: { enabled: true },
+      customer: customer.id,
+      customer_update: { address: "never" },
       line_items: quote.lines.map((line) => ({
         price_data: {
           currency: "usd",
+          tax_behavior: STRIPE_MEAL_TAX_BEHAVIOR,
           product_data: {
             name: line.name,
             description: `Meal prep with rice and broccoli · free delivery ${getDeliveryDateIso(cutoff)}`,
+            tax_code: STRIPE_MEAL_TAX_CODE,
           },
           unit_amount: line.unitAmountCents,
         },
         quantity: line.quantity,
       })),
-      customer_creation: "always",
       phone_number_collection: { enabled: true },
       success_url: `${siteOrigin}/success?session_id={CHECKOUT_SESSION_ID}&delivery_date=${metadata.delivery_date}`,
       cancel_url: `${siteOrigin}/order?checkout=canceled`,

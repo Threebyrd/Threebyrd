@@ -8,6 +8,15 @@ export type DeliveryEligibility = {
   eligible: boolean;
   normalizedAddress: string;
   driveMinutes: number;
+  taxAddress: ValidatedTaxAddress;
+};
+
+export type ValidatedTaxAddress = {
+  line1: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: "US";
 };
 
 export type DeliveryErrorCode = "INVALID_ADDRESS" | "OUTSIDE_DELIVERY_ZONE" | "PROVIDER_UNAVAILABLE";
@@ -28,7 +37,7 @@ type GoogleGeocodeResponse = {
     formatted_address?: string;
     partial_match?: boolean;
     geometry?: { location?: { lat?: number; lng?: number } };
-    address_components?: Array<{ types?: string[]; short_name?: string }>;
+    address_components?: Array<{ types?: string[]; short_name?: string; long_name?: string }>;
   }>;
 };
 
@@ -129,6 +138,37 @@ function isCompleteStreetAddress(result: NonNullable<GoogleGeocodeResponse["resu
   return types.has("street_number") && types.has("route");
 }
 
+function getAddressComponent(
+  result: NonNullable<GoogleGeocodeResponse["results"]>[number],
+  type: string,
+  name: "short_name" | "long_name" = "long_name",
+): string | null {
+  const component = result.address_components?.find((item) => item.types?.includes(type));
+  const value = component?.[name] ?? component?.short_name;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getValidatedTaxAddress(
+  result: NonNullable<GoogleGeocodeResponse["results"]>[number],
+): ValidatedTaxAddress | null {
+  const streetNumber = getAddressComponent(result, "street_number");
+  const route = getAddressComponent(result, "route");
+  const city = getAddressComponent(result, "locality") ?? getAddressComponent(result, "postal_town");
+  const state = getAddressComponent(result, "administrative_area_level_1", "short_name");
+  const postalCode = getAddressComponent(result, "postal_code");
+  const country = getAddressComponent(result, "country", "short_name");
+  if (!streetNumber || !route || !city || !state || !postalCode || country !== "US") return null;
+
+  const subpremise = getAddressComponent(result, "subpremise");
+  return {
+    line1: `${streetNumber} ${route}${subpremise ? `, ${subpremise}` : ""}`,
+    city,
+    state,
+    postal_code: postalCode,
+    country: "US",
+  };
+}
+
 export async function checkDeliveryEligibility(
   value: unknown,
   fetchImpl: FetchLike = fetch,
@@ -179,6 +219,11 @@ export async function checkDeliveryEligibility(
     throw new DeliveryEligibilityError("INVALID_ADDRESS", "Please enter a complete US street address for delivery.");
   }
 
+  const taxAddress = getValidatedTaxAddress(result);
+  if (!taxAddress) {
+    throw new DeliveryEligibilityError("INVALID_ADDRESS", "Please enter a complete US street address for delivery.");
+  }
+
   const route = await fetchProvider<GoogleRoutesResponse>(
     "google_routes",
     "https://routes.googleapis.com/directions/v2:computeRoutes",
@@ -220,5 +265,6 @@ export async function checkDeliveryEligibility(
     eligible: true,
     normalizedAddress: result.formatted_address,
     driveMinutes,
+    taxAddress,
   };
 }

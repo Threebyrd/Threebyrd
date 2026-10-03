@@ -83,7 +83,7 @@ The integration follows the Stripe-hosted Checkout Sessions pattern:
 5. `POST /api/webhooks/stripe` verifies the Stripe signature, handles completed and asynchronous successful Checkout events, reconciles the verified session against the canonical quote, and records the confirmed order in D1.
 6. The D1 unique constraint on `stripe_session_id` makes repeated webhook delivery idempotent. The success page never fulfills an order.
 
-The checkout uses Stripe’s dynamic payment-method behavior; cards and eligible Apple Pay/Google Pay methods are handled by Stripe-hosted Checkout. No raw card data is handled by ThreeByrd. Automatic tax is not enabled yet because the company’s registrations and product tax classification have not been established; have a tax adviser confirm those inputs before enabling it.
+The checkout uses Stripe’s dynamic payment-method behavior; cards and eligible Apple Pay/Google Pay methods are handled by Stripe-hosted Checkout. No raw card data is handled by ThreeByrd. Stripe automatic tax is enabled with exclusive meal prices and the confirmed `txcd_40040000` product tax code. The Worker supplies Stripe with the server-validated delivery location without allowing Checkout to overwrite that destination. Stripe remains authoritative for tax and final amount; a zero tax result is valid when Stripe’s registration and taxability evaluation says so.
 
 The success redirect carries the assigned delivery date as display-only context, so returning after cutoff still shows the original delivery day. Older return URLs without a date show neutral confirmation text. Fulfillment continues to use stored metadata, never URL parameters.
 
@@ -151,7 +151,7 @@ Invoicing is also intentionally outside student checkout. For future fraternity,
 ## What ThreeByrd still needs to do
 
 1. Keep staging isolated with `STRIPE_MODE=test`, its sandbox secrets, and its separate D1 database.
-2. Decide tax registrations, product tax classification, and whether to enable Stripe Tax with a tax adviser; do not enable it by assumption.
+2. Keep the live Stripe Tax registration and confirmed `txcd_40040000` classification current with a tax adviser. The Worker enables Stripe Tax automatically; do not replace it with a hardcoded rate.
 3. Monitor the live-account operational checklist, including receipts, statement descriptor, fulfillment, refunds, and webhook delivery.
 4. If an emergency close is needed, set `ORDERS_OPEN` to `false`, deploy the Worker, and verify that checkout returns HTTP 503.
 

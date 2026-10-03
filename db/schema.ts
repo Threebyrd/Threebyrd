@@ -11,9 +11,18 @@ export const orders = sqliteTable("orders", {
   deliveryAddress: text("delivery_address"),
   items: text("items").notNull(),
   amountCents: integer("amount_cents").notNull(),
+  subtotalCents: integer("subtotal_cents").notNull().default(0),
+  taxCents: integer("tax_cents").notNull().default(0),
   currency: text("currency").notNull().default("usd"),
   cutoffAt: text("cutoff_at"),
   createdAt: integer("created_at").notNull(),
+  automaticTaxStatus: text("automatic_tax_status"),
+  taxBehavior: text("tax_behavior").notNull().default("exclusive"),
+  productTaxCode: text("product_tax_code"),
+  discountCents: integer("discount_cents").notNull().default(0),
+  stripeCouponId: text("stripe_coupon_id"),
+  stripePromotionCodeId: text("stripe_promotion_code_id"),
+  stripePaymentStatus: text("stripe_payment_status").notNull().default("paid"),
 });
 
 export const liveTestGate = sqliteTable("live_test_gate", {

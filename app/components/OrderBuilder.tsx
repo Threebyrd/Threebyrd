@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Countdown from "./Countdown";
 import DeliveryAddressForm, { type DeliveryCheckState } from "./DeliveryAddressForm";
 import MacroSnapshot from "./MacroSnapshot";
@@ -14,7 +14,9 @@ import {
   formatCompactMoney,
   formatMoney,
   formatPricingTier,
+  getDeliveryDayForCutoff,
   getNextPricingTier,
+  isCutoffOverrideActive,
   MINIMUM_BOXES,
   ORDERS_OPEN,
   priceRangeFor,
@@ -26,6 +28,7 @@ import {
 
 type OrderBuilderProps = {
   initialCutoffIso: string;
+  initialFallBreakActive: boolean;
   checkoutMessage?: string;
 };
 
@@ -34,7 +37,7 @@ const checkoutApiOrigin = (process.env.NEXT_PUBLIC_CHECKOUT_API_ORIGIN ?? "").tr
 const checkoutApiUrl = `${checkoutApiOrigin}/api/checkout`;
 const deliveryEligibilityApiUrl = `${checkoutApiOrigin}/api/delivery-eligibility`;
 
-export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: OrderBuilderProps) {
+export default function OrderBuilder({ initialCutoffIso, initialFallBreakActive, checkoutMessage }: OrderBuilderProps) {
   const searchParams = useSearchParams();
   const [quantities, setQuantities] = useState<Record<ProductId, number>>(initialQuantities);
   const [statusMessage, setStatusMessage] = useState(() => (
@@ -44,6 +47,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   ));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastInteractedProductId, setLastInteractedProductId] = useState<ProductId | null>(null);
+  const [fallBreakActive, setFallBreakActive] = useState(initialFallBreakActive);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddressFields>(EMPTY_DELIVERY_ADDRESS);
   const [deliveryCheckState, setDeliveryCheckState] = useState<DeliveryCheckState>("idle");
   const [deliveryMessage, setDeliveryMessage] = useState("Check your address before checkout.");
@@ -65,6 +69,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     : [];
   const deliveryAddressKey = JSON.stringify(deliveryAddress);
   const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddressKey === checkedDeliveryAddressKey;
+  const fallBreakDeliveryDay = getDeliveryDayForCutoff(new Date(initialCutoffIso));
   const pricingMilestones = [
     { value: 3, label: "Minimum" },
     { value: 5, label: "Lower prices" },
@@ -98,8 +103,15 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     : quote.totalBoxes < 5
       ? `Add ${5 - quote.totalBoxes} more → better pricing`
       : quote.totalBoxes < 10
-        ? `Add ${10 - quote.totalBoxes} more → best pricing`
+      ? `Add ${10 - quote.totalBoxes} more → best pricing`
         : "Best pricing ✓";
+
+  useEffect(() => {
+    const updateFallBreakState = () => setFallBreakActive(isCutoffOverrideActive(new Date()));
+    updateFallBreakState();
+    const timer = window.setInterval(updateFallBreakState, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   function scrollToSummary() {
     const summary = orderSummaryRef.current;
@@ -212,6 +224,13 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             <h2 className="majorHeading" id="order-title">Pick your<br /><em>meals.</em></h2>
           </div>
         </div>
+        {fallBreakActive && (
+          <aside className="fallBreakNotice" aria-labelledby="fall-break-title">
+            <p className="fallBreakNoticeLabel">Fall break schedule</p>
+            <strong id="fall-break-title">Next cook &amp; delivery: {fallBreakDeliveryDay}</strong>
+            <p>Orders placed now will be fulfilled then.</p>
+          </aside>
+        )}
 
         <div className="orderFunnel" aria-label="Pricing milestones">
           <div className="orderFunnelHeader">

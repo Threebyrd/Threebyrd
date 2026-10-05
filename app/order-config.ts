@@ -1,6 +1,6 @@
 export const BUSINESS_TIME_ZONE = "America/New_York";
 export const MINIMUM_BOXES = 3;
-export const DEFAULT_CUTOFF_OVERRIDE = "2026-10-03T17:00:00";
+export const DEFAULT_CUTOFF_OVERRIDE = "2026-10-17T15:00:00";
 export const ORDERS_OPEN = true;
 
 export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef";
@@ -429,18 +429,18 @@ function addBusinessDays(parts: BusinessDateParts, days: number): BusinessDatePa
   return { ...parts, year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
 }
 
-/** Return the next Saturday 3:00 PM cutoff in the business timezone. */
-export function getNextSaturdayCutoffAfter(now = new Date()): Date {
+/** Return the next Friday 3:00 PM cutoff in the business timezone. */
+export function getNextFridayCutoffAfter(now = new Date()): Date {
   const parts = businessDateParts(now);
   const weekday = new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
-  let daysUntilSaturday = (6 - weekday + 7) % 7;
-  const candidate = wallTimeForParts(addBusinessDays(parts, daysUntilSaturday), 15, 0);
+  let daysUntilFriday = (5 - weekday + 7) % 7;
+  const candidate = wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
 
   if (candidate.getTime() <= now.getTime()) {
-    daysUntilSaturday += 7;
+    daysUntilFriday += 7;
   }
 
-  return wallTimeForParts(addBusinessDays(parts, daysUntilSaturday), 15, 0);
+  return wallTimeForParts(addBusinessDays(parts, daysUntilFriday), 15, 0);
 }
 
 export function getOrderCapacityWindowKey(cutoff: Date): string {
@@ -456,12 +456,17 @@ function configuredCutoffOverride(): Date | null {
   return businessWallTimeToDate(process.env.THREEBYRD_CUTOFF_OVERRIDE ?? process.env.NEXT_PUBLIC_THREEBYRD_CUTOFF_OVERRIDE ?? DEFAULT_CUTOFF_OVERRIDE);
 }
 
+export function isCutoffOverrideActive(now = new Date()): boolean {
+  const override = configuredCutoffOverride();
+  return override !== null && now.getTime() < override.getTime();
+}
+
 export function getNextOrderCutoff(now = new Date()): Date {
   const override = configuredCutoffOverride();
   if (override && now.getTime() < override.getTime()) {
     return override;
   }
-  return getNextSaturdayCutoffAfter(now);
+  return getNextFridayCutoffAfter(now);
 }
 
 export function formatBusinessDate(date: Date): string {

@@ -254,6 +254,10 @@ h1, h2, h3 { text-wrap: balance; }
 .orderPage .orderSection { border-top: var(--border-ui); margin-top: 1.2rem; }
 .orderIntro { display: block; }
 .orderIntro h2 { font-size: clamp(3.5rem, 5.8vw, 5.8rem); }
+.fallBreakNotice { background: var(--tb-gold-soft); border: var(--border-major); box-shadow: var(--shadow-hard); color: var(--tb-red); display: grid; gap: 0.35rem; margin-top: 1.3rem; max-width: 620px; padding: 0.9rem 1rem; }
+.fallBreakNoticeLabel { font-size: 0.62rem; font-weight: 950; letter-spacing: 0.1em; margin: 0; text-transform: uppercase; }
+.fallBreakNotice strong { font-family: var(--font-display); font-size: clamp(1.2rem, 2.6vw, 1.8rem); font-weight: 400; line-height: 1; text-transform: uppercase; }
+.fallBreakNotice p:last-child { color: var(--tb-ink); font-size: 0.74rem; font-weight: 800; margin: 0; }
 .orderRule { border-left: 4px solid var(--tb-red); color: var(--tb-red); font-size: 0.82rem; margin: 1.2rem 0 0; padding-left: 0.8rem; }
 .orderLayout { align-items: start; display: grid; gap: 2rem; grid-template-columns: minmax(0, 1.45fr) minmax(310px, 0.55fr); margin-top: 3.2rem; }
 .productColumn { min-width: 0; }

@@ -60,9 +60,9 @@ The product cards derive their visible high-to-low price ranges, compact tier di
 
 ## Weekly cutoff and next-day delivery
 
-The recurring cutoff is centrally defined as Saturday at 3:00 PM Eastern in `app/order-config.ts`. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
+The recurring cutoff is centrally defined as Friday at 3:00 PM Eastern in `app/order-config.ts`, followed by Saturday delivery. This is a business-local wall time in `America/New_York`, not a visitor-local timestamp. The conversion uses `Intl.DateTimeFormat` and handles daylight-saving changes.
 
-No override is needed for the recurring schedule: the upcoming cutoff is Saturday, October 3, 2026 at 3:00 PM EDT, with Sunday, October 4 delivery. The expired September override has been removed. Optional `THREEBYRD_CUTOFF_OVERRIDE` values must be set identically in Worker vars and the frontend build environment; Vite embeds the public wall time for browser calculations. After an override passes, Saturday recurrence resumes. Leave the override unset for normal operation.
+The current one-time Fall Break override is Saturday, October 17, 2026 at 3:00 PM EDT, with Sunday, October 18 delivery. Before that cutoff, all orders use the October 18 fulfillment date; at the exact cutoff the schedule rolls to Friday, October 23 at 3:00 PM EDT with Saturday, October 24 delivery. `THREEBYRD_CUTOFF_OVERRIDE` must be set identically in Worker vars and the frontend build environment; Vite embeds the public wall time for browser calculations. After the override passes, Friday recurrence resumes automatically.
 
 The cutoff is a fulfillment-window boundary, not an ordering shutdown. Customers can begin checkout before, at, or after the cutoff; the server assigns each checkout to the next available cutoff and next-day Sunday delivery. The UI never shows a negative timer, and the site does not promise a particular delivery time or offer pickup.
 
@@ -116,7 +116,7 @@ STRIPE_MODE=test
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_CHECKOUT_API_ORIGIN=
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-# THREEBYRD_CUTOFF_OVERRIDE=2026-10-03T15:00:00 # optional only
+# THREEBYRD_CUTOFF_OVERRIDE=2026-10-17T15:00:00
 GOOGLE_MAPS_SERVER_API_KEY=<Google Maps server key; Worker secret only>
 ```
 

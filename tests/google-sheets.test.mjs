@@ -88,7 +88,7 @@ test("builds the exact validated mixed-cart Sheets row payload", () => {
     mealBreakdown: "Big Chicken — No Sauce ×3\nBig Beef — No Sauce ×2",
     paymentStatus: "paid",
     orderStatus: "New",
-    notes: "",
+    notes: "Stripe Tax: $0.00",
   });
 });
 

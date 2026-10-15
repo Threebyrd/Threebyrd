@@ -152,7 +152,9 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     mealBreakdown,
     paymentStatus: order.stripePaymentStatus,
     orderStatus: "New",
-    notes: "",
+    // Preserve the existing Notes convention while the dedicated Sales Tax
+    // column remains the authoritative numeric field for exports.
+    notes: `Stripe Tax: $${(order.taxCents / 100).toFixed(2)}`,
   };
 }
 

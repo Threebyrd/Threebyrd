@@ -76,7 +76,7 @@ test("exports Stripe-reconciled discounted subtotal, tax, and final total", () =
     mealBreakdown: "Big Chicken — No Sauce ×3",
     paymentStatus: "paid",
     orderStatus: "New",
-    notes: "",
+    notes: "Stripe Tax: $2.16",
   });
 });
 

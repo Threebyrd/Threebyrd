@@ -1,4 +1,4 @@
-import { getDeliveryDateIso, quoteOrder, type CartItemInput } from "./order-config.ts";
+import { getDeliveryDateIso, getProduct, getSauce, type CartItemInput } from "./order-config.ts";
 
 export const GOOGLE_SHEETS_HEADERS = [
   "Order Date/Time",
@@ -95,19 +95,42 @@ const retryMaxSeconds = 6 * 60 * 60;
 
 export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode: "test" | "live"): GoogleSheetsOrderPayload {
   const items = parseItems(order.items);
-  const quote = quoteOrder(items);
+  // D1 holds the Stripe-reconciled amount paid at checkout. Historical orders
+  // must not be re-priced against today's catalog when they are exported.
+  const mealCount = items.reduce((total, item) => {
+    if (
+      !getProduct(item.productId) ||
+      !Number.isSafeInteger(item.quantity) ||
+      item.quantity <= 0 ||
+      !getSauce(item.sauceId)
+    ) {
+      throw new Error("Confirmed order failed Google Sheets export validation.");
+    }
+    const nextTotal = total + item.quantity;
+    if (!Number.isSafeInteger(nextTotal)) {
+      throw new Error("Confirmed order failed Google Sheets export validation.");
+    }
+    return nextTotal;
+  }, 0);
   if (
-    !quote.isValid ||
-    quote.subtotalCents !== order.subtotalCents ||
+    order.status !== "confirmed" ||
+    !/^(test|live)$/.test(stripeMode) ||
+    !new RegExp(`^cs_${stripeMode}_`).test(order.stripeSessionId) ||
+    !Number.isSafeInteger(order.createdAt) ||
+    mealCount < 3 ||
+    !Number.isSafeInteger(order.subtotalCents) ||
+    order.subtotalCents < 0 ||
     !Number.isSafeInteger(order.discountCents) ||
     order.discountCents < 0 ||
     order.discountCents > order.subtotalCents ||
     !Number.isSafeInteger(order.taxCents) ||
     order.taxCents < 0 ||
+    !Number.isSafeInteger(order.amountCents) ||
     order.amountCents !== (order.taxBehavior === "exclusive"
       ? order.subtotalCents - order.discountCents + order.taxCents
       : order.subtotalCents - order.discountCents) ||
-    order.currency.toLowerCase() !== "usd"
+    order.currency.toLowerCase() !== "usd" ||
+    !["paid", "no_payment_required"].includes(order.stripePaymentStatus)
   ) {
     throw new Error("Confirmed order failed Google Sheets export validation.");
   }
@@ -125,8 +148,12 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
   const quantityFor = (productId: string) => items
     .filter((item) => item.productId === productId)
     .reduce((total, item) => total + item.quantity, 0);
-  const mealBreakdown = quote.lines
-    .map((line) => `${line.name} — ${line.sauceName} ×${line.quantity}`)
+  const mealBreakdown = items
+    .map((item) => {
+      const product = getProduct(item.productId)!;
+      const sauce = getSauce(item.sauceId)!;
+      return `${product.name} — ${sauce.name} ×${item.quantity}`;
+    })
     .join("\n");
 
   return {
@@ -142,7 +169,7 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     littleChickenQty: quantityFor("little-chicken"),
     bigBeefQty: quantityFor("big-beef"),
     littleBeefQty: quantityFor("little-beef"),
-    totalMeals: quote.totalBoxes,
+    totalMeals: mealCount,
     mealSubtotal: Number((order.subtotalCents / 100).toFixed(2)),
     discount: Number((order.discountCents / 100).toFixed(2)),
     salesTax: Number((order.taxCents / 100).toFixed(2)),

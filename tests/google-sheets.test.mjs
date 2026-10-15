@@ -116,6 +116,40 @@ test("rebuilds the Sheets payload from validated D1 data, not client prices", ()
   assert.throws(() => buildOrderSheetPayload({ ...mixedOrder, items: "not-json" }, "test"), /invalid cart data/);
 });
 
+test("exports historical Stripe-confirmed pricing without repricing against the current catalog", () => {
+  const historicalOrder = {
+    ...mixedOrder,
+    items: JSON.stringify([
+      { productId: "big-chicken", quantity: 2 },
+      { productId: "big-beef", quantity: 1 },
+      { productId: "little-chicken", quantity: 1 },
+      { productId: "little-beef", quantity: 1 },
+    ]),
+    amountCents: 4_400,
+    subtotalCents: 4_400,
+  };
+
+  const payload = buildOrderSheetPayload(historicalOrder, "test");
+  assert.equal(payload.totalMeals, 5);
+  assert.equal(payload.mealSubtotal, 44);
+  assert.equal(payload.totalPaid, 44);
+  assert.equal(payload.bigChickenQty, 2);
+  assert.equal(payload.bigBeefQty, 1);
+  assert.equal(payload.littleChickenQty, 1);
+  assert.equal(payload.littleBeefQty, 1);
+});
+
+test("rejects unknown products and malformed quantities in confirmed order data", () => {
+  assert.throws(() => buildOrderSheetPayload({
+    ...mixedOrder,
+    items: JSON.stringify([{ productId: "unrecognized-sku", quantity: 5 }]),
+  }, "test"), /failed Google Sheets export validation/);
+  assert.throws(() => buildOrderSheetPayload({
+    ...mixedOrder,
+    items: JSON.stringify([{ productId: "big-chicken", quantity: 2.5 }]),
+  }, "test"), /failed Google Sheets export validation/);
+});
+
 test("uses bounded exponential retry delays", () => {
   assert.equal(getRetryDelaySeconds(1), 300);
   assert.equal(getRetryDelaySeconds(2), 600);

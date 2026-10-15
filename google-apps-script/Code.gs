@@ -13,11 +13,16 @@ const ORDER_HEADERS = [
   "Big Beef Qty",
   "Little Beef Qty",
   "Total Meals",
+  "Meal Subtotal",
+  "Discount",
+  "Sales Tax",
   "Total Paid",
   "Delivery Date",
   "Stripe Session ID",
+  "Meal Breakdown",
   "Payment Status",
   "Order Status",
+  "Name",
   "Notes",
 ];
 
@@ -75,7 +80,7 @@ function doPost(e) {
       validateHeaders(sheet);
       const rows = readOrderRows(sheet);
       const matchingRow = rows.findIndex(function(row) {
-        return String(row[1]) === order.orderId || String(row[13]) === order.stripeSessionId;
+        return String(row[1]) === order.orderId || String(row[16]) === order.stripeSessionId;
       });
       const destination = getDestinationDiagnostics(spreadsheet, sheet, true);
       if (matchingRow >= 0) {
@@ -171,7 +176,7 @@ function readOrderRows(sheet) {
 
 function validateOrder(order) {
   if (!order || typeof order !== "object") return "Missing order";
-  const requiredStrings = ["stripeMode", "orderDateTime", "orderId", "email", "deliveryAddress", "deliveryDate", "stripeSessionId"];
+  const requiredStrings = ["stripeMode", "orderDateTime", "orderId", "recipientName", "email", "deliveryAddress", "deliveryDate", "stripeSessionId", "mealBreakdown"];
   for (let i = 0; i < requiredStrings.length; i += 1) {
     if (typeof order[requiredStrings[i]] !== "string" || !order[requiredStrings[i]].trim()) return "Missing required order field";
   }
@@ -179,7 +184,7 @@ function validateOrder(order) {
   if (!/^(test|live)$/.test(order.stripeMode)) return "Invalid Stripe mode";
   if (!new RegExp("^cs_" + order.stripeMode + "_").test(order.stripeSessionId)) return "Invalid Stripe session";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.email)) return "Invalid customer email";
-  if (order.paymentStatus !== "paid" || order.orderStatus !== "New") return "Invalid order status";
+  if (!/^(paid|no_payment_required)$/.test(order.paymentStatus) || order.orderStatus !== "New") return "Invalid order status";
 
   const quantities = ["bigChickenQty", "littleChickenQty", "bigBeefQty", "littleBeefQty"].map(function(key) {
     return order[key];
@@ -187,7 +192,11 @@ function validateOrder(order) {
   if (!quantities.every(function(value) { return Number.isInteger(value) && value >= 0; })) return "Invalid meal quantities";
   if (!Number.isInteger(order.totalMeals) || order.totalMeals < 3) return "Invalid meal total";
   if (quantities.reduce(function(total, value) { return total + value; }, 0) !== order.totalMeals) return "Meal total does not match quantities";
-  if (typeof order.totalPaid !== "number" || !Number.isFinite(order.totalPaid) || order.totalPaid < 0) return "Invalid paid total";
+  const moneyFields = ["mealSubtotal", "discount", "salesTax", "totalPaid"];
+  if (!moneyFields.every(function(key) {
+    return typeof order[key] === "number" && Number.isFinite(order[key]) && order[key] >= 0;
+  })) return "Invalid order totals";
+  if (Math.abs((order.mealSubtotal - order.discount + order.salesTax) - order.totalPaid) > 0.001) return "Order totals do not reconcile";
   return null;
 }
 
@@ -204,11 +213,16 @@ function toSheetRow(order) {
     order.bigBeefQty,
     order.littleBeefQty,
     order.totalMeals,
+    order.mealSubtotal,
+    order.discount,
+    order.salesTax,
     order.totalPaid,
     safeSheetText(order.deliveryDate),
     safeSheetText(order.stripeSessionId),
+    safeSheetText(order.mealBreakdown),
     safeSheetText(order.paymentStatus),
     safeSheetText(order.orderStatus),
+    safeSheetText(order.recipientName),
     safeSheetText(order.notes || ""),
   ];
 }

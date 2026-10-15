@@ -46,3 +46,27 @@ test("metadata ignores client-supplied prices and keeps absent SKU quantities ex
   assert.equal(metadata.big_beef_qty, "0");
   assert.equal(metadata.little_beef_qty, "0");
 });
+
+test("metadata preserves per-meal sauce groups while keeping product quantities complete", () => {
+  const quote = quoteOrder([
+    { productId: "big-chicken", quantity: 1, sauceId: "no-sauce" },
+    { productId: "big-chicken", quantity: 1, sauceId: "bbq" },
+    { productId: "little-beef", quantity: 1, sauceId: "franks-redhot" },
+  ]);
+  const metadata = buildCheckoutMetadata({
+    quote,
+    reservationId: "reservation-sauce-test",
+    deliveryAddress: "123 State St, Ithaca, NY 14850, USA",
+    cutoff: new Date("2026-09-26T19:00:00.000Z"),
+  });
+
+  assert.equal(metadata.total_meals, "3");
+  assert.equal(metadata.big_chicken_qty, "2");
+  assert.equal(metadata.little_beef_qty, "1");
+  assert.deepEqual(JSON.parse(metadata.cart), [
+    { productId: "big-chicken", quantity: 1 },
+    { productId: "big-chicken", quantity: 1, sauceId: "bbq" },
+    { productId: "little-beef", quantity: 1, sauceId: "franks-redhot" },
+  ]);
+  assert.equal(metadata.subtotalCents, "3100");
+});

@@ -98,7 +98,9 @@ class FakeD1 {
     }
 
     if (query.includes("INSERT INTO orders")) {
-      const [sessionId, , , , , , , , amountCents, , , , reservationId] = values;
+      const sessionId = values[0];
+      const amountCents = values[12];
+      const reservationId = values[22];
       const reservationConfirmed = reservationId === null || this.rows.some((row) => (
         row.status === "confirmed" && (row.id === reservationId || row.stripeSessionId === sessionId)
       ));
@@ -315,10 +317,20 @@ test("paid webhook reconciliation is atomic and duplicate session delivery creat
     stripePaymentIntentId: "pi_test_order",
     customerEmail: "customer@example.com",
     customerName: "Customer",
+    recipientName: "Recipient",
     customerPhone: "+15555555555",
     deliveryAddress: "{}",
     items: "[{\"productId\":\"big-chicken\",\"quantity\":3}]",
-    amountCents: 3_000,
+    subtotalCents: 3_000,
+    discountCents: 0,
+    taxCents: 240,
+    amountCents: 3_240,
+    stripeCouponId: null,
+    stripePromotionCodeId: null,
+    stripePaymentStatus: "paid",
+    automaticTaxStatus: "complete",
+    taxBehavior: "exclusive",
+    productTaxCode: null,
     currency: "usd",
     cutoffAt: "2026-09-18T19:00:00.000Z",
     createdAt: 1_200,
@@ -329,5 +341,5 @@ test("paid webhook reconciliation is atomic and duplicate session delivery creat
   assert.equal(await recordConfirmedOrder(database, order, { reservationId: "r-order", expectedWindowKey: "test-window", expectedMealCount: 1, confirmedAt: 1_202 }), true);
   assert.equal(database.orders.length, 1);
   assert.equal(database.exports.length, 1);
-  assert.equal(database.orders[0].amountCents, 3_000);
+  assert.equal(database.orders[0].amountCents, 3_240);
 });

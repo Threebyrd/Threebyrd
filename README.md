@@ -50,6 +50,8 @@ Copy the needed values into `.env.local` for local development. Never commit tha
 - `STRIPE_SECRET_KEY`: Stripe test-mode secret for local/staging, or the least-privilege live restricted key for production. Keep it in the Worker secret store only.
 - `STRIPE_WEBHOOK_SECRET`: signing secret for `/api/webhooks/stripe`.
 - `STRIPE_MODE`: `test` for local/staging and `live` for production; the server rejects mismatched Stripe key prefixes and webhook event modes.
+- `STRIPE_PRODUCT_TAX_CODE`: Stripe Tax code applied to each dynamically created meal product. ThreeByrd uses `txcd_40060003` (Food for Immediate Consumption) for its fully cooked, individual meal-prep containers.
+- `STRIPE_TAX_BEHAVIOR`: `exclusive` to add tax at Checkout or `inclusive` when displayed prices already include tax. Checkout fails closed if this setting is absent or invalid.
 - `NEXT_PUBLIC_SITE_URL`: trusted site origin used in Stripe success/cancel URLs.
 - `NEXT_PUBLIC_CHECKOUT_API_ORIGIN`: public API origin used by the static frontend, normally `https://api.threebyrd.com` in production.
 - `CORS_ALLOWED_ORIGINS`: comma-separated browser origins allowed to call the checkout API.

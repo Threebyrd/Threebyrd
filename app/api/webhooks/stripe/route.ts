@@ -1,7 +1,9 @@
 import { recordConfirmedOrder, releaseOrderCapacityReservation } from "../../../../app/order-capacity-db";
 import { getValidatedDeliveryAddressFromMetadata } from "../../../checkout-reconciliation";
 import { getCartPricingTier, quoteOrder, readCartMetadata } from "../../../order-config";
-import { getStripe, getStripeMode, isStripeEventForMode, safeErrorMessage } from "../../../stripe";
+import { getStripe, getStripeMode, isReconciledAutomaticTax, isStripeEventForMode, safeErrorMessage, type StripeTaxBehavior } from "../../../stripe";
+import { readStripeDiscountIdentifiers } from "../../../stripe-promotion-codes";
+import { normalizeRecipientName } from "../../../recipient-name";
 import type Stripe from "stripe";
 
 export async function POST(request: Request) {
@@ -56,7 +58,7 @@ export async function POST(request: Request) {
     }
   }
 
-  if (event.type === "checkout.session.completed" && session.payment_status !== "paid") {
+  if (event.type === "checkout.session.completed" && !isCompletedCheckoutPayment(session.payment_status)) {
     return Response.json({ received: true, deferred: true });
   }
 
@@ -72,19 +74,38 @@ export async function POST(request: Request) {
   }
 
   const quote = quoteOrder(cart);
+  const taxBehavior = session.metadata?.taxBehavior;
+  const productTaxCode = session.metadata?.productTaxCode ?? null;
+  const discountCents = session.total_details?.amount_discount ?? 0;
+  const taxCents = session.total_details?.amount_tax;
+  const amountTotal = session.amount_total;
+  const paymentStatus = session.payment_status;
+  const automaticTaxStatus = session.automatic_tax?.status ?? null;
   const metadataTotalBoxes = Number(session.metadata?.totalBoxes);
   const metadataSubtotalCents = Number(session.metadata?.subtotalCents);
   const metadataPricingTier = session.metadata?.pricingTier;
   if (
     session.mode !== "payment" ||
-    session.payment_status !== "paid" ||
+    !isCompletedCheckoutPayment(paymentStatus) ||
     !quote.isValid ||
     quote.pricingTier !== (getCartPricingTier(quote.totalBoxes) ?? null) ||
     metadataTotalBoxes !== quote.totalBoxes ||
     metadataSubtotalCents !== quote.subtotalCents ||
     metadataPricingTier !== quote.pricingTier ||
     session.currency !== "usd" ||
-    session.amount_total !== quote.subtotalCents
+    (taxBehavior !== "exclusive" && taxBehavior !== "inclusive") ||
+    (productTaxCode !== null && !/^txcd_\d{8}$/.test(productTaxCode)) ||
+    typeof taxCents !== "number" ||
+    typeof amountTotal !== "number" ||
+    typeof automaticTaxStatus !== "string" ||
+    !isReconciledAutomaticTax({
+      enabled: session.automatic_tax?.enabled === true,
+      status: session.automatic_tax?.status ?? null,
+      subtotalCents: session.amount_subtotal,
+      discountCents,
+      taxCents: taxCents ?? null,
+      totalCents: amountTotal,
+      }, quote.subtotalCents, taxBehavior as StripeTaxBehavior)
   ) {
     console.error("Confirmed Stripe session failed order reconciliation", session.id);
     return Response.json({ error: "Checkout session could not be reconciled." }, { status: 500 });
@@ -106,6 +127,16 @@ export async function POST(request: Request) {
     }
 
     const customerName = session.customer_details?.name ?? null;
+    const customerId = typeof session.customer === "string" ? session.customer : null;
+    const customer = customerId ? await stripe.customers.retrieve(customerId) : null;
+    const recipientName = customer && !customer.deleted
+      ? normalizeRecipientName(customer.shipping?.name)
+      : null;
+    if (!recipientName) {
+      console.error("Confirmed Stripe session is missing its delivery recipient name", session.id);
+      return Response.json({ error: "The delivery recipient name could not be verified; Stripe should retry this webhook." }, { status: 500 });
+    }
+    const discountIdentifiers = readStripeDiscountIdentifiers(session.discounts);
     const deliveryAddressRecord = JSON.stringify({
       normalizedAddress: deliveryAddress,
       source: "precheckout-google-validation",
@@ -115,10 +146,20 @@ export async function POST(request: Request) {
       stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
       customerEmail: session.customer_details?.email ?? null,
       customerName,
+      recipientName,
       customerPhone: session.customer_details?.phone ?? null,
       deliveryAddress: deliveryAddressRecord,
       items: JSON.stringify(cart),
-      amountCents: session.amount_total,
+      subtotalCents: quote.subtotalCents,
+      discountCents,
+      taxCents,
+      amountCents: amountTotal,
+      stripeCouponId: discountIdentifiers.couponId,
+      stripePromotionCodeId: discountIdentifiers.promotionCodeId,
+      stripePaymentStatus: paymentStatus,
+      automaticTaxStatus,
+      taxBehavior,
+      productTaxCode,
       currency: session.currency,
       cutoffAt,
       createdAt: session.created,
@@ -139,6 +180,10 @@ export async function POST(request: Request) {
     console.error("Confirmed Stripe order could not be recorded", safeErrorMessage(error));
     return Response.json({ error: "Order recording failed; Stripe should retry this webhook." }, { status: 500 });
   }
+}
+
+function isCompletedCheckoutPayment(paymentStatus: Stripe.Checkout.Session.PaymentStatus): paymentStatus is "paid" | "no_payment_required" {
+  return paymentStatus === "paid" || paymentStatus === "no_payment_required";
 }
 
 async function getCapacityDatabase() {

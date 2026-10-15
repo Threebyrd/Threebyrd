@@ -9,5 +9,6 @@ dist/
 *.tsbuildinfo
 skills-lock.json
 .env*
+!.env.example
 *.log
 .DS_Store

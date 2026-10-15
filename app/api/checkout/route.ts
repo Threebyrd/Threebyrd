@@ -4,11 +4,15 @@ import { attachOrderCapacityReservation, releaseOrderCapacityReservation, reserv
 import { getCheckoutClientKey } from "../../checkout-client";
 import { expireCreatedCheckoutSession } from "../../checkout-recovery";
 import { checkDeliveryEligibility, DeliveryEligibilityError } from "../../delivery";
-import { getSiteOrigin, getStripe, safeErrorMessage } from "../../stripe";
+import { getSiteOrigin, getStripe, getStripeTaxConfig, safeErrorMessage } from "../../stripe";
+import { buildStripeHostedPromotionCodeParams } from "../../stripe-promotion-codes";
+import { buildStripeCheckoutTaxLocationParams, buildStripeDeliveryCustomerParams } from "../../stripe-tax-location";
+import { normalizeRecipientName } from "../../recipient-name";
 import { isAllowedCheckoutOrigin, withCheckoutCors } from "../cors";
 
 type CheckoutRequest = {
   items?: CartItemInput[];
+  recipientName?: unknown;
   deliveryAddress?: unknown;
 };
 
@@ -30,6 +34,10 @@ export async function POST(request: Request) {
   }
 
   const items = Array.isArray(body.items) ? body.items : [];
+  const recipientName = normalizeRecipientName(body.recipientName);
+  if (!recipientName) {
+    return Response.json({ error: "A name for delivery and receipt is required." }, withCheckoutCors(request, { status: 400 }));
+  }
   const quote = quoteOrder(items);
   if (!quote.isValid) {
     return Response.json({ error: quote.errors[0] ?? "Add at least three boxes to continue." }, withCheckoutCors(request, { status: 400 }));
@@ -49,7 +57,8 @@ export async function POST(request: Request) {
   }
 
   const stripe = getStripe();
-  if (!stripe) {
+  const stripeTaxConfig = getStripeTaxConfig();
+  if (!stripe || !stripeTaxConfig) {
     return Response.json({ error: "Secure checkout is being configured. Please check back soon." }, withCheckoutCors(request, { status: 503 }));
   }
 
@@ -98,6 +107,12 @@ export async function POST(request: Request) {
       metadata.capacityReservationId = reservation.id;
       metadata.capacityWindowKey = reservation.windowKey;
     }
+    metadata.taxBehavior = stripeTaxConfig.taxBehavior;
+    if (stripeTaxConfig.productTaxCode) {
+      metadata.productTaxCode = stripeTaxConfig.productTaxCode;
+    }
+
+    const deliveryCustomer = await stripe.customers.create(buildStripeDeliveryCustomerParams(deliveryCheck.taxAddress, recipientName));
 
     createdSession = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -106,15 +121,18 @@ export async function POST(request: Request) {
       line_items: quote.lines.map((line) => ({
         price_data: {
           currency: "usd",
+          tax_behavior: stripeTaxConfig.taxBehavior,
           product_data: {
-            name: line.name,
-            description: `Meal prep with rice and broccoli · free delivery ${getDeliveryDateIso(cutoff)}`,
+            name: line.sauceId === "no-sauce" ? line.name : `${line.name} · ${line.sauceName}`,
+            description: `Meal prep with rice and broccoli · ${line.sauceName} · free delivery ${getDeliveryDateIso(cutoff)}`,
+            ...(stripeTaxConfig.productTaxCode ? { tax_code: stripeTaxConfig.productTaxCode } : {}),
           },
           unit_amount: line.unitAmountCents,
         },
         quantity: line.quantity,
       })),
-      customer_creation: "always",
+      ...buildStripeCheckoutTaxLocationParams(deliveryCustomer.id),
+      ...buildStripeHostedPromotionCodeParams(),
       phone_number_collection: { enabled: true },
       success_url: `${siteOrigin}/success?session_id={CHECKOUT_SESSION_ID}&delivery_date=${metadata.delivery_date}`,
       cancel_url: `${siteOrigin}/order?checkout=canceled`,

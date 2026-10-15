@@ -8,6 +8,7 @@ import DeliveryAddressForm, { type DeliveryCheckState } from "./DeliveryAddressF
 import MacroSnapshot from "./MacroSnapshot";
 import { requestDeliveryEligibility } from "../delivery-client";
 import { EMPTY_DELIVERY_ADDRESS, type DeliveryAddressField, type DeliveryAddressFields } from "../delivery-address";
+import { normalizeRecipientName } from "../recipient-name";
 import {
   CART_PRICING_TIERS,
   CART_PRICING_TIER_ORDER,
@@ -20,7 +21,9 @@ import {
   priceRangeFor,
   products,
   quoteOrder,
+  SAUCE_OPTIONS,
   unitAmountAtTier,
+  type SauceId,
   type ProductId,
 } from "../order-config";
 
@@ -29,14 +32,20 @@ type OrderBuilderProps = {
   checkoutMessage?: string;
 };
 
-const initialQuantities = Object.fromEntries(products.map((product) => [product.id, 0])) as Record<ProductId, number>;
 const checkoutApiOrigin = (process.env.NEXT_PUBLIC_CHECKOUT_API_ORIGIN ?? "").trim().replace(/\/$/, "");
 const checkoutApiUrl = `${checkoutApiOrigin}/api/checkout`;
 const deliveryEligibilityApiUrl = `${checkoutApiOrigin}/api/delivery-eligibility`;
 
+type MealSelection = {
+  id: string;
+  productId: ProductId;
+  sauceId: SauceId;
+};
+
 export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: OrderBuilderProps) {
   const searchParams = useSearchParams();
-  const [quantities, setQuantities] = useState<Record<ProductId, number>>(initialQuantities);
+  const [mealSelections, setMealSelections] = useState<MealSelection[]>([]);
+  const [saucePickerMealId, setSaucePickerMealId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState(() => (
     checkoutMessage ?? (searchParams.get("checkout") === "canceled"
       ? "Checkout was canceled. Your order is still here whenever you are ready."
@@ -44,18 +53,23 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   ));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastInteractedProductId, setLastInteractedProductId] = useState<ProductId | null>(null);
+  const [recipientName, setRecipientName] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddressFields>(EMPTY_DELIVERY_ADDRESS);
   const [deliveryCheckState, setDeliveryCheckState] = useState<DeliveryCheckState>("idle");
   const [deliveryMessage, setDeliveryMessage] = useState("Check your address before checkout.");
   const [deliveryDriveMinutes, setDeliveryDriveMinutes] = useState<number | null>(null);
   const [checkedDeliveryAddressKey, setCheckedDeliveryAddressKey] = useState<string | null>(null);
   const deliveryCheckRequestRef = useRef(0);
+  const mealSelectionIdRef = useRef(0);
   const orderSummaryRef = useRef<HTMLElement>(null);
   const productGridRef = useRef<HTMLDivElement>(null);
   const quote = useMemo(
-    () => quoteOrder(Object.entries(quantities).map(([productId, quantity]) => ({ productId, quantity }))),
-    [quantities],
+    () => quoteOrder(mealSelections.map(({ productId, sauceId }) => ({ productId, quantity: 1, sauceId }))),
+    [mealSelections],
   );
+  const saucePickerMeal = saucePickerMealId
+    ? mealSelections.find((selection) => selection.id === saucePickerMealId) ?? null
+    : null;
   const nextTier = getNextPricingTier(quote.totalBoxes);
   const nextTierProducts = nextTier
     ? products.filter((product) => (
@@ -65,6 +79,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     : [];
   const deliveryAddressKey = JSON.stringify(deliveryAddress);
   const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddressKey === checkedDeliveryAddressKey;
+  const recipientNameIsValid = normalizeRecipientName(recipientName) !== null;
   const pricingMilestones = [
     { value: 3, label: "Minimum" },
     { value: 5, label: "Lower prices" },
@@ -115,13 +130,38 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     grid.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "center" });
   }
 
-  function changeQuantity(productId: ProductId, delta: number) {
-    setQuantities((current) => ({
-      ...current,
-      [productId]: Math.max(0, Math.min(99, current[productId] + delta)),
-    }));
+  function quantityForProduct(productId: ProductId): number {
+    return mealSelections.filter((selection) => selection.productId === productId).length;
+  }
+
+  function addMeal(productId: ProductId) {
+    if (quantityForProduct(productId) >= 99) return;
+    const id = `meal-${++mealSelectionIdRef.current}`;
+    setMealSelections((current) => [...current, { id, productId, sauceId: "no-sauce" }]);
+    setSaucePickerMealId(id);
     setLastInteractedProductId(productId);
     setStatusMessage("");
+  }
+
+  function removeMeal(productId: ProductId) {
+    const lastMatching = [...mealSelections].reverse().find((selection) => selection.productId === productId);
+    if (!lastMatching) return;
+    setMealSelections((current) => current.filter((selection) => selection.id !== lastMatching.id));
+    if (saucePickerMealId === lastMatching.id) setSaucePickerMealId(null);
+    setLastInteractedProductId(productId);
+    setStatusMessage("");
+  }
+
+  function selectSauce(sauceId: SauceId) {
+    if (!saucePickerMealId) return;
+    setMealSelections((current) => current.map((selection) => (
+      selection.id === saucePickerMealId ? { ...selection, sauceId } : selection
+    )));
+    setSaucePickerMealId(null);
+  }
+
+  function quoteLineForSelection(selection: MealSelection) {
+    return quote.lines.find((line) => line.productId === selection.productId && line.sauceId === selection.sauceId);
   }
 
   function handleDeliveryAddressChange(field: DeliveryAddressField, value: string) {
@@ -172,6 +212,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       return;
     }
 
+    const normalizedRecipientName = normalizeRecipientName(recipientName);
+    if (!normalizedRecipientName) {
+      setStatusMessage("Enter a name for delivery and receipt before checkout.");
+      return;
+    }
+
     if (!deliveryEligible) {
       setStatusMessage("Check your Ithaca delivery address before checkout.");
       return;
@@ -185,7 +231,8 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          items: quote.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+          items: mealSelections.map(({ productId, sauceId }) => ({ productId, quantity: 1, sauceId })),
+          recipientName: normalizedRecipientName,
           deliveryAddress,
         }),
       });
@@ -251,7 +298,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
           <div className="productColumn">
               <div className="productGrid" aria-label="Available meals" ref={productGridRef}>
               {products.map((product) => {
-                const quantity = quantities[product.id];
+                const quantity = quantityForProduct(product.id);
                 const disabled = !product.purchasable;
                 const priceRange = priceRangeFor(product);
                 return (
@@ -280,9 +327,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                           <p className="productAvailability">Not available for purchase yet.</p>
                         ) : (
                           <div className="quantityControl" aria-label={`Quantity for ${product.name}`}>
-                            <button type="button" aria-label={`Remove one ${product.name}`} onClick={() => changeQuantity(product.id, -1)} disabled={quantity === 0}>−</button>
+                            <button type="button" aria-label={`Remove one ${product.name}`} onClick={() => removeMeal(product.id)} disabled={quantity === 0}>−</button>
                             <output aria-live="polite">{quantity}</output>
-                            <button type="button" aria-label={`Add one ${product.name}`} onClick={() => changeQuantity(product.id, 1)} disabled={quantity >= 99}>+</button>
+                            <button type="button" aria-label={`Add one ${product.name}`} onClick={() => addMeal(product.id)} disabled={quantity >= 99}>+</button>
                           </div>
                         )}
                       </div>
@@ -351,22 +398,28 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             <Countdown initialCutoffIso={initialCutoffIso} />
             {quote.lines.length > 0 ? (
               <div className="summaryLines">
-                {quote.lines.map((line) => (
-                  <div className="summaryLine" key={line.productId}>
+                {mealSelections.map((selection, index) => {
+                  const product = products.find((candidate) => candidate.id === selection.productId);
+                  const sauce = SAUCE_OPTIONS.find((candidate) => candidate.id === selection.sauceId);
+                  const line = quoteLineForSelection(selection);
+                  if (!product || !sauce || !line) return null;
+                  return (
+                  <div className="summaryLine" key={selection.id}>
                     <div className="summaryLineInfo">
-                      <strong>{line.name}</strong>
-                      <span>{line.quantity} × {formatCompactMoney(line.unitAmountCents)}</span>
+                      <strong>{product.name} <small>#{index + 1}</small></strong>
+                      <span>{sauce.name} · {formatCompactMoney(line.unitAmountCents)}</span>
                     </div>
                     <div className="summaryLineActions">
-                      <div className="summaryQuantityControl" aria-label={`Quantity for ${line.name}`}>
-                        <button type="button" aria-label={`Remove one ${line.name}`} onClick={() => changeQuantity(line.productId, -1)}>−</button>
-                        <output aria-live="polite">{line.quantity}</output>
-                        <button type="button" aria-label={`Add one ${line.name}`} onClick={() => changeQuantity(line.productId, 1)} disabled={line.quantity >= 99}>+</button>
-                      </div>
-                      <b>{formatMoney(line.amountCents)}</b>
+                      <button className="summarySauceButton" type="button" onClick={() => setSaucePickerMealId(selection.id)}>Change sauce</button>
+                      <button className="summaryRemoveButton" type="button" aria-label={`Remove ${product.name} meal ${index + 1}`} onClick={() => {
+                        setMealSelections((current) => current.filter((candidate) => candidate.id !== selection.id));
+                        if (saucePickerMealId === selection.id) setSaucePickerMealId(null);
+                      }}>×</button>
+                      <b>{formatMoney(line.unitAmountCents)}</b>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="summaryEmpty">Your mix of Chicken and Beef will show up here.</p>
@@ -388,15 +441,20 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               <div className="summaryTotalFinal"><span>Total</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
             </div>
             <DeliveryAddressForm
+              recipientName={recipientName}
               address={deliveryAddress}
               state={deliveryCheckState}
               message={deliveryMessage}
               driveMinutes={deliveryDriveMinutes}
+              onRecipientNameChange={(value) => {
+                setRecipientName(value);
+                setStatusMessage("");
+              }}
               onAddressChange={handleDeliveryAddressChange}
               onCheck={() => void checkDeliveryAddress()}
             />
             <p className="deliveryNote"><span aria-hidden="true">✦</span> FREE DELIVERY IN ITHACA</p>
-            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !ORDERS_OPEN || isSubmitting || !deliveryEligible}>
+            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !recipientNameIsValid || !ORDERS_OPEN || isSubmitting || !deliveryEligible}>
               {isSubmitting ? "Opening secure checkout…" : !ORDERS_OPEN ? "Checkout temporarily unavailable" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>
             </button>
@@ -404,6 +462,37 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
           </aside>
         </div>
       </div>
+      {saucePickerMeal && (
+        <div className="sauceDialogBackdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setSaucePickerMealId(null);
+        }}>
+          <section className="sauceDialog" role="dialog" aria-modal="true" aria-labelledby="sauce-dialog-title">
+            <div className="sauceDialogHeader">
+              <div>
+                <p className="sectionLabel">Meal {mealSelections.findIndex((selection) => selection.id === saucePickerMeal.id) + 1}</p>
+                <h2 id="sauce-dialog-title">Choose a sauce</h2>
+                <p>{products.find((product) => product.id === saucePickerMeal.productId)?.name}</p>
+              </div>
+              <button className="sauceDialogClose" type="button" aria-label="Close sauce selector" onClick={() => setSaucePickerMealId(null)}>×</button>
+            </div>
+            <div className="sauceOptions" role="radiogroup" aria-label="Sauce options">
+              {SAUCE_OPTIONS.map((sauce) => (
+                <button
+                  className={`sauceOption${sauce.id === saucePickerMeal.sauceId ? " isSelected" : ""}`}
+                  type="button"
+                  role="radio"
+                  aria-checked={sauce.id === saucePickerMeal.sauceId}
+                  key={sauce.id}
+                  onClick={() => selectSauce(sauce.id)}
+                >
+                  <span><strong>{sauce.name}</strong><small>{sauce.surchargeCents === 0 ? "Included" : "+$1.00 per meal"}</small></span>
+                  <span aria-hidden="true">{sauce.id === saucePickerMeal.sauceId ? "✓" : ""}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

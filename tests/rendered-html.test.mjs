@@ -175,7 +175,7 @@ test("does not use the weekly cutoff as an order shutdown", async () => {
   const response = await render("/api/checkout", {
     method: "POST",
     headers: { "content-type": "application/json", origin: "https://threebyrd.com" },
-    body: JSON.stringify({ items: [] }),
+    body: JSON.stringify({ items: [], recipientName: "Test Recipient" }),
   });
   assert.equal(response.status, 400);
   assert.equal(response.headers.get("access-control-allow-origin"), "https://threebyrd.com");

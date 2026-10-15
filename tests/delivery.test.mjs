@@ -30,6 +30,9 @@ const geocode = {
     address_components: [
       { types: ["street_number"], short_name: "123" },
       { types: ["route"], short_name: "State St" },
+      { types: ["locality"], short_name: "Ithaca" },
+      { types: ["administrative_area_level_1"], short_name: "NY" },
+      { types: ["postal_code"], short_name: "14850" },
       { types: ["country"], short_name: "US" },
     ],
   }],
@@ -61,7 +64,18 @@ test("accepts an address at or under the 20-minute normal route limit", async ()
   process.env.GOOGLE_MAPS_SERVER_API_KEY = "server-test-key";
   try {
     const result = await checkDeliveryEligibility("123 State St, Ithaca, NY 14850", mockFetch({ geocode, route: { routes: [{ staticDuration: "1200s" }] } }));
-    assert.deepEqual(result, { eligible: true, normalizedAddress: "123 State St, Ithaca, NY 14850, USA", driveMinutes: 20 });
+    assert.deepEqual(result, {
+      eligible: true,
+      normalizedAddress: "123 State St, Ithaca, NY 14850, USA",
+      taxAddress: {
+        line1: "123 State St",
+        city: "Ithaca",
+        state: "NY",
+        postal_code: "14850",
+        country: "US",
+      },
+      driveMinutes: 20,
+    });
   } finally {
     if (previous === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
     else process.env.GOOGLE_MAPS_SERVER_API_KEY = previous;
@@ -78,6 +92,13 @@ test("validates the server-composed structured address through the same route ch
     );
     assert.equal(result.eligible, true);
     assert.equal(result.normalizedAddress, "123 State St, Ithaca, NY 14850, USA");
+    assert.deepEqual(result.taxAddress, {
+      line1: "123 State St",
+      city: "Ithaca",
+      state: "NY",
+      postal_code: "14850",
+      country: "US",
+    });
   } finally {
     if (previous === undefined) delete process.env.GOOGLE_MAPS_SERVER_API_KEY;
     else process.env.GOOGLE_MAPS_SERVER_API_KEY = previous;

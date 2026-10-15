@@ -50,6 +50,27 @@
       "when": 1790380298093,
       "tag": "0006_fast_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790695416809,
+      "tag": "0007_cooing_the_stranger",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790820158520,
+      "tag": "0008_careful_epoch",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792029864321,
+      "tag": "0009_sturdy_xavin",
+      "breakpoints": true
     }
   ]
 }

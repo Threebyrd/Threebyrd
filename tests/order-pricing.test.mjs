@@ -67,6 +67,35 @@ test("applies one tier to mixed-product carts", () => {
   assert.equal(mixed.subtotalCents, 4700);
 });
 
+test("prices sauce choices independently for each meal unit", () => {
+  const mixedSauces = quoteOrder([
+    { productId: "big-chicken", quantity: 1, sauceId: "no-sauce" },
+    { productId: "big-chicken", quantity: 1, sauceId: "franks-redhot" },
+    { productId: "big-chicken", quantity: 1, sauceId: "bbq" },
+  ]);
+
+  assert.equal(mixedSauces.isValid, true);
+  assert.equal(mixedSauces.totalBoxes, 3);
+  assert.equal(mixedSauces.subtotalCents, 3200);
+  assert.deepEqual(mixedSauces.lines.map(({ productId, sauceId, quantity, unitAmountCents, amountCents }) => ({
+    productId,
+    sauceId,
+    quantity,
+    unitAmountCents,
+    amountCents,
+  })), [
+    { productId: "big-chicken", sauceId: "no-sauce", quantity: 1, unitAmountCents: 1000, amountCents: 1000 },
+    { productId: "big-chicken", sauceId: "franks-redhot", quantity: 1, unitAmountCents: 1100, amountCents: 1100 },
+    { productId: "big-chicken", sauceId: "bbq", quantity: 1, unitAmountCents: 1100, amountCents: 1100 },
+  ]);
+});
+
+test("rejects unknown sauce identifiers and ignores client price fields", () => {
+  assert.equal(quoteOrder([{ productId: "big-chicken", quantity: 3, sauceId: "secret-sauce" }]).isValid, false);
+  const manipulated = quoteOrder([{ productId: "big-chicken", quantity: 3, sauceId: "bbq", unitAmountCents: 1 }]);
+  assert.equal(manipulated.subtotalCents, 3300);
+});
+
 test("keeps the canonical matrix and all four purchasable product details", () => {
   assert.deepEqual(CART_PRICING_TIERS["3-4"].prices, {
     "big-chicken": 1000,

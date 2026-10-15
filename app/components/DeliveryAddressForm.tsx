@@ -6,28 +6,34 @@ import {
   type DeliveryAddressFields,
   US_STATE_OPTIONS,
 } from "../delivery-address";
+import { normalizeRecipientName } from "../recipient-name";
 
 export type DeliveryCheckState = "idle" | "checking" | "eligible" | "ineligible" | "unavailable";
 
 type DeliveryAddressFormProps = {
+  recipientName: string;
   address: DeliveryAddressFields;
   state: DeliveryCheckState;
   message: string;
   driveMinutes: number | null;
+  onRecipientNameChange: (value: string) => void;
   onAddressChange: (field: DeliveryAddressField, value: string) => void;
   onCheck: () => void;
 };
 
 export default function DeliveryAddressForm({
+  recipientName,
   address,
   state,
   message,
   driveMinutes,
+  onRecipientNameChange,
   onAddressChange,
   onCheck,
 }: DeliveryAddressFormProps) {
   const isComplete = normalizeDeliveryAddressFields(address) !== null;
-  const describedBy = "delivery-address-help delivery-address-status";
+  const isRecipientNameComplete = normalizeRecipientName(recipientName) !== null;
+  const describedBy = "delivery-address-help delivery-address-status delivery-recipient-name-help";
 
   return (
     <section className="deliveryEligibility" aria-labelledby="delivery-address-title">
@@ -37,6 +43,23 @@ export default function DeliveryAddressForm({
         <p>Free delivery in Ithaca · verified within 20 minutes of our kitchen.</p>
       </div>
       <div className="deliveryAddressFields">
+        <div className="deliveryField deliveryFieldWide">
+          <label htmlFor="delivery-recipient-name">Name for delivery and receipt</label>
+          <input
+            id="delivery-recipient-name"
+            name="recipientName"
+            type="text"
+            autoComplete="name"
+            inputMode="text"
+            autoCapitalize="words"
+            maxLength={120}
+            required
+            value={recipientName}
+            onChange={(event) => onRecipientNameChange(event.target.value)}
+            aria-describedby="delivery-recipient-name-help"
+          />
+          <p id="delivery-recipient-name-help" className="deliveryFieldHelp">Required for your delivery and receipt.</p>
+        </div>
         <div className="deliveryField deliveryFieldWide">
           <label htmlFor="delivery-street">Street address</label>
           <input
@@ -99,7 +122,7 @@ export default function DeliveryAddressForm({
         </div>
       </div>
       <div className="deliveryAddressControls">
-        <button type="button" onClick={onCheck} disabled={state === "checking" || !isComplete}>
+        <button type="button" onClick={onCheck} disabled={state === "checking" || !isComplete || !isRecipientNameComplete}>
           {state === "checking" ? "Checking…" : "Check address"}
         </button>
       </div>

@@ -12,11 +12,16 @@ export const GOOGLE_SHEETS_HEADERS = [
   "Big Beef Qty",
   "Little Beef Qty",
   "Total Meals",
+  "Meal Subtotal",
+  "Discount",
+  "Sales Tax",
   "Total Paid",
   "Delivery Date",
   "Stripe Session ID",
+  "Meal Breakdown",
   "Payment Status",
   "Order Status",
+  "Name",
   "Notes",
 ] as const;
 
@@ -26,10 +31,16 @@ export type ConfirmedOrderForSheet = {
   status: string;
   customerEmail: string | null;
   customerName: string | null;
+  recipientName: string | null;
   customerPhone: string | null;
   deliveryAddress: string | null;
   items: string;
+  subtotalCents: number;
+  discountCents: number;
+  taxCents: number;
   amountCents: number;
+  stripePaymentStatus: "paid" | "no_payment_required";
+  taxBehavior: "exclusive" | "inclusive";
   currency: string;
   cutoffAt: string | null;
   createdAt: number;
@@ -40,6 +51,7 @@ export type GoogleSheetsOrderPayload = {
   orderDateTime: string;
   orderId: string;
   customerName: string;
+  recipientName: string;
   phone: string;
   email: string;
   deliveryAddress: string;
@@ -48,10 +60,14 @@ export type GoogleSheetsOrderPayload = {
   bigBeefQty: number;
   littleBeefQty: number;
   totalMeals: number;
+  mealSubtotal: number;
+  discount: number;
+  salesTax: number;
   totalPaid: number;
   deliveryDate: string;
   stripeSessionId: string;
-  paymentStatus: "paid";
+  mealBreakdown: string;
+  paymentStatus: "paid" | "no_payment_required";
   orderStatus: "New";
   notes: string;
 };
@@ -80,11 +96,27 @@ const retryMaxSeconds = 6 * 60 * 60;
 export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode: "test" | "live"): GoogleSheetsOrderPayload {
   const items = parseItems(order.items);
   const quote = quoteOrder(items);
-  if (!quote.isValid || quote.subtotalCents !== order.amountCents || order.currency.toLowerCase() !== "usd") {
+  if (
+    !quote.isValid ||
+    quote.subtotalCents !== order.subtotalCents ||
+    !Number.isSafeInteger(order.discountCents) ||
+    order.discountCents < 0 ||
+    order.discountCents > order.subtotalCents ||
+    !Number.isSafeInteger(order.taxCents) ||
+    order.taxCents < 0 ||
+    order.amountCents !== (order.taxBehavior === "exclusive"
+      ? order.subtotalCents - order.discountCents + order.taxCents
+      : order.subtotalCents - order.discountCents) ||
+    order.currency.toLowerCase() !== "usd"
+  ) {
     throw new Error("Confirmed order failed Google Sheets export validation.");
   }
 
   const deliveryAddress = parseDeliveryAddress(order.deliveryAddress);
+  const recipientName = (order.recipientName ?? order.customerName ?? "").trim();
+  if (!recipientName) {
+    throw new Error("Confirmed order is missing a recipient name.");
+  }
   const cutoff = order.cutoffAt ? new Date(order.cutoffAt) : null;
   if (!cutoff || Number.isNaN(cutoff.getTime())) {
     throw new Error("Confirmed order is missing a valid delivery date.");
@@ -93,12 +125,16 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
   const quantityFor = (productId: string) => items
     .filter((item) => item.productId === productId)
     .reduce((total, item) => total + item.quantity, 0);
+  const mealBreakdown = quote.lines
+    .map((line) => `${line.name} — ${line.sauceName} ×${line.quantity}`)
+    .join("\n");
 
   return {
     stripeMode,
     orderDateTime: formatEasternDateTime(new Date(order.createdAt * 1000)),
     orderId: order.id,
     customerName: order.customerName ?? "",
+    recipientName,
     phone: order.customerPhone ?? "",
     email: order.customerEmail ?? "",
     deliveryAddress,
@@ -107,10 +143,14 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     bigBeefQty: quantityFor("big-beef"),
     littleBeefQty: quantityFor("little-beef"),
     totalMeals: quote.totalBoxes,
+    mealSubtotal: Number((order.subtotalCents / 100).toFixed(2)),
+    discount: Number((order.discountCents / 100).toFixed(2)),
+    salesTax: Number((order.taxCents / 100).toFixed(2)),
     totalPaid: Number((order.amountCents / 100).toFixed(2)),
     deliveryDate: getDeliveryDateIso(cutoff),
     stripeSessionId: order.stripeSessionId,
-    paymentStatus: "paid",
+    mealBreakdown,
+    paymentStatus: order.stripePaymentStatus,
     orderStatus: "New",
     notes: "",
   };

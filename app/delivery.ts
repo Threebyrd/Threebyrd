@@ -1,4 +1,5 @@
 import { formatDeliveryAddressFields } from "./delivery-address.ts";
+import type { StripeTaxDeliveryAddress } from "./stripe-tax-location.ts";
 
 export const DELIVERY_ORIGIN_ADDRESS = "700 W Buffalo St, Ithaca, NY 14850, United States";
 export const MAX_DELIVERY_DRIVE_MINUTES = 20;
@@ -7,6 +8,7 @@ const MAX_DELIVERY_DRIVE_SECONDS = MAX_DELIVERY_DRIVE_MINUTES * 60;
 export type DeliveryEligibility = {
   eligible: boolean;
   normalizedAddress: string;
+  taxAddress: StripeTaxDeliveryAddress;
   driveMinutes: number;
 };
 
@@ -129,6 +131,51 @@ function isCompleteStreetAddress(result: NonNullable<GoogleGeocodeResponse["resu
   return types.has("street_number") && types.has("route");
 }
 
+function getAddressComponent(
+  result: NonNullable<GoogleGeocodeResponse["results"]>[number],
+  type: string,
+): string | null {
+  const value = result.address_components?.find((component) => component.types?.includes(type))?.short_name?.trim();
+  return value || null;
+}
+
+/**
+ * Stripe Tax needs a complete structured US address. This is derived only
+ * from the server's geocoding result, never from a client-side eligibility
+ * response or from checkout metadata.
+ */
+function getStripeTaxDeliveryAddress(
+  result: NonNullable<GoogleGeocodeResponse["results"]>[number],
+): StripeTaxDeliveryAddress | null {
+  const streetNumber = getAddressComponent(result, "street_number");
+  const route = getAddressComponent(result, "route");
+  const city = getAddressComponent(result, "locality") ?? getAddressComponent(result, "postal_town");
+  const state = getAddressComponent(result, "administrative_area_level_1");
+  const postalCode = getAddressComponent(result, "postal_code");
+  const country = getAddressComponent(result, "country");
+
+  if (
+    !streetNumber ||
+    !route ||
+    !city ||
+    !state ||
+    !/^[A-Z]{2}$/.test(state) ||
+    !postalCode ||
+    !/^\d{5}(?:-\d{4})?$/.test(postalCode) ||
+    country !== "US"
+  ) {
+    return null;
+  }
+
+  return {
+    line1: `${streetNumber} ${route}`,
+    city,
+    state,
+    postal_code: postalCode,
+    country: "US",
+  };
+}
+
 export async function checkDeliveryEligibility(
   value: unknown,
   fetchImpl: FetchLike = fetch,
@@ -167,6 +214,7 @@ export async function checkDeliveryEligibility(
 
   const result = geocode.results[0];
   const location = result.geometry?.location;
+  const taxAddress = getStripeTaxDeliveryAddress(result);
   if (
     !result.formatted_address ||
     !location ||
@@ -174,7 +222,8 @@ export async function checkDeliveryEligibility(
     typeof location.lng !== "number" ||
     result.partial_match === true ||
     !isUnitedStates(result) ||
-    !isCompleteStreetAddress(result)
+    !isCompleteStreetAddress(result) ||
+    !taxAddress
   ) {
     throw new DeliveryEligibilityError("INVALID_ADDRESS", "Please enter a complete US street address for delivery.");
   }
@@ -219,6 +268,7 @@ export async function checkDeliveryEligibility(
   return {
     eligible: true,
     normalizedAddress: result.formatted_address,
+    taxAddress,
     driveMinutes,
   };
 }

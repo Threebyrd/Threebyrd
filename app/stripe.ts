@@ -1,6 +1,12 @@
 import Stripe from "stripe";
 
 export type StripeMode = "test" | "live";
+export type StripeTaxBehavior = "exclusive" | "inclusive";
+
+export type StripeTaxConfig = {
+  taxBehavior: StripeTaxBehavior;
+  productTaxCode: string | null;
+};
 
 const secretPatterns = [
   /\b(?:sk|rk)_(?:test|live)_[A-Za-z0-9_*.-]+/gi,
@@ -53,6 +59,61 @@ export function getStripe(): Stripe | null {
   }
 
   return new Stripe(secretKey.trim());
+}
+
+export function getStripeTaxConfig(): StripeTaxConfig | null {
+  const configuredProductTaxCode = process.env.STRIPE_PRODUCT_TAX_CODE?.trim();
+  const taxBehavior = process.env.STRIPE_TAX_BEHAVIOR?.trim();
+
+  if (configuredProductTaxCode && !/^txcd_\d{8}$/.test(configuredProductTaxCode)) {
+    return null;
+  }
+
+  if (taxBehavior !== "exclusive" && taxBehavior !== "inclusive") {
+    return null;
+  }
+
+  return { productTaxCode: configuredProductTaxCode || null, taxBehavior };
+}
+
+export function isReconciledAutomaticTax(
+  values: {
+    enabled: boolean;
+    status: string | null;
+    subtotalCents: number | null;
+    discountCents: number | null;
+    taxCents: number | null;
+    totalCents: number | null;
+  },
+  expectedSubtotalCents: number,
+  taxBehavior: StripeTaxBehavior,
+): boolean {
+  const discountCents = values.discountCents;
+  const taxCents = values.taxCents;
+  const totalCents = values.totalCents;
+  if (
+    !values.enabled ||
+    values.status !== "complete" ||
+    values.subtotalCents !== expectedSubtotalCents ||
+    typeof discountCents !== "number" ||
+    !Number.isSafeInteger(discountCents) ||
+    discountCents < 0 ||
+    discountCents > expectedSubtotalCents ||
+    typeof taxCents !== "number" ||
+    !Number.isSafeInteger(taxCents) ||
+    taxCents < 0 ||
+    typeof totalCents !== "number" ||
+    !Number.isSafeInteger(totalCents) ||
+    totalCents < 0
+  ) {
+    return false;
+  }
+
+  const discountedSubtotalCents = expectedSubtotalCents - discountCents;
+  const expectedTotal = taxBehavior === "exclusive"
+    ? discountedSubtotalCents + taxCents
+    : discountedSubtotalCents;
+  return totalCents === expectedTotal;
 }
 
 export function isStripeEventForMode(livemode: boolean, mode: StripeMode): boolean {

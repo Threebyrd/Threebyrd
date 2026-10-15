@@ -41,10 +41,20 @@ export type ConfirmedOrderRecord = {
   stripePaymentIntentId: string | null;
   customerEmail: string | null;
   customerName: string | null;
+  recipientName: string;
   customerPhone: string | null;
   deliveryAddress: string;
   items: string;
+  subtotalCents: number;
+  discountCents: number;
+  taxCents: number;
   amountCents: number;
+  stripeCouponId: string | null;
+  stripePromotionCodeId: string | null;
+  stripePaymentStatus: "paid" | "no_payment_required";
+  automaticTaxStatus: string;
+  taxBehavior: "exclusive" | "inclusive";
+  productTaxCode: string | null;
   currency: string;
   cutoffAt: string | null;
   createdAt: number;
@@ -304,8 +314,8 @@ export async function recordConfirmedOrder(
   );
   const insertOrder = database.prepare(`
     INSERT INTO orders
-      (id, stripe_session_id, stripe_payment_intent_id, status, customer_email, customer_name, customer_phone, delivery_address, items, amount_cents, currency, cutoff_at, created_at)
-    SELECT ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?
+      (id, stripe_session_id, stripe_payment_intent_id, status, customer_email, customer_name, recipient_name, customer_phone, delivery_address, items, subtotal_cents, discount_cents, tax_cents, amount_cents, stripe_coupon_id, stripe_promotion_code_id, stripe_payment_status, automatic_tax_status, tax_behavior, product_tax_code, currency, cutoff_at, created_at)
+    SELECT ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     WHERE ? IS NULL OR EXISTS (
       SELECT 1
       FROM ${RESERVATION_TABLE}
@@ -319,10 +329,20 @@ export async function recordConfirmedOrder(
     order.stripePaymentIntentId,
     order.customerEmail,
     order.customerName,
+    order.recipientName,
     order.customerPhone,
     order.deliveryAddress,
     order.items,
+    order.subtotalCents,
+    order.discountCents,
+    order.taxCents,
     order.amountCents,
+    order.stripeCouponId,
+    order.stripePromotionCodeId,
+    order.stripePaymentStatus,
+    order.automaticTaxStatus,
+    order.taxBehavior,
+    order.productTaxCode,
     order.currency,
     order.cutoffAt,
     order.createdAt,
@@ -399,10 +419,16 @@ async function claimPendingOrderSheetExports(
       o.status,
       o.customer_email,
       o.customer_name,
+      o.recipient_name,
       o.customer_phone,
       o.delivery_address,
       o.items,
+      o.subtotal_cents,
+      o.discount_cents,
+      o.tax_cents,
       o.amount_cents,
+      o.stripe_payment_status,
+      o.tax_behavior,
       o.currency,
       o.cutoff_at,
       o.created_at,
@@ -421,10 +447,16 @@ async function claimPendingOrderSheetExports(
     status: string;
     customer_email: string | null;
     customer_name: string | null;
+    recipient_name: string | null;
     customer_phone: string | null;
     delivery_address: string | null;
     items: string;
+    subtotal_cents: number;
+    discount_cents: number;
+    tax_cents: number;
     amount_cents: number;
+    stripe_payment_status: "paid" | "no_payment_required";
+    tax_behavior: "exclusive" | "inclusive";
     currency: string;
     cutoff_at: string | null;
     created_at: number;
@@ -457,10 +489,16 @@ async function claimPendingOrderSheetExports(
         status: row.status,
         customerEmail: row.customer_email,
         customerName: row.customer_name,
+        recipientName: row.recipient_name,
         customerPhone: row.customer_phone,
         deliveryAddress: row.delivery_address,
         items: row.items,
+        subtotalCents: Number(row.subtotal_cents),
+        discountCents: Number(row.discount_cents),
+        taxCents: Number(row.tax_cents),
         amountCents: Number(row.amount_cents),
+        stripePaymentStatus: row.stripe_payment_status,
+        taxBehavior: row.tax_behavior,
         currency: row.currency,
         cutoffAt: row.cutoff_at,
         createdAt: Number(row.created_at),

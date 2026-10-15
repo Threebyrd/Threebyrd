@@ -18,6 +18,7 @@ const mixedOrder = {
   status: "confirmed",
   customerEmail: "john@example.com",
   customerName: "John Smith",
+  recipientName: "John Smith",
   customerPhone: "6075550100",
   deliveryAddress: JSON.stringify({ normalizedAddress: "123 College Ave, Ithaca, NY 14850, USA" }),
   items: JSON.stringify([
@@ -25,6 +26,11 @@ const mixedOrder = {
     { productId: "big-beef", quantity: 2 },
   ]),
   amountCents: 4_700,
+  subtotalCents: 4_700,
+  discountCents: 0,
+  taxCents: 0,
+  stripePaymentStatus: "paid",
+  taxBehavior: "exclusive",
   currency: "usd",
   cutoffAt: "2026-09-26T19:00:00.000Z",
   createdAt: Math.floor(Date.parse("2026-09-25T14:30:00.000Z") / 1000),
@@ -64,6 +70,7 @@ test("builds the exact validated mixed-cart Sheets row payload", () => {
     orderDateTime: "2026-09-25 10:30 AM",
     orderId: "order-123",
     customerName: "John Smith",
+    recipientName: "John Smith",
     phone: "6075550100",
     email: "john@example.com",
     deliveryAddress: "123 College Ave, Ithaca, NY 14850, USA",
@@ -72,13 +79,36 @@ test("builds the exact validated mixed-cart Sheets row payload", () => {
     bigBeefQty: 2,
     littleBeefQty: 0,
     totalMeals: 5,
+    mealSubtotal: 47,
+    discount: 0,
+    salesTax: 0,
     totalPaid: 47,
     deliveryDate: "2026-09-27",
     stripeSessionId: "cs_test_123",
+    mealBreakdown: "Big Chicken — No Sauce ×3\nBig Beef — No Sauce ×2",
     paymentStatus: "paid",
     orderStatus: "New",
     notes: "",
   });
+});
+
+test("records each meal's sauce beside the correct meal", () => {
+  const order = {
+    ...mixedOrder,
+    id: "order-sauces",
+    items: JSON.stringify([
+      { productId: "big-chicken", quantity: 1, sauceId: "franks-redhot" },
+      { productId: "big-chicken", quantity: 1, sauceId: "bbq" },
+      { productId: "little-beef", quantity: 1, sauceId: "no-sauce" },
+    ]),
+    amountCents: 3_100,
+    subtotalCents: 3_100,
+  };
+
+  assert.equal(
+    buildOrderSheetPayload(order, "test").mealBreakdown,
+    "Big Chicken — Franks' RedHot ×1\nBig Chicken — BBQ ×1\nLittle Beef — No Sauce ×1",
+  );
 });
 
 test("rebuilds the Sheets payload from validated D1 data, not client prices", () => {
@@ -114,6 +144,7 @@ test("sends only the validated order payload and reports success or duplicate", 
   assert.equal(body.order.bigBeefQty, 2);
   assert.equal(body.order.littleChickenQty, 0);
   assert.equal(body.order.littleBeefQty, 0);
+  assert.equal(body.order.mealBreakdown, "Big Chicken — No Sauce ×3\nBig Beef — No Sauce ×2");
 });
 
 test("keeps Sheets failures retryable and never turns them into fulfillment failures", async () => {
@@ -161,8 +192,8 @@ function loadAppsScript(allowedMode = "test", spreadsheetId = "staging-spreadshe
   const secret = "test-script-secret";
   const rows = [[
     "Order Date/Time", "Order ID", "Customer Name", "Phone", "Email", "Ithaca Delivery Address",
-    "Big Chicken Qty", "Little Chicken Qty", "Big Beef Qty", "Little Beef Qty", "Total Meals", "Total Paid",
-    "Delivery Date", "Stripe Session ID", "Payment Status", "Order Status", "Notes",
+    "Big Chicken Qty", "Little Chicken Qty", "Big Beef Qty", "Little Beef Qty", "Total Meals", "Meal Subtotal", "Discount", "Sales Tax", "Total Paid",
+    "Delivery Date", "Stripe Session ID", "Meal Breakdown", "Payment Status", "Order Status", "Name", "Notes",
   ]];
   const sheet = {
     getName: () => "Orders",
@@ -216,6 +247,14 @@ test("Apps Script authenticates, opens the configured spreadsheet, appends one r
   assert.equal(rows[1][1], "order-123");
   assert.equal(rows[1][10], 5);
   assert.equal(rows[1][11], 47);
+  assert.equal(rows[1][12], 0);
+  assert.equal(rows[1][13], 0);
+  assert.equal(rows[1][14], 47);
+  assert.equal(rows[1][16], "cs_test_123");
+  assert.equal(rows[1][17], "Big Chicken — No Sauce ×3\nBig Beef — No Sauce ×2");
+  assert.equal(rows[1][18], "paid");
+  assert.equal(rows[1][19], "New");
+  assert.equal(rows[1][20], "John Smith");
   assert.deepEqual(openedSpreadsheetIds, ["staging-spreadsheet-id"]);
 
   const duplicate = JSON.parse(context.doPost(request).value);
@@ -307,7 +346,8 @@ test("Apps Script stores formula-like customer text as literal text", () => {
   });
   assert.equal(rows[1][2], "'=HYPERLINK(\"https://example.com\")");
   assert.equal(rows[1][5], "'+not-a-formula-command");
-  assert.equal(rows[1][16], "'@literal");
+  assert.equal(rows[1][20], "John Smith");
+  assert.equal(rows[1][21], "'@literal");
 });
 
 test("the Apps Script source contains no credential material", () => {

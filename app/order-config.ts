@@ -166,15 +166,35 @@ export const products: readonly Product[] = [
 
 const productMap = new Map(products.map((product) => [product.id, product]));
 
+export type SauceId = "no-sauce" | "franks-redhot" | "bbq";
+
+export type SauceOption = {
+  id: SauceId;
+  name: "No Sauce" | "Franks' RedHot" | "BBQ";
+  surchargeCents: number;
+};
+
+export const SAUCE_OPTIONS: readonly SauceOption[] = [
+  { id: "no-sauce", name: "No Sauce", surchargeCents: 0 },
+  { id: "franks-redhot", name: "Franks' RedHot", surchargeCents: 100 },
+  { id: "bbq", name: "BBQ", surchargeCents: 100 },
+];
+
 export type CartItemInput = {
   productId: string;
   quantity: number;
+  /** Legacy carts omit sauceId and are treated as No Sauce. */
+  sauceId?: string;
 };
 
 export type PricedLine = {
   productId: ProductId;
   name: Product["name"];
+  sauceId: SauceId;
+  sauceName: SauceOption["name"];
   quantity: number;
+  mealUnitAmountCents: number;
+  sauceUnitAmountCents: number;
   unitAmountCents: number;
   amountCents: number;
   pricingTier: CartPricingTier;
@@ -202,7 +222,9 @@ export function buildCheckoutMetadata({
 }): Record<string, string> {
   const quantities = Object.fromEntries(products.map((product) => [
     `${product.id.replaceAll("-", "_")}_qty`,
-    String(quote.lines.find((line) => line.productId === product.id)?.quantity ?? 0),
+    String(quote.lines
+      .filter((line) => line.productId === product.id)
+      .reduce((total, line) => total + line.quantity, 0)),
   ]));
 
   return {
@@ -211,7 +233,11 @@ export function buildCheckoutMetadata({
     total_meals: String(quote.totalBoxes),
     delivery_address: deliveryAddress,
     delivery_date: getDeliveryDateIso(cutoff),
-    cart: JSON.stringify(quote.lines.map((line) => ({ productId: line.productId, quantity: line.quantity }))),
+    cart: JSON.stringify(quote.lines.map((line) => ({
+      productId: line.productId,
+      quantity: line.quantity,
+      ...(line.sauceId === "no-sauce" ? {} : { sauceId: line.sauceId }),
+    }))),
     totalBoxes: String(quote.totalBoxes),
     subtotalCents: String(quote.subtotalCents),
     pricingTier: quote.pricingTier ?? "3-4",
@@ -221,6 +247,11 @@ export function buildCheckoutMetadata({
 
 export function getProduct(productId: string): Product | undefined {
   return productMap.get(productId as ProductId);
+}
+
+export function getSauce(sauceId: string | undefined): SauceOption | undefined {
+  const candidate = sauceId ?? "no-sauce";
+  return SAUCE_OPTIONS.find((sauce) => sauce.id === candidate);
 }
 
 export function unitAmountFor(product: Product, totalMeals: number): number | undefined {
@@ -268,7 +299,8 @@ export function readCartMetadata(value: unknown): CartItemInput[] | null {
       typeof item === "object" &&
       item !== null &&
       typeof (item as { productId?: unknown }).productId === "string" &&
-      typeof (item as { quantity?: unknown }).quantity === "number"
+      typeof (item as { quantity?: unknown }).quantity === "number" &&
+      (typeof (item as { sauceId?: unknown }).sauceId === "undefined" || typeof (item as { sauceId?: unknown }).sauceId === "string")
     ))
       ? parsed as CartItemInput[]
       : null;
@@ -278,13 +310,20 @@ export function readCartMetadata(value: unknown): CartItemInput[] | null {
 }
 
 export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
-  const quantities = new Map<string, number>();
+  const quantities = new Map<ProductId, number>();
+  const sauceQuantities = new Map<string, number>();
   const errors: string[] = [];
 
   for (const item of items) {
     const product = getProduct(item.productId);
     if (!product) {
       errors.push("That meal is not available.");
+      continue;
+    }
+
+    const sauce = getSauce(item.sauceId);
+    if (!sauce) {
+      errors.push("That sauce is not available.");
       continue;
     }
 
@@ -298,12 +337,14 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
       continue;
     }
 
-    const nextQuantity = (quantities.get(item.productId) ?? 0) + item.quantity;
+    const nextQuantity = (quantities.get(product.id) ?? 0) + item.quantity;
     if (nextQuantity > 99) {
       errors.push(`Choose no more than 99 boxes of ${product.name}.`);
       continue;
     }
-    quantities.set(item.productId, nextQuantity);
+    quantities.set(product.id, nextQuantity);
+    const sauceKey = `${product.id}:${sauce.id}`;
+    sauceQuantities.set(sauceKey, (sauceQuantities.get(sauceKey) ?? 0) + item.quantity);
   }
 
   const totalBoxes = [...quantities.values()].reduce((total, quantity) => total + quantity, 0);
@@ -313,22 +354,27 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
   let subtotalCents = 0;
 
   for (const product of products) {
-    const quantity = quantities.get(product.id) ?? 0;
-    if (!product.purchasable || quantity === 0) {
-      continue;
-    }
+    for (const sauce of SAUCE_OPTIONS) {
+      const quantity = sauceQuantities.get(`${product.id}:${sauce.id}`) ?? 0;
+      if (!product.purchasable || quantity === 0) continue;
 
-    const unitAmountCents = amountForProductAtTier(product.id, pricingTierForDisplay);
-    const amountCents = unitAmountCents * quantity;
-    lines.push({
-      productId: product.id,
-      name: product.name,
-      quantity,
-      unitAmountCents,
-      amountCents,
-      pricingTier: pricingTierForDisplay,
-    });
-    subtotalCents += amountCents;
+      const mealUnitAmountCents = amountForProductAtTier(product.id, pricingTierForDisplay);
+      const unitAmountCents = mealUnitAmountCents + sauce.surchargeCents;
+      const amountCents = unitAmountCents * quantity;
+      lines.push({
+        productId: product.id,
+        name: product.name,
+        sauceId: sauce.id,
+        sauceName: sauce.name,
+        quantity,
+        mealUnitAmountCents,
+        sauceUnitAmountCents: sauce.surchargeCents,
+        unitAmountCents,
+        amountCents,
+        pricingTier: pricingTierForDisplay,
+      });
+      subtotalCents += amountCents;
+    }
   }
 
   if (totalBoxes < MINIMUM_BOXES) {

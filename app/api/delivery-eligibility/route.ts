@@ -16,7 +16,13 @@ export async function POST(request: Request) {
 
   try {
     const result = await checkDeliveryEligibility(body?.address);
-    return Response.json(result, withCheckoutCors(request));
+    // Keep the structured address used to seed Stripe Tax server-side. The
+    // browser only needs the eligibility result and travel estimate.
+    return Response.json({
+      eligible: result.eligible,
+      normalizedAddress: result.normalizedAddress,
+      driveMinutes: result.driveMinutes,
+    }, withCheckoutCors(request));
   } catch (error) {
     if (error instanceof DeliveryEligibilityError) {
       const status = error.code === "OUTSIDE_DELIVERY_ZONE" ? 422 : error.code === "PROVIDER_UNAVAILABLE" ? 503 : 400;

@@ -78,12 +78,14 @@ The integration follows the Stripe-hosted Checkout Sessions pattern:
 
 1. The browser sends product IDs, quantities, and structured Street Address/City/State/ZIP fields to `POST https://api.threebyrd.com/api/checkout` in production; local development uses the local API unless `NEXT_PUBLIC_CHECKOUT_API_ORIGIN` is set.
 2. The server validates the catalog, cart-wide pricing tier, 3-box minimum, and 20-minute delivery route, then assigns the cart to the next fulfillment window based on the current business-local cutoff.
-3. The server reconstructs and revalidates the canonical delivery address, recalculates the cart-wide tier, and creates a one-time Checkout Session with dynamic line `price_data`, collects customer email and phone number, and redirects the customer to Stripe. Stripe-hosted address fields are not used as the delivery source of truth.
+3. The server reconstructs and revalidates the canonical delivery address, recalculates the cart-wide tier, and creates a one-time Checkout Session with dynamic line `price_data`. Before the Session is created, the Worker creates its corresponding Stripe Customer with that server-validated address as the Customer shipping address. Stripe Tax therefore calculates from the delivery destination, while Checkout still requires a billing address for payment details. Checkout does not collect a second editable shipping address, so fulfillment and tax location cannot silently diverge.
 4. Stripe redirects to `/success` or `/order?checkout=canceled`.
 5. `POST /api/webhooks/stripe` verifies the Stripe signature, handles completed and asynchronous successful Checkout events, reconciles the verified session against the canonical quote, and records the confirmed order in D1.
 6. The D1 unique constraint on `stripe_session_id` makes repeated webhook delivery idempotent. The success page never fulfills an order.
 
-The checkout uses Stripe’s dynamic payment-method behavior; cards and eligible Apple Pay/Google Pay methods are handled by Stripe-hosted Checkout. No raw card data is handled by ThreeByrd. Automatic tax is not enabled yet because the company’s registrations and product tax classification have not been established; have a tax adviser confirm those inputs before enabling it.
+The checkout uses Stripe’s dynamic payment-method behavior; cards and eligible Apple Pay/Google Pay methods are handled by Stripe-hosted Checkout. No raw card data is handled by ThreeByrd. Automatic tax uses the preset food category selected in Stripe Tax settings and fails closed until `STRIPE_TAX_BEHAVIOR` contains the confirmed pricing policy. `STRIPE_PRODUCT_TAX_CODE` is an optional server-only override. Tax registrations are managed in Stripe Dashboard and are not created or changed by the application.
+
+Checkout also shows Stripe’s hosted promotion-code entry. Create the discount rule as a Coupon and the customer-facing code as a Promotion Code in the matching Stripe Dashboard mode; do not put coupon amounts or codes into this site. Because ThreeByrd creates dynamic Stripe products for each cart, a Coupon must apply to all products unless the payment architecture changes to use stable Stripe Product IDs. The verified webhook records Stripe’s actual subtotal, discount, tax, and final total, and accepts a completed zero-dollar checkout with `no_payment_required` status.
 
 The success redirect carries the assigned delivery date as display-only context, so returning after cutoff still shows the original delivery day. Older return URLs without a date show neutral confirmation text. Fulfillment continues to use stored metadata, never URL parameters.
 
@@ -113,6 +115,8 @@ Local `.env.local`:
 STRIPE_SECRET_KEY=<Stripe test secret>
 STRIPE_WEBHOOK_SECRET=<Stripe webhook signing secret>
 STRIPE_MODE=test
+STRIPE_PRODUCT_TAX_CODE=txcd_40060003 # Food for Immediate Consumption
+STRIPE_TAX_BEHAVIOR=<exclusive or inclusive>
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_CHECKOUT_API_ORIGIN=
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
@@ -120,7 +124,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 GOOGLE_MAPS_SERVER_API_KEY=<Google Maps server key; Worker secret only>
 ```
 
-For staging, set `STRIPE_MODE=test`, use the staging sandbox secrets, use the staging D1 binding, and allow only local or an explicitly approved staging frontend origin. For production at launch, set `STRIPE_MODE=live`, use the live secrets, keep `NEXT_PUBLIC_SITE_URL=https://threebyrd.com`, and keep `CORS_ALLOWED_ORIGINS=https://threebyrd.com`. Set `NEXT_PUBLIC_CHECKOUT_API_ORIGIN=https://api.threebyrd.com` in the GitHub Pages build environment. Store both Stripe values as hosted secrets, not in Git, `.env` files, browser code, or logs. Use separate least-privilege restricted keys for test and live.
+For staging, set `STRIPE_MODE=test`, use the staging sandbox secrets, use the staging D1 binding, and allow only local or an explicitly approved staging frontend origin. For production at launch, set `STRIPE_MODE=live`, use the live secrets, keep `NEXT_PUBLIC_SITE_URL=https://threebyrd.com`, and keep `CORS_ALLOWED_ORIGINS=https://threebyrd.com`. Set `NEXT_PUBLIC_CHECKOUT_API_ORIGIN=https://api.threebyrd.com` in the GitHub Pages build environment. Store Stripe keys as hosted secrets, not in Git, `.env` files, browser code, or logs. The tax code and behavior are not credentials, but they remain server-only runtime configuration so each environment must opt in explicitly. Use separate least-privilege restricted keys for test and live.
 
 The D1 binding is declared logically as `DB` in `.openai/hosting.json`. Apply the generated migration through the Sites/D1 deployment flow; do not assume a local unbound Worker has a persistent database.
 
@@ -138,7 +142,7 @@ Staging sandbox webhooks must use the signing secret for the Stripe test-mode en
 
 ## Viewing and refunding orders
 
-Confirmed records are stored in the D1 `orders` table with the Stripe session ID, payment intent ID, selected items, customer delivery details, amount, currency, cutoff, and confirmation timestamp. View them through the Sites database/D1 tooling or the Cloudflare D1 console. Stripe Dashboard → Payments remains the source for payment status and reconciliation.
+Confirmed records are stored in the D1 `orders` table with the Stripe session ID, payment intent ID, selected items, customer delivery details, subtotal, discount, tax, total amount, non-sensitive Stripe coupon/promotion IDs when available, automatic-tax status, tax behavior, currency, cutoff, and confirmation timestamp. View them through the Sites database/D1 tooling or the Cloudflare D1 console. Stripe Dashboard → Payments remains the source for payment status and reconciliation.
 
 Refunds should be initiated from Stripe Dashboard → Payments for the matching payment, or through the Stripe API after confirming the order/session ID. A refund workflow/UI is not exposed to customers by this site, and no custom refund endpoint was added.
 
@@ -151,7 +155,7 @@ Invoicing is also intentionally outside student checkout. For future fraternity,
 ## What ThreeByrd still needs to do
 
 1. Keep staging isolated with `STRIPE_MODE=test`, its sandbox secrets, and its separate D1 database.
-2. Decide tax registrations, product tax classification, and whether to enable Stripe Tax with a tax adviser; do not enable it by assumption.
+2. Confirm that the intended registrations and preset food category are active in both Stripe test and live mode, then set the inclusive/exclusive pricing behavior in each environment.
 3. Monitor the live-account operational checklist, including receipts, statement descriptor, fulfillment, refunds, and webhook delivery.
 4. If an emergency close is needed, set `ORDERS_OPEN` to `false`, deploy the Worker, and verify that checkout returns HTTP 503.
 

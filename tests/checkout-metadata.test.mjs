@@ -12,6 +12,8 @@ test("creates deterministic mixed-cart Stripe metadata from the server quote", (
     reservationId: "reservation-test-id",
     deliveryAddress: "123 State St, Ithaca, NY 14850, USA",
     cutoff: new Date("2026-09-26T19:00:00.000Z"),
+    smsReminderDecision: "yes",
+    smsReminderDecisionAt: new Date("2026-09-25T12:00:00.000Z"),
   });
 
   assert.deepEqual(metadata, {
@@ -28,6 +30,10 @@ test("creates deterministic mixed-cart Stripe metadata from the server quote", (
     subtotalCents: "4700",
     pricingTier: "5-9",
     cutoffAt: "2026-09-26T19:00:00.000Z",
+    smsReminderDecision: "yes",
+    smsReminderDisclosureVersion: "order-and-promotions-v1",
+    smsReminderDecisionAt: "2026-09-25T12:00:00.000Z",
+    smsReminderSource: "checkout",
   });
 });
 

@@ -62,3 +62,38 @@ export const orderSheetExports = sqliteTable("order_sheet_exports", {
 }, (table) => [
   index("idx_order_sheet_exports_status_retry").on(table.status, table.nextAttemptAt, table.leaseUntil),
 ]);
+
+export const notificationConsents = sqliteTable("notification_consents", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull(),
+  stripeSessionId: text("stripe_session_id").notNull(),
+  channel: text("channel").notNull().default("sms"),
+  purpose: text("purpose").notNull().default("order_and_promotional"),
+  decision: text("decision").notNull(),
+  destinationNormalized: text("destination_normalized"),
+  disclosureVersion: text("disclosure_version").notNull(),
+  decidedAt: integer("decided_at").notNull(),
+  source: text("source").notNull(),
+  revokedAt: integer("revoked_at"),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("notification_consents_session_channel_purpose_unique").on(table.stripeSessionId, table.channel, table.purpose),
+  index("idx_notification_consents_destination").on(table.destinationNormalized, table.channel, table.purpose),
+]);
+
+export const notificationOutbox = sqliteTable("notification_outbox", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull(),
+  stripeSessionId: text("stripe_session_id").notNull(),
+  channel: text("channel").notNull().default("sms"),
+  templateKey: text("template_key").notNull(),
+  destinationNormalized: text("destination_normalized").notNull(),
+  scheduledFor: integer("scheduled_for").notNull(),
+  status: text("status").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  createdAt: integer("created_at").notNull(),
+  sentAt: integer("sent_at"),
+}, (table) => [
+  uniqueIndex("notification_outbox_session_template_unique").on(table.stripeSessionId, table.channel, table.templateKey),
+  index("idx_notification_outbox_status_schedule").on(table.status, table.scheduledFor),
+]);

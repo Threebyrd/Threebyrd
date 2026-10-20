@@ -24,6 +24,7 @@ const ORDER_HEADERS = [
   "Order Status",
   "Name",
   "Notes",
+  "SMS Consent — Orders + Promotions",
 ];
 
 function doPost(e) {
@@ -185,6 +186,7 @@ function validateOrder(order) {
   if (!new RegExp("^cs_" + order.stripeMode + "_").test(order.stripeSessionId)) return "Invalid Stripe session";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.email)) return "Invalid customer email";
   if (!/^(paid|no_payment_required)$/.test(order.paymentStatus) || order.orderStatus !== "New") return "Invalid order status";
+  if (!/^(Yes|No)?$/.test(order.smsConsent || "")) return "Invalid SMS consent";
 
   const quantities = ["bigChickenQty", "littleChickenQty", "bigBeefQty", "littleBeefQty"].map(function(key) {
     return order[key];
@@ -224,6 +226,7 @@ function toSheetRow(order) {
     safeSheetText(order.orderStatus),
     safeSheetText(order.recipientName),
     safeSheetText(order.notes || ""),
+    safeSheetText(order.smsConsent || ""),
   ];
 }
 

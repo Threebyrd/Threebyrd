@@ -1,4 +1,5 @@
 import type { OrderCapacityConfig } from "./order-capacity-config";
+import { SMS_CONSENT_PURPOSE, type SmsReminderDecision } from "./reminder-consent.ts";
 import {
   buildOrderSheetPayload,
   getConfiguredStripeMode,
@@ -58,6 +59,11 @@ export type ConfirmedOrderRecord = {
   currency: string;
   cutoffAt: string | null;
   createdAt: number;
+  smsReminderDecision: SmsReminderDecision;
+  smsReminderDisclosureVersion: string;
+  smsReminderDecisionAt: number;
+  smsReminderSource: string;
+  smsDestinationNormalized: string | null;
 };
 
 export type PendingOrderSheetExport = {
@@ -370,12 +376,75 @@ export async function recordConfirmedOrder(
     confirmedAt,
     order.stripeSessionId,
   );
+  const recordSmsDecision = database.prepare(`
+    INSERT INTO notification_consents
+      (id, order_id, stripe_session_id, channel, purpose, decision, destination_normalized, disclosure_version, decided_at, source, created_at)
+    SELECT ?, ?, ?, 'sms', ?, ?, ?, ?, ?, ?, ?
+    WHERE EXISTS (SELECT 1 FROM orders WHERE stripe_session_id = ?)
+    ON CONFLICT(stripe_session_id, channel, purpose) DO NOTHING
+  `).bind(
+    `${order.stripeSessionId}:sms:${SMS_CONSENT_PURPOSE}`,
+    order.stripeSessionId,
+    order.stripeSessionId,
+    SMS_CONSENT_PURPOSE,
+    order.smsReminderDecision,
+    order.smsDestinationNormalized,
+    order.smsReminderDisclosureVersion,
+    order.smsReminderDecisionAt,
+    order.smsReminderSource,
+    confirmedAt,
+    order.stripeSessionId,
+  );
+  const enqueueSmsReminder = database.prepare(`
+    INSERT INTO notification_outbox
+      (id, order_id, stripe_session_id, channel, template_key, destination_normalized, scheduled_for, status, attempts, created_at)
+    SELECT ?, ?, ?, 'sms', 'order_delivery_update', ?, ?, 'pending', 0, ?
+    WHERE ? = 'yes'
+      AND ? IS NOT NULL
+      AND EXISTS (SELECT 1 FROM orders WHERE stripe_session_id = ?)
+    ON CONFLICT(stripe_session_id, channel, template_key) DO NOTHING
+  `).bind(
+    `${order.stripeSessionId}:sms:order_delivery_update`,
+    order.stripeSessionId,
+    order.stripeSessionId,
+    order.smsDestinationNormalized,
+    confirmedAt,
+    confirmedAt,
+    order.smsReminderDecision,
+    order.smsDestinationNormalized,
+    order.stripeSessionId,
+  );
   const existingOrder = database.prepare(`
     SELECT id FROM orders WHERE stripe_session_id = ? LIMIT 1
   `).bind(order.stripeSessionId);
-  const results = await database.batch([confirmReservation, insertOrder, enqueueSheetExport, existingOrder]);
+  const results = await database.batch([confirmReservation, insertOrder, enqueueSheetExport, recordSmsDecision, enqueueSmsReminder, existingOrder]);
 
-  return (results[3]?.results?.length ?? 0) > 0;
+  return (results[5]?.results?.length ?? 0) > 0;
+}
+
+export async function revokeTransactionalSmsReminders(
+  database: CapacityDatabase,
+  destination: string,
+  revokedAt = Math.floor(Date.now() / 1000),
+): Promise<void> {
+  await database.batch([
+    database.prepare(`
+      UPDATE notification_consents
+      SET revoked_at = ?
+      WHERE channel = 'sms'
+        AND purpose = 'order_and_promotional'
+        AND decision = 'yes'
+        AND destination_normalized = ?
+        AND revoked_at IS NULL
+    `).bind(revokedAt, destination),
+    database.prepare(`
+      UPDATE notification_outbox
+      SET status = 'canceled'
+      WHERE channel = 'sms'
+        AND destination_normalized = ?
+        AND status = 'pending'
+    `).bind(destination),
+  ]);
 }
 
 export async function processPendingOrderSheetExports(
@@ -432,9 +501,14 @@ async function claimPendingOrderSheetExports(
       o.currency,
       o.cutoff_at,
       o.created_at,
+      c.decision AS sms_consent_decision,
       e.attempts
     FROM order_sheet_exports e
     INNER JOIN orders o ON o.id = e.order_id
+    LEFT JOIN notification_consents c
+      ON c.order_id = o.id
+      AND c.channel = 'sms'
+      AND c.purpose = 'order_and_promotional'
     WHERE (
       (e.status = 'pending' AND e.next_attempt_at <= ?)
       OR (e.status = 'processing' AND e.lease_until <= ?)
@@ -460,6 +534,7 @@ async function claimPendingOrderSheetExports(
     currency: string;
     cutoff_at: string | null;
     created_at: number;
+    sms_consent_decision: "yes" | "no" | null;
     attempts: number;
   }>();
 
@@ -502,6 +577,9 @@ async function claimPendingOrderSheetExports(
         currency: row.currency,
         cutoffAt: row.cutoff_at,
         createdAt: Number(row.created_at),
+        smsConsentDecision: row.sms_consent_decision === "yes" || row.sms_consent_decision === "no"
+          ? row.sms_consent_decision
+          : null,
       },
     });
   }

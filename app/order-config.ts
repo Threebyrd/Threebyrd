@@ -1,3 +1,5 @@
+import { SMS_REMINDER_DISCLOSURE_VERSION, SMS_REMINDER_SOURCE } from "./reminder-consent.ts";
+
 export const BUSINESS_TIME_ZONE = "America/New_York";
 export const MINIMUM_BOXES = 3;
 export const DEFAULT_CUTOFF_OVERRIDE = "2026-10-17T15:00:00";
@@ -214,11 +216,15 @@ export function buildCheckoutMetadata({
   reservationId,
   deliveryAddress,
   cutoff,
+  smsReminderDecision,
+  smsReminderDecisionAt,
 }: {
   quote: OrderQuote;
   reservationId: string;
   deliveryAddress: string;
   cutoff: Date;
+  smsReminderDecision?: "yes" | "no";
+  smsReminderDecisionAt?: Date;
 }): Record<string, string> {
   const quantities = Object.fromEntries(products.map((product) => [
     `${product.id.replaceAll("-", "_")}_qty`,
@@ -242,6 +248,12 @@ export function buildCheckoutMetadata({
     subtotalCents: String(quote.subtotalCents),
     pricingTier: quote.pricingTier ?? "3-4",
     cutoffAt: cutoff.toISOString(),
+    ...(smsReminderDecision && smsReminderDecisionAt ? {
+      smsReminderDecision,
+      smsReminderDisclosureVersion: SMS_REMINDER_DISCLOSURE_VERSION,
+      smsReminderDecisionAt: smsReminderDecisionAt.toISOString(),
+      smsReminderSource: SMS_REMINDER_SOURCE,
+    } : {}),
   };
 }
 

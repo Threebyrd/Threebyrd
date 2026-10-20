@@ -19,6 +19,8 @@ class FakeD1 {
   rows = [];
   orders = [];
   exports = [];
+  consents = [];
+  notifications = [];
   lock = Promise.resolve();
 
   prepare(query) {
@@ -118,6 +120,22 @@ class FakeD1 {
       const alreadyQueued = this.exports.some((entry) => entry.stripeSessionId === stripeSessionId);
       if (!exists || alreadyQueued) return { meta: { changes: 0 } };
       this.exports.push({ orderId, stripeSessionId });
+      return { meta: { changes: 1 } };
+    }
+
+    if (query.includes("INSERT INTO notification_consents")) {
+      const [id, orderId, stripeSessionId, purpose, decision, destination, disclosureVersion, decidedAt, source, createdAt] = values;
+      if (!this.orders.some((order) => order.stripeSessionId === stripeSessionId)) return { meta: { changes: 0 } };
+      if (this.consents.some((entry) => entry.stripeSessionId === stripeSessionId)) return { meta: { changes: 0 } };
+      this.consents.push({ id, orderId, stripeSessionId, purpose, decision, destination, disclosureVersion, decidedAt, source, createdAt });
+      return { meta: { changes: 1 } };
+    }
+
+    if (query.includes("INSERT INTO notification_outbox")) {
+      const [id, orderId, stripeSessionId, destination, scheduledFor, createdAt, decision, requiredDestination] = values;
+      if (decision !== "yes" || requiredDestination === null || !this.orders.some((order) => order.stripeSessionId === stripeSessionId)) return { meta: { changes: 0 } };
+      if (this.notifications.some((entry) => entry.stripeSessionId === stripeSessionId)) return { meta: { changes: 0 } };
+      this.notifications.push({ id, orderId, stripeSessionId, destination, scheduledFor, createdAt });
       return { meta: { changes: 1 } };
     }
 
@@ -334,6 +352,11 @@ test("paid webhook reconciliation is atomic and duplicate session delivery creat
     currency: "usd",
     cutoffAt: "2026-09-18T19:00:00.000Z",
     createdAt: 1_200,
+    smsReminderDecision: "yes",
+    smsReminderDisclosureVersion: "order-and-promotions-v1",
+    smsReminderDecisionAt: 1_190,
+    smsReminderSource: "checkout",
+    smsDestinationNormalized: "+15555555555",
   };
   assert.equal(await recordConfirmedOrder(database, order, { reservationId: "r-order", expectedWindowKey: "wrong-window", expectedMealCount: 1, confirmedAt: 1_200 }), false);
   assert.equal(database.orders.length, 0);
@@ -341,5 +364,27 @@ test("paid webhook reconciliation is atomic and duplicate session delivery creat
   assert.equal(await recordConfirmedOrder(database, order, { reservationId: "r-order", expectedWindowKey: "test-window", expectedMealCount: 1, confirmedAt: 1_202 }), true);
   assert.equal(database.orders.length, 1);
   assert.equal(database.exports.length, 1);
+  assert.equal(database.consents.length, 1);
+  assert.equal(database.consents[0].decision, "yes");
+  assert.equal(database.notifications.length, 1);
   assert.equal(database.orders[0].amountCents, 3_240);
+});
+
+test("an affirmative no is recorded and never creates an SMS reminder job", async () => {
+  const database = new FakeD1();
+  await reserveOrderCapacity(database, testConfig, reservation("r-no"));
+  await attachOrderCapacityReservation(database, "r-no", "cs_test_no");
+  const order = {
+    stripeSessionId: "cs_test_no", stripePaymentIntentId: "pi_test_no", customerEmail: null,
+    customerName: null, recipientName: "Recipient", customerPhone: "+15555555555",
+    deliveryAddress: "{}", items: "[]", subtotalCents: 1, discountCents: 0, taxCents: 0,
+    amountCents: 1, stripeCouponId: null, stripePromotionCodeId: null, stripePaymentStatus: "paid",
+    automaticTaxStatus: "complete", taxBehavior: "exclusive", productTaxCode: null, currency: "usd",
+    cutoffAt: "2026-09-18T19:00:00.000Z", createdAt: 1_200, smsReminderDecision: "no",
+    smsReminderDisclosureVersion: "order-and-promotions-v1", smsReminderDecisionAt: 1_190,
+    smsReminderSource: "checkout", smsDestinationNormalized: "+15555555555",
+  };
+  assert.equal(await recordConfirmedOrder(database, order, { reservationId: "r-no", expectedWindowKey: "test-window", expectedMealCount: 1, confirmedAt: 1_201 }), true);
+  assert.equal(database.consents[0].decision, "no");
+  assert.equal(database.notifications.length, 0);
 });

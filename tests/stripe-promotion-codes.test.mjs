@@ -23,6 +23,7 @@ const discountedIthacaOrder = {
   currency: "usd",
   cutoffAt: "2026-10-03T19:00:00.000Z",
   createdAt: Math.floor(Date.parse("2026-10-02T14:30:00.000Z") / 1000),
+  smsConsentDecision: null,
 };
 
 test("enables only Stripe Checkout's hosted promotion-code entry", () => {
@@ -77,6 +78,7 @@ test("exports Stripe-reconciled discounted subtotal, tax, and final total", () =
     paymentStatus: "paid",
     orderStatus: "New",
     notes: "Stripe Tax: $2.16",
+    smsConsent: "",
   });
 });
 

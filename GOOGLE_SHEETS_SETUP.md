@@ -13,7 +13,7 @@ This integration replaces the unfinished Zapier export. The verified Stripe webh
 Open the existing `ThreeByrd Weekly Orders` spreadsheet and select the `Orders` worksheet. Row 1 must contain these headers, in this exact order:
 
 ```text
-Order Date/Time | Order ID | Customer Name | Phone | Email | Ithaca Delivery Address | Big Chicken Qty | Little Chicken Qty | Big Beef Qty | Little Beef Qty | Total Meals | Meal Subtotal | Discount | Sales Tax | Total Paid | Delivery Date | Stripe Session ID | Meal Breakdown | Payment Status | Order Status | Notes
+Order Date/Time | Order ID | Customer Name | Phone | Email | Ithaca Delivery Address | Big Chicken Qty | Little Chicken Qty | Big Beef Qty | Little Beef Qty | Total Meals | Meal Subtotal | Discount | Sales Tax | Total Paid | Delivery Date | Stripe Session ID | Meal Breakdown | Payment Status | Order Status | Name | Notes | SMS Consent — Orders + Promotions
 ```
 
 Keep the existing Weekly Summary worksheet unchanged. `Meal Subtotal`, `Discount`, `Sales Tax`, and `Total Paid` are written as numeric dollar values, so the sheet can format them as currency.
@@ -83,7 +83,7 @@ The Apps Script uses `LockService` and refuses a row whose `Order ID` or `Stripe
 ## Verification checklist
 
 - Send a staging test order only after the staging Worker migration and secrets are configured.
-- Confirm one row appears in `Orders` with 20 populated columns and numeric subtotal, discount, tax, and total values.
+- Confirm one row appears in `Orders` with the expected 23 columns, including explicit `Yes` or `No` SMS consent, and numeric subtotal, discount, tax, and total values.
 - Replay the same webhook or run the Worker retry; confirm the row count remains one.
 - Confirm the D1 order and capacity reservation remain intact if Sheets is unavailable.
 - Remove synthetic staging D1 data and the staging test row after the result is recorded.

@@ -59,6 +59,29 @@ test("normalizes complete structured address fields and rejects incomplete or ma
   assert.equal(normalizeDeliveryAddressFields({ ...fields, state: "ZZ" }), null);
 });
 
+test("supports an explicit development-only delivery mock for local checkout previews", async () => {
+  const previousMode = process.env.DELIVERY_CHECK_MODE;
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.DELIVERY_CHECK_MODE = "mock";
+  process.env.NODE_ENV = "development";
+  try {
+    const result = await checkDeliveryEligibility({
+      streetAddress: "123 State St",
+      city: "Ithaca",
+      state: "NY",
+      zipCode: "14850",
+    });
+    assert.equal(result.eligible, true);
+    assert.equal(result.driveMinutes, 10);
+    assert.equal(result.normalizedAddress, "123 State St, Ithaca, NY 14850, USA");
+  } finally {
+    if (previousMode === undefined) delete process.env.DELIVERY_CHECK_MODE;
+    else process.env.DELIVERY_CHECK_MODE = previousMode;
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+  }
+});
+
 test("accepts an address at or under the 20-minute normal route limit", async () => {
   const previous = process.env.GOOGLE_MAPS_SERVER_API_KEY;
   process.env.GOOGLE_MAPS_SERVER_API_KEY = "server-test-key";

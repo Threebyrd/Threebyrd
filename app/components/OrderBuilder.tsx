@@ -9,6 +9,7 @@ import MacroSnapshot from "./MacroSnapshot";
 import { requestDeliveryEligibility } from "../delivery-client";
 import { EMPTY_DELIVERY_ADDRESS, type DeliveryAddressField, type DeliveryAddressFields } from "../delivery-address";
 import { normalizeRecipientName } from "../recipient-name";
+import type { SmsReminderDecision } from "../reminder-consent";
 import {
   CART_PRICING_TIERS,
   CART_PRICING_TIER_ORDER,
@@ -52,6 +53,8 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       : "")
   ));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [smsReminderDecision, setSmsReminderDecision] = useState<SmsReminderDecision | null>(null);
+  const [smsReminderError, setSmsReminderError] = useState("");
   const [lastInteractedProductId, setLastInteractedProductId] = useState<ProductId | null>(null);
   const [recipientName, setRecipientName] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddressFields>(EMPTY_DELIVERY_ADDRESS);
@@ -63,6 +66,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const mealSelectionIdRef = useRef(0);
   const orderSummaryRef = useRef<HTMLElement>(null);
   const productGridRef = useRef<HTMLDivElement>(null);
+  const firstSmsReminderOptionRef = useRef<HTMLInputElement>(null);
   const quote = useMemo(
     () => quoteOrder(mealSelections.map(({ productId, sauceId }) => ({ productId, quantity: 1, sauceId }))),
     [mealSelections],
@@ -223,6 +227,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
       return;
     }
 
+    if (!smsReminderDecision) {
+      setSmsReminderError("Choose whether you want text reminders before continuing.");
+      firstSmsReminderOptionRef.current?.focus();
+      return;
+    }
+
     setIsSubmitting(true);
     setStatusMessage("");
 
@@ -234,6 +244,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
           items: mealSelections.map(({ productId, sauceId }) => ({ productId, quantity: 1, sauceId })),
           recipientName: normalizedRecipientName,
           deliveryAddress,
+          smsReminderDecision,
         }),
       });
       const body = await response.json().catch(() => ({})) as { error?: unknown; url?: unknown };
@@ -454,6 +465,40 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               onCheck={() => void checkDeliveryAddress()}
             />
             <p className="deliveryNote"><span aria-hidden="true">✦</span> FREE DELIVERY IN ITHACA</p>
+            <fieldset className={`smsReminderDecision${smsReminderError ? " hasError" : ""}`} aria-describedby={`sms-reminder-help${smsReminderError ? " sms-reminder-error" : ""}`}>
+              <legend>Would you like texts about your orders and ThreeByrd deals?</legend>
+              <p id="sms-reminder-help">Choose one to continue.</p>
+              <label className="smsReminderOption" htmlFor="sms-reminder-yes" aria-label="Yes, text me order reminders and promotional deals">
+                <input
+                  id="sms-reminder-yes"
+                  ref={firstSmsReminderOptionRef}
+                  type="radio"
+                  name="smsReminderDecision"
+                  value="yes"
+                  checked={smsReminderDecision === "yes"}
+                  onChange={() => {
+                    setSmsReminderDecision("yes");
+                    setSmsReminderError("");
+                  }}
+                />
+                <span><strong>Yes, text me order reminders and promotional deals</strong><small>Receive order updates and recurring promotional texts from ThreeByrd at the mobile number provided during checkout, including delivery reminders, new menus, and special offers. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase.</small></span>
+              </label>
+              <label className="smsReminderOption" htmlFor="sms-reminder-no" aria-label="No, don’t text me order reminders or promotional deals">
+                <input
+                  id="sms-reminder-no"
+                  type="radio"
+                  name="smsReminderDecision"
+                  value="no"
+                  checked={smsReminderDecision === "no"}
+                  onChange={() => {
+                    setSmsReminderDecision("no");
+                    setSmsReminderError("");
+                  }}
+                />
+                <span><strong>No, don’t text me order reminders or promotional deals</strong></span>
+              </label>
+              {smsReminderError && <p id="sms-reminder-error" className="smsReminderError" role="alert">{smsReminderError}</p>}
+            </fieldset>
             <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !recipientNameIsValid || !ORDERS_OPEN || isSubmitting || !deliveryEligible}>
               {isSubmitting ? "Opening secure checkout…" : !ORDERS_OPEN ? "Checkout temporarily unavailable" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>

@@ -4,6 +4,7 @@ import { getCartPricingTier, quoteOrder, readCartMetadata } from "../../../order
 import { getStripe, getStripeMode, isReconciledAutomaticTax, isStripeEventForMode, safeErrorMessage, type StripeTaxBehavior } from "../../../stripe";
 import { readStripeDiscountIdentifiers } from "../../../stripe-promotion-codes";
 import { normalizeRecipientName } from "../../../recipient-name";
+import { normalizeSmsDestination, parseSmsReminderDecision, SMS_REMINDER_DISCLOSURE_VERSION, SMS_REMINDER_SOURCE } from "../../../reminder-consent";
 import type Stripe from "stripe";
 
 export async function POST(request: Request) {
@@ -74,6 +75,11 @@ export async function POST(request: Request) {
   }
 
   const quote = quoteOrder(cart);
+  const smsReminderDecision = parseSmsReminderDecision(session.metadata?.smsReminderDecision);
+  const smsReminderDisclosureVersion = session.metadata?.smsReminderDisclosureVersion;
+  const smsReminderDecisionAtRaw = session.metadata?.smsReminderDecisionAt;
+  const smsReminderSource = session.metadata?.smsReminderSource;
+  const smsReminderDecisionAt = smsReminderDecisionAtRaw ? Math.floor(Date.parse(smsReminderDecisionAtRaw) / 1000) : NaN;
   const taxBehavior = session.metadata?.taxBehavior;
   const productTaxCode = session.metadata?.productTaxCode ?? null;
   const discountCents = session.total_details?.amount_discount ?? 0;
@@ -86,6 +92,10 @@ export async function POST(request: Request) {
   const metadataPricingTier = session.metadata?.pricingTier;
   if (
     session.mode !== "payment" ||
+    !smsReminderDecision ||
+    smsReminderDisclosureVersion !== SMS_REMINDER_DISCLOSURE_VERSION ||
+    smsReminderSource !== SMS_REMINDER_SOURCE ||
+    !Number.isSafeInteger(smsReminderDecisionAt) ||
     !isCompletedCheckoutPayment(paymentStatus) ||
     !quote.isValid ||
     quote.pricingTier !== (getCartPricingTier(quote.totalBoxes) ?? null) ||
@@ -141,13 +151,14 @@ export async function POST(request: Request) {
       normalizedAddress: deliveryAddress,
       source: "precheckout-google-validation",
     });
+    const customerPhone = session.customer_details?.phone ?? null;
     const recorded = await recordConfirmedOrder(database, {
       stripeSessionId: session.id,
       stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
       customerEmail: session.customer_details?.email ?? null,
       customerName,
       recipientName,
-      customerPhone: session.customer_details?.phone ?? null,
+      customerPhone,
       deliveryAddress: deliveryAddressRecord,
       items: JSON.stringify(cart),
       subtotalCents: quote.subtotalCents,
@@ -163,6 +174,11 @@ export async function POST(request: Request) {
       currency: session.currency,
       cutoffAt,
       createdAt: session.created,
+      smsReminderDecision,
+      smsReminderDisclosureVersion,
+      smsReminderDecisionAt,
+      smsReminderSource,
+      smsDestinationNormalized: normalizeSmsDestination(customerPhone),
     }, {
       reservationId,
       confirmedAt,

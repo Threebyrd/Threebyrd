@@ -34,6 +34,7 @@ const mixedOrder = {
   currency: "usd",
   cutoffAt: "2026-09-26T19:00:00.000Z",
   createdAt: Math.floor(Date.parse("2026-09-25T14:30:00.000Z") / 1000),
+  smsConsentDecision: "yes",
 };
 
 async function withEnvironment(values, callback) {
@@ -89,7 +90,13 @@ test("builds the exact validated mixed-cart Sheets row payload", () => {
     paymentStatus: "paid",
     orderStatus: "New",
     notes: "Stripe Tax: $0.00",
+    smsConsent: "Yes",
   });
+});
+
+test("exports an affirmative decline without inferring SMS consent", () => {
+  assert.equal(buildOrderSheetPayload({ ...mixedOrder, smsConsentDecision: "no" }, "test").smsConsent, "No");
+  assert.equal(buildOrderSheetPayload({ ...mixedOrder, smsConsentDecision: null }, "test").smsConsent, "");
 });
 
 test("records each meal's sauce beside the correct meal", () => {
@@ -227,7 +234,7 @@ function loadAppsScript(allowedMode = "test", spreadsheetId = "staging-spreadshe
   const rows = [[
     "Order Date/Time", "Order ID", "Customer Name", "Phone", "Email", "Ithaca Delivery Address",
     "Big Chicken Qty", "Little Chicken Qty", "Big Beef Qty", "Little Beef Qty", "Total Meals", "Meal Subtotal", "Discount", "Sales Tax", "Total Paid",
-    "Delivery Date", "Stripe Session ID", "Meal Breakdown", "Payment Status", "Order Status", "Name", "Notes",
+    "Delivery Date", "Stripe Session ID", "Meal Breakdown", "Payment Status", "Order Status", "Name", "Notes", "SMS Consent — Orders + Promotions",
   ]];
   const sheet = {
     getName: () => "Orders",
@@ -289,6 +296,7 @@ test("Apps Script authenticates, opens the configured spreadsheet, appends one r
   assert.equal(rows[1][18], "paid");
   assert.equal(rows[1][19], "New");
   assert.equal(rows[1][20], "John Smith");
+  assert.equal(rows[1][22], "Yes");
   assert.deepEqual(openedSpreadsheetIds, ["staging-spreadsheet-id"]);
 
   const duplicate = JSON.parse(context.doPost(request).value);

@@ -400,6 +400,18 @@ h1, h2, h3 { text-wrap: balance; }
 .deliveryAddressHelp { color: rgba(251, 247, 239, 0.58); }
 .deliveryAddressStatus { color: var(--tb-gold-soft); min-height: 1.1em; }
 .deliveryAddressStatus.is-ineligible, .deliveryAddressStatus.is-unavailable { color: #ffd1c7; font-weight: 800; }
+.smsReminderDecision { border: 1px solid rgba(251, 247, 239, 0.6); margin: 0 0 1rem; padding: 0.85rem; }
+.smsReminderDecision.hasError { border-color: #ffd1c7; }
+.smsReminderDecision legend { color: var(--tb-paper); font-size: 0.86rem; font-weight: 900; padding: 0 0.25rem; }
+.smsReminderDecision > p { color: rgba(251, 247, 239, 0.72); font-size: 0.65rem; margin: 0 0 0.7rem; }
+.smsReminderOption { align-items: flex-start; background: rgba(251, 247, 239, 0.08); border: 1px solid rgba(251, 247, 239, 0.45); cursor: pointer; display: flex; gap: 0.65rem; margin-top: 0.55rem; min-height: 54px; padding: 0.7rem; }
+.smsReminderOption:has(input:checked) { background: rgba(251, 247, 239, 0.16); border-color: var(--tb-gold-soft); }
+.smsReminderOption:focus-within { outline: 3px solid var(--tb-gold-soft); outline-offset: 2px; }
+.smsReminderOption input { flex: 0 0 auto; margin-top: 0.15rem; }
+.smsReminderOption span, .smsReminderOption strong, .smsReminderOption small { display: block; }
+.smsReminderOption strong { color: var(--tb-paper); font-size: 0.7rem; }
+.smsReminderOption small { color: rgba(251, 247, 239, 0.72); font-size: 0.58rem; line-height: 1.45; margin-top: 0.35rem; }
+.smsReminderDecision .smsReminderError { color: #ffd1c7; font-weight: 800; margin: 0.7rem 0 0; }
 .checkoutButton { align-items: center; background: var(--tb-gold-soft); border: var(--border-ui); box-shadow: 3px 3px 0 var(--tb-line); color: var(--tb-red); cursor: pointer; display: flex; font-size: 0.73rem; font-weight: 900; justify-content: space-between; min-height: 52px; padding: 0.7rem 0.8rem; text-transform: uppercase; transition: box-shadow 180ms ease, transform 180ms ease; width: 100%; }
 .checkoutButton:disabled { cursor: not-allowed; opacity: 0.55; }
 .checkoutStatus { color: rgba(251, 247, 239, 0.68); font-size: 0.68rem; margin: 0.8rem 0 0; }

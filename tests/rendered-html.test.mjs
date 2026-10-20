@@ -39,6 +39,15 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /(?:Friday|Saturday), \w+ \d{1,2}(?:<!-- -->)? at (?:3:00 PM|5:00 PM) (?:EDT|EST)/);
   assert.doesNotMatch(html, /Orders are currently closed|Orders close|Order window closed|Closing soon|Ordering is currently closed|Sold out for this week|Check back for the next ordering window/);
   assert.match(html, /Continue to secure checkout|Check delivery address/);
+  assert.match(html, /<fieldset[^>]*class="smsReminderDecision/);
+  assert.match(html, /<legend>Would you like texts about your orders and ThreeByrd deals\?<\/legend>/);
+  assert.match(html, /Choose one to continue\./);
+  assert.match(html, /name="smsReminderDecision"[^>]*value="yes"/);
+  assert.match(html, /name="smsReminderDecision"[^>]*value="no"/);
+  assert.doesNotMatch(html, /name="smsReminderDecision"[^>]*checked/);
+  assert.match(html, /Yes, text me order reminders and promotional deals/);
+  assert.match(html, /No, don’t text me order reminders or promotional deals/);
+  assert.match(html, /Consent is not a condition of purchase\./);
   assert.match(html, /Build your order/);
   assert.match(html, /3 meal minimum/);
   assert.doesNotMatch(html, /Minimum 3 · Better pricing at 5 · Best pricing at 10/);
@@ -174,11 +183,28 @@ test("does not use the weekly cutoff as an order shutdown", async () => {
   const response = await render("/api/checkout", {
     method: "POST",
     headers: { "content-type": "application/json", origin: "https://threebyrd.com" },
-    body: JSON.stringify({ items: [], recipientName: "Test Recipient" }),
+    body: JSON.stringify({ items: [], recipientName: "Test Recipient", smsReminderDecision: "no" }),
   });
   assert.equal(response.status, 400);
   assert.equal(response.headers.get("access-control-allow-origin"), "https://threebyrd.com");
   assert.match(await response.text(), /Add 3 more boxes|at least three boxes/i);
+});
+
+test("rejects a missing or malformed SMS reminder decision before checkout", async () => {
+  for (const smsReminderDecision of [undefined, "", "maybe", true]) {
+    const body = {
+      items: [{ productId: "big-chicken", quantity: 3 }],
+      recipientName: "Test Recipient",
+      ...(smsReminderDecision === undefined ? {} : { smsReminderDecision }),
+    };
+    const response = await render("/api/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://threebyrd.com" },
+      body: JSON.stringify(body),
+    });
+    assert.equal(response.status, 400);
+    assert.match(await response.text(), /Choose whether you want text reminders before continuing\./);
+  }
 });
 
 test("rejects checkout requests from unknown browser origins", async () => {

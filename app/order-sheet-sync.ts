@@ -23,6 +23,7 @@ export const GOOGLE_SHEETS_HEADERS = [
   "Order Status",
   "Name",
   "Notes",
+  "SMS Consent — Orders + Promotions",
 ] as const;
 
 export type ConfirmedOrderForSheet = {
@@ -44,6 +45,7 @@ export type ConfirmedOrderForSheet = {
   currency: string;
   cutoffAt: string | null;
   createdAt: number;
+  smsConsentDecision: "yes" | "no" | null;
 };
 
 export type GoogleSheetsOrderPayload = {
@@ -70,6 +72,7 @@ export type GoogleSheetsOrderPayload = {
   paymentStatus: "paid" | "no_payment_required";
   orderStatus: "New";
   notes: string;
+  smsConsent: "Yes" | "No" | "";
 };
 
 export type GoogleSheetsSyncResult =
@@ -182,6 +185,7 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     // Preserve the existing Notes convention while the dedicated Sales Tax
     // column remains the authoritative numeric field for exports.
     notes: `Stripe Tax: $${(order.taxCents / 100).toFixed(2)}`,
+    smsConsent: order.smsConsentDecision === "yes" ? "Yes" : order.smsConsentDecision === "no" ? "No" : "",
   };
 }
 

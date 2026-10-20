@@ -8,12 +8,14 @@ import { getSiteOrigin, getStripe, getStripeTaxConfig, safeErrorMessage } from "
 import { buildStripeHostedPromotionCodeParams } from "../../stripe-promotion-codes";
 import { buildStripeCheckoutTaxLocationParams, buildStripeDeliveryCustomerParams } from "../../stripe-tax-location";
 import { normalizeRecipientName } from "../../recipient-name";
+import { parseSmsReminderDecision } from "../../reminder-consent";
 import { isAllowedCheckoutOrigin, withCheckoutCors } from "../cors";
 
 type CheckoutRequest = {
   items?: CartItemInput[];
   recipientName?: unknown;
   deliveryAddress?: unknown;
+  smsReminderDecision?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -34,6 +36,10 @@ export async function POST(request: Request) {
   }
 
   const items = Array.isArray(body.items) ? body.items : [];
+  const smsReminderDecision = parseSmsReminderDecision(body.smsReminderDecision);
+  if (!smsReminderDecision) {
+    return Response.json({ error: "Choose whether you want text reminders before continuing." }, withCheckoutCors(request, { status: 400 }));
+  }
   const recipientName = normalizeRecipientName(body.recipientName);
   if (!recipientName) {
     return Response.json({ error: "A name for delivery and receipt is required." }, withCheckoutCors(request, { status: 400 }));
@@ -101,6 +107,8 @@ export async function POST(request: Request) {
       reservationId,
       deliveryAddress: deliveryCheck.normalizedAddress,
       cutoff,
+      smsReminderDecision,
+      smsReminderDecisionAt: new Date(),
     });
 
     if (reservation) {

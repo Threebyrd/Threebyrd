@@ -1,4 +1,4 @@
-import { formatDeliveryAddressFields } from "./delivery-address.ts";
+import { formatDeliveryAddressFields, normalizeDeliveryAddressFields } from "./delivery-address.ts";
 import type { StripeTaxDeliveryAddress } from "./stripe-tax-location.ts";
 
 export const DELIVERY_ORIGIN_ADDRESS = "700 W Buffalo St, Ithaca, NY 14850, United States";
@@ -183,6 +183,28 @@ export async function checkDeliveryEligibility(
   const input = normalizeDeliveryAddress(value);
   if (!input) {
     throw new DeliveryEligibilityError("INVALID_ADDRESS", "Enter the Ithaca address where this week’s meals should be delivered.");
+  }
+
+  // An explicit local-only mode lets the checkout UX be exercised without
+  // copying production credentials onto a developer machine. It can never
+  // bypass validation in a production build.
+  if (process.env.NODE_ENV !== "production" && process.env.DELIVERY_CHECK_MODE === "mock") {
+    const fields = normalizeDeliveryAddressFields(value);
+    if (!fields) {
+      throw new DeliveryEligibilityError("INVALID_ADDRESS", "Enter a complete street address to test sandbox checkout.");
+    }
+    return {
+      eligible: true,
+      normalizedAddress: `${fields.streetAddress}, ${fields.city}, ${fields.state} ${fields.zipCode}, USA`,
+      taxAddress: {
+        line1: fields.streetAddress,
+        city: fields.city,
+        state: fields.state,
+        postal_code: fields.zipCode,
+        country: "US",
+      },
+      driveMinutes: 10,
+    };
   }
 
   const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY?.trim();

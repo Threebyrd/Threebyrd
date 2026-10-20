@@ -101,7 +101,7 @@ export default function Home() {
               <dl className="heroProof" aria-label="ThreeByrd at a glance">
                 <div><dt>Delivery</dt><dd>Free in Ithaca</dd></div>
                 <div><dt>Minimum</dt><dd>3 meals</dd></div>
-                <div><dt>Delivery day</dt><dd>{deliveryDay.replace(/,.*/, "")}</dd></div>
+                <div><dt>Cook + delivery</dt><dd>{deliveryDay.replace(/,.*/, "")}</dd></div>
               </dl>
             </div>
 

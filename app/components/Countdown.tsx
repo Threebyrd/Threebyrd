@@ -54,14 +54,14 @@ export default function Countdown({ initialCutoffIso }: CountdownProps) {
   }, []);
 
   const time = getCountdownParts(state.cutoff, state.now);
-  const statusLabel = "Next delivery cutoff";
+  const statusLabel = "Next order cutoff";
   const delivery = getDeliveryDayForCutoff(state.cutoff);
 
   return (
     <div className="summaryCountdown" aria-atomic="true" aria-live="polite">
       <div className="summarySchedule">
         <div><span>Order by</span><strong>{formatBusinessDateTime(state.cutoff)}</strong></div>
-        <div><span>Delivery</span><strong>{delivery}</strong></div>
+        <div><span>Cook + delivery</span><strong>{delivery}</strong></div>
       </div>
       <p className="summaryCountdownRemaining" aria-label={`${statusLabel}: ${time.days} days, ${time.hours} hours, ${time.minutes} minutes, ${time.seconds} seconds`}>Next cutoff in {pad(time.days)}d {pad(time.hours)}h {pad(time.minutes)}m</p>
     </div>

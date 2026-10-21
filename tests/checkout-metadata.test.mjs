@@ -31,7 +31,8 @@ test("creates deterministic mixed-cart Stripe metadata from the server quote", (
     pricingTier: "5-9",
     cutoffAt: "2026-09-26T19:00:00.000Z",
     smsReminderDecision: "yes",
-    smsReminderDisclosureVersion: "order-and-promotions-v1",
+    smsReminderDisclosureVersion: "separate-sms-v2",
+    smsMarketingDecision: "no",
     smsReminderDecisionAt: "2026-09-25T12:00:00.000Z",
     smsReminderSource: "checkout",
   });
@@ -75,4 +76,14 @@ test("metadata preserves per-meal sauce groups while keeping product quantities 
     { productId: "little-beef", quantity: 1, sauceId: "franks-redhot" },
   ]);
   assert.equal(metadata.subtotalCents, "3100");
+});
+
+
+test("order and marketing choices stay independent in payment metadata", () => {
+  for (const order of ["yes", "no"]) for (const marketing of ["yes", "no"]) {
+    const metadata = buildCheckoutMetadata({ quote: quoteOrder([{ productId: "big-chicken", quantity: 3 }]), reservationId: "test", deliveryAddress: "Test address", cutoff: new Date("2026-10-24T19:00:00Z"), smsReminderDecision: order, smsMarketingDecision: marketing, smsReminderDecisionAt: new Date("2026-10-21T17:00:00Z") });
+    assert.equal(metadata.smsReminderDecision, order);
+    assert.equal(metadata.smsMarketingDecision, marketing);
+    assert.equal(metadata.smsReminderDisclosureVersion, "separate-sms-v2");
+  }
 });

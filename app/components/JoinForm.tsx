@@ -1,5 +1,6 @@
 "use client";
 
+import { withBasePath } from "../site-paths";
 import { useState, type FormEvent } from "react";
 
 const endpoint = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL ?? "";
@@ -17,18 +18,17 @@ export default function JoinForm({ idPrefix, compact = false }: JoinFormProps) {
   const configured = endpoint !== "";
   const locked = !configured || status === "submitting" || status === "success";
   const emailId = `${idPrefix}-email`;
-  const phoneId = `${idPrefix}-phone`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
     const email = String(formData.get("email") ?? "").trim();
-    const phone = String(formData.get("phone") ?? "").trim();
+    const phone = "";
 
-    if (!email && !phone) {
+    if (!email) {
       setStatus("error");
-      setStatusMessage("Enter your email, phone number, or both to join.");
+      setStatusMessage("Enter your email to join.");
       return;
     }
 
@@ -64,21 +64,9 @@ export default function JoinForm({ idPrefix, compact = false }: JoinFormProps) {
           id={emailId}
           name="email"
           type="email"
+          required
           placeholder="you@example.com"
           autoComplete="email"
-          disabled={locked}
-        />
-      </div>
-      <div>
-        <label htmlFor={phoneId}>Phone</label>
-        <input
-          id={phoneId}
-          name="phone"
-          type="tel"
-          placeholder="(555) 555-5555"
-          autoComplete="tel"
-          pattern="[+0-9\s().-]{7,20}"
-          title="Enter a phone number (7-20 digits, spaces, and symbols)."
           disabled={locked}
         />
       </div>
@@ -102,6 +90,7 @@ export default function JoinForm({ idPrefix, compact = false }: JoinFormProps) {
             ? "We will only use your contact info to share launch updates."
             : "The sign-up connection will be added before menu updates begin.")}
       </p>
+      <p><a href={withBasePath("/privacy")}>Privacy Policy</a> · <a href={withBasePath("/terms")}>Terms &amp; Conditions</a>. This form signs you up for email updates only.</p>
     </form>
   );
 }

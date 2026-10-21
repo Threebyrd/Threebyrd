@@ -60,6 +60,7 @@ export type ConfirmedOrderRecord = {
   cutoffAt: string | null;
   createdAt: number;
   smsReminderDecision: SmsReminderDecision;
+  smsMarketingDecision?: SmsReminderDecision;
   smsReminderDisclosureVersion: string;
   smsReminderDecisionAt: number;
   smsReminderSource: string;
@@ -386,7 +387,7 @@ export async function recordConfirmedOrder(
     `${order.stripeSessionId}:sms:${SMS_CONSENT_PURPOSE}`,
     order.stripeSessionId,
     order.stripeSessionId,
-    SMS_CONSENT_PURPOSE,
+    order.smsReminderDisclosureVersion === "order-and-promotions-v1" ? "order_and_promotional" : SMS_CONSENT_PURPOSE,
     order.smsReminderDecision,
     order.smsDestinationNormalized,
     order.smsReminderDisclosureVersion,
@@ -395,12 +396,25 @@ export async function recordConfirmedOrder(
     confirmedAt,
     order.stripeSessionId,
   );
+  const recordMarketingDecision = database.prepare(`
+    INSERT INTO notification_consents
+      (id, order_id, stripe_session_id, channel, purpose, decision, destination_normalized, disclosure_version, decided_at, source, created_at)
+    SELECT ?, ?, ?, 'sms', ?, ?, ?, ?, ?, ?, ?
+    WHERE EXISTS (SELECT 1 FROM orders WHERE stripe_session_id = ?)
+    ON CONFLICT(stripe_session_id, channel, purpose) DO NOTHING
+  `).bind(
+    `${order.stripeSessionId}:sms:promotional`, order.stripeSessionId, order.stripeSessionId,
+    "promotional", order.smsReminderDisclosureVersion === "separate-sms-v2" ? order.smsMarketingDecision ?? "no" : "no",
+    order.smsDestinationNormalized, order.smsReminderDisclosureVersion, order.smsReminderDecisionAt,
+    order.smsReminderSource, confirmedAt, order.stripeSessionId,
+  );
   const enqueueSmsReminder = database.prepare(`
     INSERT INTO notification_outbox
       (id, order_id, stripe_session_id, channel, template_key, destination_normalized, scheduled_for, status, attempts, created_at)
     SELECT ?, ?, ?, 'sms', 'order_delivery_update', ?, ?, 'pending', 0, ?
     WHERE ? = 'yes'
       AND ? IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM notification_consents WHERE channel = 'sms' AND destination_normalized = ? AND revoked_at IS NOT NULL)
       AND EXISTS (SELECT 1 FROM orders WHERE stripe_session_id = ?)
     ON CONFLICT(stripe_session_id, channel, template_key) DO NOTHING
   `).bind(
@@ -412,12 +426,13 @@ export async function recordConfirmedOrder(
     confirmedAt,
     order.smsReminderDecision,
     order.smsDestinationNormalized,
+    order.smsDestinationNormalized,
     order.stripeSessionId,
   );
   const existingOrder = database.prepare(`
     SELECT id FROM orders WHERE stripe_session_id = ? LIMIT 1
   `).bind(order.stripeSessionId);
-  const results = await database.batch([confirmReservation, insertOrder, enqueueSheetExport, recordSmsDecision, enqueueSmsReminder, existingOrder]);
+  const results = await database.batch([confirmReservation, insertOrder, enqueueSheetExport, recordSmsDecision, enqueueSmsReminder, existingOrder, recordMarketingDecision]);
 
   return (results[5]?.results?.length ?? 0) > 0;
 }
@@ -432,7 +447,6 @@ export async function revokeTransactionalSmsReminders(
       UPDATE notification_consents
       SET revoked_at = ?
       WHERE channel = 'sms'
-        AND purpose = 'order_and_promotional'
         AND decision = 'yes'
         AND destination_normalized = ?
         AND revoked_at IS NULL

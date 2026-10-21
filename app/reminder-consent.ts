@@ -1,6 +1,6 @@
-export const SMS_REMINDER_DISCLOSURE_VERSION = "order-and-promotions-v1";
+export const SMS_REMINDER_DISCLOSURE_VERSION = "separate-sms-v2";
 export const SMS_REMINDER_SOURCE = "checkout";
-export const SMS_CONSENT_PURPOSE = "order_and_promotional";
+export const SMS_CONSENT_PURPOSE = "order_updates";
 
 export type SmsReminderDecision = "yes" | "no";
 

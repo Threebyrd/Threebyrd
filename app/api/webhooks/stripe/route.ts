@@ -93,7 +93,8 @@ export async function POST(request: Request) {
   if (
     session.mode !== "payment" ||
     !smsReminderDecision ||
-    smsReminderDisclosureVersion !== SMS_REMINDER_DISCLOSURE_VERSION ||
+    !smsReminderDisclosureVersion ||
+    ![SMS_REMINDER_DISCLOSURE_VERSION, "order-and-promotions-v1"].includes(smsReminderDisclosureVersion ?? "") ||
     smsReminderSource !== SMS_REMINDER_SOURCE ||
     !Number.isSafeInteger(smsReminderDecisionAt) ||
     !isCompletedCheckoutPayment(paymentStatus) ||
@@ -175,6 +176,7 @@ export async function POST(request: Request) {
       cutoffAt,
       createdAt: session.created,
       smsReminderDecision,
+      smsMarketingDecision: smsReminderDisclosureVersion === SMS_REMINDER_DISCLOSURE_VERSION ? parseSmsReminderDecision(session.metadata?.smsMarketingDecision) ?? "no" : "no",
       smsReminderDisclosureVersion,
       smsReminderDecisionAt,
       smsReminderSource,

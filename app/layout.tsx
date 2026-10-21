@@ -1,3 +1,4 @@
+import LegalLinks from "./components/LegalLinks";
 import type { Metadata } from "next";
 import "@fontsource/anton/latin-400.css";
 import "@fontsource-variable/inter/wght.css";
@@ -53,7 +54,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>{children}<LegalLinks /></body>
     </html>
   );
 }

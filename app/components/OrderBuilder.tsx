@@ -9,6 +9,7 @@ import MacroSnapshot from "./MacroSnapshot";
 import { requestDeliveryEligibility } from "../delivery-client";
 import { EMPTY_DELIVERY_ADDRESS, type DeliveryAddressField, type DeliveryAddressFields } from "../delivery-address";
 import { normalizeRecipientName } from "../recipient-name";
+import { withBasePath } from "../site-paths";
 import type { SmsReminderDecision } from "../reminder-consent";
 import {
   CART_PRICING_TIERS,
@@ -54,6 +55,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   ));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [smsReminderDecision, setSmsReminderDecision] = useState<SmsReminderDecision>("no");
+  const [smsMarketingDecision, setSmsMarketingDecision] = useState<SmsReminderDecision>("no");
   const [lastInteractedProductId, setLastInteractedProductId] = useState<ProductId | null>(null);
   const [recipientName, setRecipientName] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddressFields>(EMPTY_DELIVERY_ADDRESS);
@@ -237,6 +239,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
           recipientName: normalizedRecipientName,
           deliveryAddress,
           smsReminderDecision,
+          smsMarketingDecision,
         }),
       });
       const body = await response.json().catch(() => ({})) as { error?: unknown; url?: unknown };
@@ -458,17 +461,17 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             />
             <p className="deliveryNote"><span aria-hidden="true">✦</span> FREE DELIVERY IN ITHACA</p>
             <fieldset className="smsReminderDecision" aria-describedby="sms-reminder-help">
-              <legend>Text updates (optional)</legend>
-              <p id="sms-reminder-help">Leave this box unchecked if you don’t want texts.</p>
-              <label className="smsReminderOption" htmlFor="sms-reminder-yes" aria-label="Yes, text me order updates and promotional offers">
-                <input
-                  id="sms-reminder-yes"
-                  type="checkbox"
-                  checked={smsReminderDecision === "yes"}
-                  onChange={(event) => setSmsReminderDecision(event.currentTarget.checked ? "yes" : "no")}
-                />
-                <span><strong>Yes, text me order updates and promotional offers</strong><small>By checking this box, I agree to receive recurring automated marketing and order-related texts from ThreeByrd at the mobile number provided during checkout, including delivery reminders, new menus, and special offers. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent is not a condition of purchase.</small></span>
+              <legend>Optional text messages from ThreeByrd Meal Prep</legend>
+              <p id="sms-reminder-help">Choose either, both, or neither. Consent is not a condition of purchase.</p>
+              <label className="smsReminderOption" htmlFor="sms-reminder-yes" aria-label="Text me about my order">
+                <input id="sms-reminder-yes" type="checkbox" name="smsReminderDecision" checked={smsReminderDecision === "yes"} onChange={(event) => setSmsReminderDecision(event.target.checked ? "yes" : "no")} />
+                <span><strong>Text me about my order</strong><small>I agree to receive automated ThreeByrd Meal Prep order and delivery updates at the mobile number I provide during secure checkout. Message frequency varies by order. Message and data rates may apply. Reply STOP to unsubscribe or HELP for help.</small></span>
               </label>
+              <label className="smsReminderOption" htmlFor="sms-marketing-yes" aria-label="Text me menus and special offers">
+                <input id="sms-marketing-yes" type="checkbox" name="smsMarketingDecision" checked={smsMarketingDecision === "yes"} onChange={(event) => setSmsMarketingDecision(event.target.checked ? "yes" : "no")} />
+                <span><strong>Text me menus and special offers</strong><small>I agree to receive recurring automated promotional texts from ThreeByrd Meal Prep at the mobile number I provide during secure checkout. Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe or HELP for help.</small></span>
+              </label>
+              <p className="smsPolicyLinks">Read our <a href={withBasePath("/privacy")}>Privacy Policy</a> and <a href={withBasePath("/terms")}>Terms &amp; Conditions</a>. Help: <a href="mailto:luc@threebyrd.com">luc@threebyrd.com</a>.</p>
             </fieldset>
             <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !recipientNameIsValid || !ORDERS_OPEN || isSubmitting || !deliveryEligible}>
               {isSubmitting ? "Opening secure checkout…" : !ORDERS_OPEN ? "Checkout temporarily unavailable" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}

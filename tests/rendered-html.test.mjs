@@ -42,12 +42,15 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.doesNotMatch(html, /Orders are currently closed|Orders close|Order window closed|Closing soon|Ordering is currently closed|Sold out for this week|Check back for the next ordering window/);
   assert.match(html, /Continue to secure checkout|Check delivery address/);
   assert.match(html, /<fieldset[^>]*class="smsReminderDecision/);
-  assert.match(html, /<legend>Text updates \(optional\)<\/legend>/);
-  assert.match(html, /Leave this box unchecked if you don’t want texts\./);
-  assert.match(html, /id="sms-reminder-yes"[^>]*type="checkbox"/);
-  assert.doesNotMatch(html, /id="sms-reminder-yes"[^>]*checked/);
-  assert.match(html, /Yes, text me order updates and promotional offers/);
-  assert.match(html, /Consent is not a condition of purchase\./);
+  assert.match(html, /Optional text messages from ThreeByrd Meal Prep/);
+  for (const name of ["smsReminderDecision", "smsMarketingDecision"]) {
+    assert.match(html, new RegExp(`type="checkbox" name="${name}"`));
+    assert.doesNotMatch(html, new RegExp(`name="${name}"[^>]*(?:checked|required)`));
+  }
+  assert.match(html, /Consent is not a condition of purchase/);
+  assert.match(html, /Message and data rates may apply/);
+  assert.match(html, /href="\/privacy"/);
+  assert.match(html, /href="\/terms"/);
   assert.match(html, /Build your order/);
   assert.match(html, /3 meal minimum/);
   assert.doesNotMatch(html, /Minimum 3 · Better pricing at 5 · Best pricing at 10/);
@@ -55,7 +58,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /Get the next drop/);
   assert.equal((html.match(/class="joinForm/g) ?? []).length, 1);
   assert.match(html, /id="bottom-join-email"[^>]*name="email"/);
-  assert.match(html, /id="bottom-join-phone"[^>]*name="phone"/);
+  assert.doesNotMatch(html, /id="bottom-join-phone"/);
   const menuIndex = html.indexOf('id="order"');
   const joinIndex = html.indexOf('id="join"');
   const givingBackIndex = html.indexOf('id="giving-back"');
@@ -114,7 +117,8 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   for (const [button] of addButtons) {
     assert.doesNotMatch(button, /\bdisabled(?:=|\s|>)/, "building a cart must not wait for the availability API");
   }
-  assert.match(html, /<button[^>]*class="checkoutButton"[^>]*disabled/, "checkout still requires a valid cart and verified delivery address");
+  assert.match(html, /<button[^>]*class="checkoutButton"[^>]*disabled/, "checkout requires a valid cart, verified delivery address, and explicit text preference");
+  assert.doesNotMatch(html, /Choose yes or no above/);
   assert.equal((html.match(/aria-label="Remove one /g) ?? []).length, 4);
   assert.match(html, /Follow ThreeByrd on Instagram/);
   assert.match(html, /https:\/\/www\.instagram\.com\/threebyrd\//);
@@ -190,8 +194,8 @@ test("does not use the weekly cutoff as an order shutdown", async () => {
   assert.match(await response.text(), /Add 3 more boxes|at least three boxes/i);
 });
 
-test("rejects a missing or malformed SMS reminder decision before checkout", async () => {
-  for (const smsReminderDecision of [undefined, "", "maybe", true]) {
+test("rejects malformed SMS reminder decisions before checkout", async () => {
+  for (const smsReminderDecision of ["", "maybe", true]) {
     const body = {
       items: [{ productId: "big-chicken", quantity: 3 }],
       recipientName: "Test Recipient",
@@ -235,4 +239,25 @@ test("renders a confirmation route without requiring Stripe secrets", async () =
   assert.doesNotMatch(html, /Sunday,|Saturday,/);
   assert.match(html, /Free delivery in Ithaca/);
   assert.doesNotMatch(html, /sk_(?:test|live)_/i);
+});
+
+
+test("public policy routes include identity, support, and SMS disclosures", async () => {
+  for (const path of ["/privacy", "/terms"]) {
+    const response = await render(path);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    for (const phrase of ["Three Byrd Meal Prep LLC", "ThreeByrd Meal Prep", "luc@threebyrd.com", "Message and data rates may apply", "STOP", "HELP"]) assert.ok(html.includes(phrase));
+    assert.match(html, /href="\/privacy"/);
+    assert.match(html, /href="\/terms"/);
+  }
+});
+
+test("checkout without SMS choices proceeds to ordinary order validation", async () => {
+  const response = await render("/api/checkout", {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://threebyrd.com" },
+    body: JSON.stringify({ items: [], recipientName: "Test Recipient" }),
+  });
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /Add 3 more boxes|at least three boxes/i);
 });

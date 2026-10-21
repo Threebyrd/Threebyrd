@@ -688,3 +688,18 @@ h1, h2, h3 { text-wrap: balance; }
   .funnelMilestone { align-items: flex-start; flex-direction: column; }
   .funnelMilestone span { max-width: 100%; overflow-wrap: anywhere; }
 }
+
+/* Public policy pages and shared legal navigation. */
+.legalLinks { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.5rem; padding: 1.25rem; background: var(--tb-paper); color: #212b21; font-size: 0.875rem; }
+.legalLinks a { padding: 0.4rem 0; text-decoration: underline; text-underline-offset: 0.2em; }
+.policyPage { max-width: 800px; margin: 0 auto; padding: clamp(1.25rem, 5vw, 3.5rem); color: #212b21; line-height: 1.75; overflow-wrap: anywhere; }
+.policyBrand { display: inline-block; font-weight: 800; margin-bottom: 2rem; }
+.policyPage h1 { font-family: var(--font-display, sans-serif); font-size: clamp(2rem, 7vw, 3.5rem); line-height: 1.15; margin: 0 0 1rem; }
+.policyPage h2 { font-size: 1.35rem; line-height: 1.4; margin: 2rem 0 0.65rem; }
+.policyPage p { margin: 0 0 1rem; }
+.policyPage a { text-decoration: underline; text-underline-offset: 0.15em; }
+.policyDate { color: #526052; }
+.smsReminderOption small { font-size: 0.8rem; line-height: 1.55; }
+.smsReminderDecision > p { font-size: 0.8rem; line-height: 1.55; }
+.smsReminderDecision .smsPolicyLinks { margin: 0.85rem 0 0; }
+.smsPolicyLinks a { text-decoration: underline; color: inherit; }

@@ -16,6 +16,7 @@ type CheckoutRequest = {
   recipientName?: unknown;
   deliveryAddress?: unknown;
   smsReminderDecision?: unknown;
+  smsMarketingDecision?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -36,8 +37,9 @@ export async function POST(request: Request) {
   }
 
   const items = Array.isArray(body.items) ? body.items : [];
-  const smsReminderDecision = parseSmsReminderDecision(body.smsReminderDecision);
-  if (!smsReminderDecision) {
+  const smsReminderDecision = parseSmsReminderDecision(body.smsReminderDecision ?? "no");
+  const smsMarketingDecision = parseSmsReminderDecision(body.smsMarketingDecision ?? "no");
+  if (!smsReminderDecision || !smsMarketingDecision) {
     return Response.json({ error: "Choose whether you want text reminders before continuing." }, withCheckoutCors(request, { status: 400 }));
   }
   const recipientName = normalizeRecipientName(body.recipientName);
@@ -108,6 +110,7 @@ export async function POST(request: Request) {
       deliveryAddress: deliveryCheck.normalizedAddress,
       cutoff,
       smsReminderDecision,
+      smsMarketingDecision,
       smsReminderDecisionAt: new Date(),
     });
 

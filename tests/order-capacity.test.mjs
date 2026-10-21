@@ -126,7 +126,7 @@ class FakeD1 {
     if (query.includes("INSERT INTO notification_consents")) {
       const [id, orderId, stripeSessionId, purpose, decision, destination, disclosureVersion, decidedAt, source, createdAt] = values;
       if (!this.orders.some((order) => order.stripeSessionId === stripeSessionId)) return { meta: { changes: 0 } };
-      if (this.consents.some((entry) => entry.stripeSessionId === stripeSessionId)) return { meta: { changes: 0 } };
+      if (this.consents.some((entry) => entry.stripeSessionId === stripeSessionId && entry.purpose === purpose)) return { meta: { changes: 0 } };
       this.consents.push({ id, orderId, stripeSessionId, purpose, decision, destination, disclosureVersion, decidedAt, source, createdAt });
       return { meta: { changes: 1 } };
     }
@@ -364,7 +364,8 @@ test("paid webhook reconciliation is atomic and duplicate session delivery creat
   assert.equal(await recordConfirmedOrder(database, order, { reservationId: "r-order", expectedWindowKey: "test-window", expectedMealCount: 1, confirmedAt: 1_202 }), true);
   assert.equal(database.orders.length, 1);
   assert.equal(database.exports.length, 1);
-  assert.equal(database.consents.length, 1);
+  assert.equal(database.consents.length, 2);
+  assert.equal(database.consents.find((entry) => entry.purpose === "promotional").decision, "no");
   assert.equal(database.consents[0].decision, "yes");
   assert.equal(database.notifications.length, 1);
   assert.equal(database.orders[0].amountCents, 3_240);

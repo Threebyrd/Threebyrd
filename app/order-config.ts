@@ -218,6 +218,7 @@ export function buildCheckoutMetadata({
   cutoff,
   smsReminderDecision,
   smsReminderDecisionAt,
+  smsMarketingDecision,
 }: {
   quote: OrderQuote;
   reservationId: string;
@@ -225,6 +226,7 @@ export function buildCheckoutMetadata({
   cutoff: Date;
   smsReminderDecision?: "yes" | "no";
   smsReminderDecisionAt?: Date;
+  smsMarketingDecision?: "yes" | "no";
 }): Record<string, string> {
   const quantities = Object.fromEntries(products.map((product) => [
     `${product.id.replaceAll("-", "_")}_qty`,
@@ -250,6 +252,7 @@ export function buildCheckoutMetadata({
     cutoffAt: cutoff.toISOString(),
     ...(smsReminderDecision && smsReminderDecisionAt ? {
       smsReminderDecision,
+      smsMarketingDecision: smsMarketingDecision ?? "no",
       smsReminderDisclosureVersion: SMS_REMINDER_DISCLOSURE_VERSION,
       smsReminderDecisionAt: smsReminderDecisionAt.toISOString(),
       smsReminderSource: SMS_REMINDER_SOURCE,

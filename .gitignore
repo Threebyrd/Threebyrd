@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-store/
 dist/
 .next/
 .vinext/
@@ -12,3 +13,6 @@ skills-lock.json
 !.env.example
 *.log
 .DS_Store
+
+# Internal weekly-plan scenario reports; never publish as website assets.
+.local-previews/

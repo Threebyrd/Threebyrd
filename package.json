@@ -12,7 +12,12 @@
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build && node --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "preview:weekly": "node scripts/preview-weekly-plan.mjs",
+    "test:weekly": "node --test tests/weekly-plan.test.mjs",
+    "dev:weekly": "node scripts/weekly-sandbox/server.mjs",
+    "test:weekly:sandbox": "node --test tests/weekly-sandbox.test.mjs",
+    "build:weekly": "node scripts/build-weekly-sandbox-site.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

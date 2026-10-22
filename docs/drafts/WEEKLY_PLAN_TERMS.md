@@ -1,0 +1,15 @@
+> Updated sandbox model (supersedes older staging language below): first eligible delivery is purchased at signup, then later eligible deliveries are charged at cutoff. One free box of any available size, including sauce, with the first paid delivery; at least three other paid meals. All payments remain simulated.
+
+# Weekly plan terms — local draft only
+
+Not published and not effective for live ordering. Operator: Three Byrd Meal Prep LLC, doing business as ThreeByrd Meal Prep. Contact luc@threebyrd.com.
+
+The proposed weekly plan repeats the customer's saved paid meal selections, with 5% off the existing paid-quantity meal subtotal before tax, excluding sauce charges. Paid meals retain their regular sauce charges; only the welcome meal includes its sauce at no additional charge. No other promotional discount combines with weekly pricing in the initial release. Three paid meals minimum per delivery. One selected Little Chicken or Little Beef meal, including an available sauce, is added at no charge to the first successfully paid subscription delivery, once per verified customer. This welcome meal does not qualify toward paid minimums or paid quantity tiers. Skips, closures and failed payments do not redeem the offer; redeemed eligibility is not automatically reset by pause, cancellation, rejoining or refund. No silent meal substitutions.
+
+No charge occurs at signup. Before each future charge, the management page will display the upcoming delivery, applicable cutoff, and pricing information. Meals may be changed for one delivery or for the usual order; this-and-future changes replace later overrides and begin with the next eligible editable cycle. Changing sauces updates the price using the regular sauce charges; the welcome meal’s sauce remains included. Customers may skip, pause until a published return delivery, pause indefinitely, resume, or cancel future deliveries before cutoff. There is no minimum commitment. At the exact cutoff, that delivery is no longer editable through self-service. Paid orders require a separate support resolution; canceling a plan does not automatically refund a committed order.
+
+Business closures create no orders or charges; the plan resumes at the next open cycle unless separately skipped, paused or canceled. Saturday/Sunday changes must preserve customer-specific skips and overrides and must not silently rewrite committed paid orders. Post-payment date changes require customer notice and support resolution.
+
+Stage 2 enrollment is local/staged only and cannot activate recurring billing or real deliveries. Test payment-method setup is not payment for meals. Launch requires renewed authorization to final terms and prices. SMS consent is separate and optional; enrollment or purchase is not consent to promotional texts.
+
+Before launch, finalize New York tax treatment of the discount/free meal, payment-failure recovery deadline and notices, price-change notices, calendar publication lead time, post-cutoff cancellation/refund treatment, and business-specific legal review. Do not publish placeholders or claim all legal requirements are satisfied.

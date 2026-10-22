@@ -1,4 +1,5 @@
 import Image from "next/image";
+import WeeklyPlanMode from "./components/WeeklyPlanMode";
 import CountUpTotal from "./components/CountUpTotal";
 import CutoffNotice from "./components/CutoffNotice";
 import HeroCarousel from "./components/HeroCarousel";
@@ -88,6 +89,8 @@ export default function Home() {
         <a className="navCta" href="#order">Build your order</a>
         <MobileMenu items={navigation} />
       </header>
+
+      <WeeklyPlanMode />
 
       <main>
         <section id="top" className="hero" aria-labelledby="hero-title">

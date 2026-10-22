@@ -1,8 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { WEEKLY_SANDBOX_ENABLED, WEEKLY_PRODUCTION_ORIGIN } from "./WeeklyPlanMode";
+import { splitWelcomeCart } from "../subscriptions/welcome-cart";
+import { quoteWeeklyPlan } from "../subscriptions/quote";
 import { useSearchParams } from "next/navigation";
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Countdown from "./Countdown";
 import DeliveryAddressForm, { type DeliveryCheckState } from "./DeliveryAddressForm";
 import MacroSnapshot from "./MacroSnapshot";
@@ -67,10 +70,37 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const mealSelectionIdRef = useRef(0);
   const orderSummaryRef = useRef<HTMLElement>(null);
   const productGridRef = useRef<HTMLDivElement>(null);
-  const quote = useMemo(
+  const [welcomeEligible, setWelcomeEligible] = useState(true);
+  const [weeklyMode, setWeeklyMode] = useState(false);
+  const [weeklyCutoff, setWeeklyCutoff] = useState<string | null>(null);
+  useEffect(() => {
+    if (!WEEKLY_SANDBOX_ENABLED) return;
+    const listener = (event: Event) => { const detail = (event as CustomEvent).detail; setWeeklyMode(detail.weekly === true); setWelcomeEligible(detail.welcomeEligible !== false); setWeeklyCutoff(typeof detail.cutoff === "string" ? detail.cutoff : null); };
+    let restoreFrame = 0;
+    if (new URLSearchParams(window.location.search).get("edit") === "1") {
+      restoreFrame = requestAnimationFrame(() => {
+      try {
+        const draft = JSON.parse(localStorage.getItem("weeklyDraft") ?? "null");
+        const cart = Array.isArray(draft?.cart) ? draft.cart : [];
+        if (quoteOrder(cart).isValid) {
+          const restored: MealSelection[] = [];
+          for (const item of cart) for (let n = 0; n < item.quantity; n++) restored.push({ id: `restored-${restored.length}`, productId: item.productId, sauceId: item.sauceId ?? "no-sauce" });
+          if (draft.welcome && products.some((product) => product.id === draft.welcome.productId && product.purchasable) && SAUCE_OPTIONS.some((sauce) => sauce.id === draft.welcome.sauceId)) restored.push({ id: "restored-gift", productId: draft.welcome.productId, sauceId: draft.welcome.sauceId });
+          setMealSelections(restored);
+        }
+      } catch { /* An invalid local draft must not affect ordinary checkout. */ }
+      });
+    }
+    window.addEventListener("threebyrd-order-mode", listener);
+    return () => { cancelAnimationFrame(restoreFrame); window.removeEventListener("threebyrd-order-mode", listener); };
+  }, []);
+  const standardQuote = useMemo(
     () => quoteOrder(mealSelections.map(({ productId, sauceId }) => ({ productId, quantity: 1, sauceId }))),
     [mealSelections],
   );
+  const welcomeCart = splitWelcomeCart(mealSelections, weeklyMode && welcomeEligible, "restored-gift");
+  const weeklyPricing = quoteWeeklyPlan(welcomeCart.paid.map(({ productId, sauceId }) => ({ productId, sauceId, quantity: 1 })), welcomeCart.gift ? { productId: welcomeCart.gift.productId, sauceId: welcomeCart.gift.sauceId } : null);
+  const quote = weeklyMode ? { ...standardQuote, lines: weeklyPricing.paidLines, subtotalCents: weeklyPricing.subtotalBeforeTaxCents, totalBoxes: weeklyPricing.paidMealCount, pricingTier: weeklyPricing.pricingTier, isValid: weeklyPricing.isValid, errors: weeklyPricing.errors } : standardQuote;
   const saucePickerMeal = saucePickerMealId
     ? mealSelections.find((selection) => selection.id === saucePickerMealId) ?? null
     : null;
@@ -213,6 +243,18 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
 
     if (!quote.isValid) {
       setStatusMessage(quote.errors[0] ?? "Add meals to continue.");
+      return;
+    }
+
+    if (weeklyMode) {
+      // Meal preferences only: no address or other personal data in local storage.
+      const grouped = new Map<string, { productId: ProductId; sauceId: SauceId; quantity: number }>();
+      for (const { productId, sauceId } of welcomeCart.paid) {
+        const key = `${productId}:${sauceId}`;
+        grouped.set(key, { productId, sauceId, quantity: (grouped.get(key)?.quantity ?? 0) + 1 });
+      }
+      localStorage.setItem("weeklyDraft", JSON.stringify({ cart: [...grouped.values()], ...(welcomeCart.gift ? { welcome: { productId: welcomeCart.gift.productId, sauceId: welcomeCart.gift.sauceId } } : {}) }));
+      window.location.assign(WEEKLY_PRODUCTION_ORIGIN ? `${WEEKLY_PRODUCTION_ORIGIN}/weekly-signup#draft=${encodeURIComponent(localStorage.getItem("weeklyDraft") ?? "null")}` : "/weekly-signup");
       return;
     }
 
@@ -399,15 +441,16 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                 <p className="sectionLabel">Your order</p>
                 <h3 id="summary-title">Review + checkout</h3>
               </div>
-              <span className="boxCount">{quote.totalBoxes} {quote.totalBoxes === 1 ? "meal" : "meals"}</span>
+              <span className="boxCount">{quote.totalBoxes} {weeklyMode ? "paid" : quote.totalBoxes === 1 ? "meal" : "meals"}{welcomeCart.gift ? " + 1 FREE" : ""}</span>
             </div>
-            <Countdown initialCutoffIso={initialCutoffIso} />
+            <Countdown key={weeklyMode ? `weekly-${weeklyCutoff}` : "one-time"} initialCutoffIso={weeklyMode && weeklyCutoff ? weeklyCutoff : initialCutoffIso} />
             {quote.lines.length > 0 ? (
               <div className="summaryLines">
                 {mealSelections.map((selection, index) => {
                   const product = products.find((candidate) => candidate.id === selection.productId);
                   const sauce = SAUCE_OPTIONS.find((candidate) => candidate.id === selection.sauceId);
                   const line = quoteLineForSelection(selection);
+                  if (product && sauce && weeklyMode && selection.id === welcomeCart.gift?.id) return <div className="summaryLine summaryGiftLine" key={selection.id}><div className="summaryLineInfo"><strong>{product.name} · FREE GIFT</strong><span>{sauce.name} · first paid weekly delivery only</span></div><div className="summaryLineActions"><button className="summarySauceButton" type="button" onClick={() => setSaucePickerMealId(selection.id)}>Change sauce</button><button className="summaryRemoveButton" type="button" aria-label="Remove free welcome meal" onClick={() => setMealSelections((current) => current.filter((item) => item.id !== selection.id))}>×</button><b>$0.00</b></div></div>;
                   if (!product || !sauce || !line) return null;
                   return (
                   <div className="summaryLine" key={selection.id}>
@@ -442,10 +485,13 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               {quote.totalBoxes >= 20 && <a className="cartGroupLink" href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">Contact us for group pricing →</a>}
             </div>
             <div className="summaryTotal">
-              <div className="summaryTotalRow"><span>Meal subtotal</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
+              <div className="summaryTotalRow"><span>Meal subtotal</span><strong>{formatMoney(weeklyMode ? weeklyPricing.subtotalBeforeDiscountCents : quote.subtotalCents)}</strong></div>
+              {weeklyMode && <><div className="summaryTotalRow"><span>Weekly savings · 5%</span><strong>−{formatMoney(weeklyPricing.discountCents)}</strong></div><div className="summaryTotalRow"><span>{welcomeEligible ? welcomeCart.gift ? "Welcome box*" : "Welcome box · choose at signup*" : "Welcome gift already redeemed"}</span><strong>{welcomeEligible ? "$0.00" : "—"}</strong></div></>}
               <div className="summaryTotalRow"><span>Delivery</span><strong>$0</strong></div>
-              <div className="summaryTotalFinal"><span>Total</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
+              <div className="summaryTotalFinal"><span>{weeklyMode ? "Subtotal before tax" : "Total"}</span><strong>{formatMoney(quote.subtotalCents)}</strong></div>
             </div>
+            {weeklyMode && <p className="weeklyCheckoutNote">Your meals repeat weekly with 5% off. Get one free box with your first delivery when you order at least 3 paid meals.* Pay for your first delivery at signup; future weeks are charged at cutoff. Pause, skip, or cancel before cutoff.<br /><small>*Free box once per eligible customer. Applicable taxes apply.</small></p>}
+            {!weeklyMode && <>
             <DeliveryAddressForm
               recipientName={recipientName}
               address={deliveryAddress}
@@ -473,8 +519,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               </label>
               <p className="smsPolicyLinks">Read our <a href={withBasePath("/privacy")}>Privacy Policy</a> and <a href={withBasePath("/terms")}>Terms &amp; Conditions</a>. Help: <a href="mailto:luc@threebyrd.com">luc@threebyrd.com</a>.</p>
             </fieldset>
-            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || !recipientNameIsValid || !ORDERS_OPEN || isSubmitting || !deliveryEligible}>
-              {isSubmitting ? "Opening secure checkout…" : !ORDERS_OPEN ? "Checkout temporarily unavailable" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
+            </>}
+            <button className="checkoutButton" type="button" onClick={handleCheckout} disabled={!quote.isValid || (!weeklyMode && (!recipientNameIsValid || !deliveryEligible)) || !ORDERS_OPEN || isSubmitting}>
+              {weeklyMode ? "Continue with weekly plan" : isSubmitting ? "Opening secure checkout…" : !ORDERS_OPEN ? "Checkout temporarily unavailable" : !deliveryEligible ? "Check delivery address" : "Continue to secure checkout"}
               <span aria-hidden="true">→</span>
             </button>
             {statusMessage && <p className="checkoutStatus hasMessage" role="alert" aria-live="polite">{statusMessage}</p>}
@@ -504,7 +551,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                   key={sauce.id}
                   onClick={() => selectSauce(sauce.id)}
                 >
-                  <span><strong>{sauce.name}</strong><small>{sauce.surchargeCents === 0 ? "Included" : "+$1.00 per meal"}</small></span>
+                  <span><strong>{sauce.name}</strong><small>{(weeklyMode && saucePickerMeal.id === welcomeCart.gift?.id) || sauce.surchargeCents === 0 ? "Included" : "+$1.00 per meal"}</small></span>
                   <span aria-hidden="true">{sauce.id === saucePickerMeal.sauceId ? "✓" : ""}</span>
                 </button>
               ))}

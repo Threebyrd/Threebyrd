@@ -241,6 +241,8 @@ function loadAppsScript(allowedMode = "test", spreadsheetId = "staging-spreadshe
     getLastRow: () => rows.length,
     getRange: (row, column, rowCount, columnCount) => ({
       getValues: () => rows.slice(row - 1, row - 1 + rowCount).map((value) => value.slice(column - 1, column - 1 + columnCount)),
+      setValues: (values) => { for(let r=0;r<values.length;r++)for(let c=0;c<values[r].length;c++)rows[row-1+r][column-1+c]=values[r][c]; },
+      setValue: (value) => { rows[row-1][column-1]=value; },
     }),
     appendRow: (row) => rows.push(row),
   };
@@ -250,6 +252,7 @@ function loadAppsScript(allowedMode = "test", spreadsheetId = "staging-spreadshe
     GOOGLE_SHEETS_SYNC_SECRET: secret,
     GOOGLE_SHEETS_ALLOWED_STRIPE_MODE: allowedMode,
     GOOGLE_SHEETS_SPREADSHEET_ID: spreadsheetId,
+    ...(options.weeklyEnabled ? {WEEKLY_EXPORTS_ENABLED: "true"} : {}),
   };
   const context = {
     PropertiesService: { getScriptProperties: () => ({ getProperty: (key) => properties[key] || "" }) },
@@ -565,4 +568,41 @@ test("destination diagnostic uses the same server-side secret and accepts only d
   assert.equal(request.url, "https://script.google.com/macros/s/example/exec");
   assert.deepEqual(JSON.parse(request.init.body), { secret: "test-sync-secret", diagnostic: true });
   assert.equal(buildGoogleSheetsDiagnosticRequestBody("test-sync-secret"), request.init.body);
+});
+
+test('PaymentIntent order references are accepted only in the pinned test workbook', () => {
+  const payload = buildOrderSheetPayload(mixedOrder, 'test');
+  delete payload.stripeSessionId;
+  payload.stripePaymentIntentId = 'pi_recurringTest123';
+  for (const [mode,id,allowed] of [['test','1yIAcqcs5jdivSJb1AfAxNiu8b4_MuFzLD0B8SpUY4oE',true],['test','different-workbook',false],['live','production-workbook',false]]) {
+    const {context,rows,secret}=loadAppsScript(mode,id);
+    const request={postData:{contents:JSON.stringify({secret,order:{...payload,stripeMode:mode}})}};
+    const result=JSON.parse(context.doPost(request).value);
+    assert.equal(result.ok,allowed);
+    if(allowed){assert.equal(rows[1][16],payload.stripePaymentIntentId);assert.equal(JSON.parse(context.doPost(request).value).duplicate,true);assert.equal(rows.length,2);}
+    else assert.equal(rows.length,1);
+  }
+});
+
+test('staging weekly revisions update one kitchen row in order and preserve operator status', () => {
+ const {context,rows,secret}=loadAppsScript('test','1yIAcqcs5jdivSJb1AfAxNiu8b4_MuFzLD0B8SpUY4oE');
+ const payload=buildOrderSheetPayload(mixedOrder,'test');const post=order=>JSON.parse(context.doPost({postData:{contents:JSON.stringify({secret,order})}}).value);
+ assert.equal(post(payload).inserted,true);rows[1][19]='Packed';rows[1][21]='Operator note';
+ const revision={...payload,bigChickenQty:payload.bigChickenQty+1,totalMeals:payload.totalMeals+1,mealSubtotal:payload.mealSubtotal+10,totalPaid:payload.totalPaid+10,weeklyRevision:1};
+ assert.equal(post({...revision,weeklyRevision:2}).ok,false);assert.equal(rows[1][10],payload.totalMeals);
+ assert.equal(post(revision).updated,true);assert.equal(rows.length,2);assert.equal(rows[1][10],revision.totalMeals);assert.equal(rows[1][19],'Packed');assert.match(rows[1][21],/Operator note/);assert.match(rows[1][21],/weekly-revision:1/);
+ assert.equal(post(revision).duplicate,true);assert.equal(post({...revision,orderId:'different'}).ok,false);
+});
+
+test('production weekly receiver requires pinned workbook plus explicit flag and preserves one-time exports',()=>{
+ const id='1NCVNbcIUnzH5nMhlxvu1qus2xPIOOC-JOx4rHqJ-Or8';
+ for(const enabled of [false,true]){
+  const {context,rows,secret}=loadAppsScript('live',id,{weeklyEnabled:enabled});
+  const post=order=>JSON.parse(context.doPost({postData:{contents:JSON.stringify({secret,order})}}).value);
+  const oneTime={...buildOrderSheetPayload(mixedOrder,'test'),stripeMode:'live',stripeSessionId:'cs_live_fixture'};
+  assert.equal(post(oneTime).inserted,true);
+  const recurring={...oneTime,orderId:'recurring-live',stripeSessionId:undefined,stripePaymentIntentId:'pi_liveFixture'};
+  assert.equal(post(recurring).ok,enabled);
+  if(enabled){const result=post({...recurring,weeklyRevision:1});assert.equal(result.updated,true);assert.equal(rows.length,3);assert.equal(result.spreadsheetId,id);assert.equal(post({...recurring,weeklyRevision:1}).duplicate,true)}
+ }
 });

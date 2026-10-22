@@ -1,0 +1,15 @@
+{
+ "name":"threebyrd-weekly-staging",
+ "account_id":"4be3efc46385a4a26f3f303384bd97aa",
+ "main":"app/subscriptions/hosted/worker.mjs",
+ "compatibility_date":"2026-10-21",
+ "compatibility_flags":["nodejs_compat"],
+ "workers_dev":true,
+ "vars":{"REVIEW_STRIPE_TEST":"true","REVIEW_RECURRING_ENABLED":"true"},
+ "send_email":[{"name":"EMAIL","allowed_destination_addresses":["luc@threebyrd.com"]}],
+ "assets":{"directory":".local-previews/weekly-hosted/site","binding":"ASSETS","run_worker_first":true,"html_handling":"none"},
+ "rules":[{"type":"Text","globs":["**/*.sql"],"fallthrough":true}],
+ "durable_objects":{"bindings":[{"name":"WEEKLY_REVIEW","class_name":"WeeklyReview"}]},
+ "migrations":[{"tag":"weekly-review-v1","new_sqlite_classes":["WeeklyReview"]}],
+ "observability":{"enabled":true,"logs":{"enabled":true,"invocation_logs":false}}
+}

@@ -68,3 +68,13 @@ The order builder does not fetch `GET /api/capacity`; the checkout endpoint enfo
 ## Current scope
 
 The production customer experience is live ordering. Production uses the verified live Stripe key and live webhook secret with `STRIPE_MODE=live`; staging and local development use separate sandbox credentials and D1 data. The controlled live verification payment was refunded, its D1 row remains an audit record, and all four meals, including Little Beef, are available for purchase.
+
+## Weekly plan foundation (local only)
+
+Stage 1 adds an isolated 5% weekly-plan quote, delivery-calendar/domain model, and local scenario preview. It does not enable enrollment or billing, change one-time checkout, or publish holiday closures. Run `npm run preview:weekly` and open `.local-previews/weekly-plan/index.html`; run `npm run test:weekly` for focused checks. See [Stage 1 notes](docs/WEEKLY_PLAN_STAGE1.md) and the [Stage 2 handoff prompt](docs/WEEKLY_PLAN_STAGE2_PROMPT.md).
+
+## Weekly customer sandbox (Stage 2, local only)
+
+Run `npm run dev:weekly` with Node 24 to open the working customer sandbox at `http://localhost:3012`. Startup also prints a private mock-email inbox link. Signup, plan management and mock card setup persist to an isolated ignored local database; no charges or real messages occur. Run `npm run test:weekly:sandbox` for its tests. See [Stage 2 notes](docs/WEEKLY_PLAN_STAGE2.md) and [Stage 3 handoff](docs/WEEKLY_PLAN_STAGE3_PROMPT.md). This standalone Node sandbox is not deployed into the existing Worker or public website.
+
+The separate weekly production service is deployed at https://weekly.threebyrd.com with billing/signup/customer emails disabled. The main website toggle remains disabled by default. See [production rollout status](docs/WEEKLY_PLAN_PRODUCTION_ROLLOUT.md) for verified rollback, account-access blockers, and the safe resume procedure. Do not use staging credentials or data to enable production.

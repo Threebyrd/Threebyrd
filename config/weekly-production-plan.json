@@ -1,0 +1,53 @@
+{
+  "environment": "production",
+  "billingEnabled": false,
+  "customerEmailsEnabled": false,
+  "operatorEmail": "luc@threebyrd.com",
+  "email": {
+    "from": "ThreeByrd Meal Prep <orders@threebyrd.com>",
+    "replyTo": "luc@threebyrd.com"
+  },
+  "timeZone": "America/New_York",
+  "defaultCutoff": {
+    "weekday": "Friday",
+    "hour": 15,
+    "minute": 0
+  },
+  "closedDeliveryWeekends": [
+    "2026-11-21",
+    "2026-11-28"
+  ],
+  "lastPublishedDelivery": "2026-12-05",
+  "paymentRecovery": {
+    "automaticLateRetry": false,
+    "unpaidOrdersEnterKitchenSheet": false,
+    "cardUpdatesApplyToFutureWeeks": true,
+    "uncertainPaymentsRequireReview": true
+  },
+  "secretsRequired": [
+    "STRIPE_SECRET_KEY",
+    "WEEKLY_STRIPE_WEBHOOK_SECRET",
+    "GOOGLE_SHEETS_SYNC_SECRET"
+  ],
+  "storage": {
+    "copyTestCustomers": false,
+    "copyTestPaymentMethods": false,
+    "copyTestAuthorizations": false
+  },
+  "rollout": {
+    "testLifecycleVerified": true,
+    "productionRuntimeImplemented": true,
+    "productionSheetSupportsRecurringReferencesAndRevisions": false,
+    "liveWebhookInstalled": false,
+    "liveSenderBindingInstalled": true,
+    "rollbackVerified": true,
+    "customerEmailDistributionVerified": false,
+    "productionAuthorizationAndFrontendVerified": false,
+    "liveCredentialConnected": false
+  },
+  "productionOrigin": "https://weekly.threebyrd.com",
+  "accessRequirements": {
+    "stripe": "Verification completed; Stripe now masks the one-time secret. Need the location where the owner saved the full key. Weekly production has no configured secrets yet.",
+    "google": "Publish the existing production Apps Script deployment as its deployment owner; current Cornell account was denied."
+  }
+}

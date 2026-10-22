@@ -1,4 +1,5 @@
 import Link from "next/link";
+import WeeklyPlanMode from "../components/WeeklyPlanMode";
 import OrderBuilder from "../components/OrderBuilder";
 import { getNextOrderCutoff } from "../order-config";
 
@@ -8,6 +9,7 @@ export default function OrderPage() {
   return (
     <main className="orderPage">
       <Link className="orderPageBack" href="/" prefetch={false}>← ThreeByrd home</Link>
+      <WeeklyPlanMode />
       <OrderBuilder initialCutoffIso={getNextOrderCutoff().toISOString()} />
     </main>
   );

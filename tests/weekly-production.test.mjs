@@ -1,0 +1,45 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';
+import {WeeklyStore,DISCLOSURE_VERSION} from '../app/subscriptions/sandbox/store-core.mjs';
+import {productionSchema} from '../app/subscriptions/production/schema.mjs';import {LIVE_AUTHORIZATION} from '../app/subscriptions/production/authorization.mjs';
+import {fallReviewCalendar} from '../app/subscriptions/hosted/calendar.mjs';import {createLivePayments,createPayments} from '../app/subscriptions/sandbox/payments.mjs';
+import {createLivePurchases,createTestPurchases} from '../app/subscriptions/sandbox/stripe-purchase.mjs';
+import {createLiveEditAdapter,createTestEditAdapter} from '../app/subscriptions/sandbox/test-paid-edits.mjs';
+import {createRecurringLiveAdapter,createRecurringTestAdapter,prepareRecurringTest,processRecurringTest} from '../app/subscriptions/sandbox/recurring-test.mjs';
+import {createSandboxService} from '../app/subscriptions/sandbox/service.mjs';import {buildVerifiedLiveSheetOrder,buildVerifiedTestSheetOrder,sendVerifiedLiveOrders} from '../app/subscriptions/sandbox/test-sheet-sync.mjs';
+const origin='https://weekly.threebyrd.com';
+function fixture(){let now=Date.parse('2026-10-21T17:00:00Z');const db=new DatabaseSync(':memory:');db.exec(productionSchema(readFileSync('app/subscriptions/sandbox/schema.sql','utf8')));const store=new WeeklyStore(db,{environment:'stripe_live',authorization:LIVE_AUTHORIZATION,clock:()=>now});store.publish(fallReviewCalendar());const session=store.verify(store.requestLink('luc@threebyrd.com','test').token);return {store,session,setTime:t=>now=Date.parse(t)}}
+const body={cart:[{productId:'big-chicken',quantity:3,sauceId:'bbq'}],welcome:{productId:'big-chicken',sauceId:'bbq'},recipientName:'Fictional live adapter fixture',authorized:true,disclosureVersion:LIVE_AUTHORIZATION.version};
+const address={streetAddress:'123 State St',city:'Ithaca',state:'NY',zipCode:'14850'};
+test('production requires fresh live authorization and schema refuses mock/test mappings',()=>{const f=fixture();try{assert.throws(()=>f.store.enroll(f.session.customer.id,{...body,disclosureVersion:DISCLOSURE_VERSION},address),/authorization/);f.store.enroll(f.session.customer.id,body,address);const auth=f.store.sql.prepare('SELECT * FROM weekly_authorizations').get();assert.equal(auth.environment,'stripe_live');assert.equal(auth.disclosure_version,LIVE_AUTHORIZATION.version);assert.doesNotMatch(auth.disclosure_text,/sandbox|simulate/i);assert.throws(()=>f.store.sql.prepare('INSERT INTO weekly_customer_mappings VALUES(?,?,?)').run(f.session.customer.id,'stripe_test','cus_test'));assert.throws(()=>new WeeklyStore(f.store.sql,{environment:'stripe_live'}),/authorization/)}finally{f.store.close()}});
+test('production and test adapter constructors reject keys from the other environment',()=>{
+ const common={webhookSecret:'whsec_fixture',baseUrl:origin,taxCode:'txcd_40060003',stripeClient:{}};
+ for(const create of [createLivePayments,createLivePurchases,createLiveEditAdapter,createRecurringLiveAdapter])assert.throws(()=>create({...common,liveKey:'sk_test_fixture'}));
+ for(const create of [createPayments,createTestPurchases,createTestEditAdapter,createRecurringTestAdapter])assert.throws(()=>create({...common,baseUrl:'http://localhost:3012',testKey:'sk_live_fixture'}));
+ assert.throws(()=>createLivePurchases({...common,liveKey:'sk_live_fixture',baseUrl:'http://localhost:3012'}));
+});
+test('production kill switch blocks signup and payment routes without provider calls while management remains available',async()=>{
+ const f=fixture();try{const service=createSandboxService({store:f.store,baseUrl:origin,productionOrigin:origin,payments:{environment:'stripe_live'},checkAddress:async()=>{},billingAllowed:()=>false});
+ for(const path of ['/api/enroll','/api/purchase','/api/setup','/api/paid-edit/save']){const response=await service.fetch(new Request(origin+path,{method:'POST',headers:{origin,'content-type':'application/json'},body:'{}'}));assert.equal(response.status,503)}
+ const response=await service.fetch(new Request(origin+'/api/me',{headers:{cookie:'weekly_sandbox='+f.session.session}}));assert.equal(response.status,200);
+ const catalog=await (await service.fetch(new Request(origin+'/api/catalog'))).json();assert.equal(catalog.disclosureVersion,LIVE_AUTHORIZATION.version);
+ }finally{f.store.close()}
+});
+test('live renewal rejects mismatched adapters and test-mode evidence before any kitchen export',async()=>{
+ const f=fixture();try{const id=f.session.customer.id;f.store.enroll(id,body,address);const row=f.store.row(id);f.store.saveMapping(id,'cus_live');f.store.sql.prepare("UPDATE weekly_plans SET readiness='staged_ready',payment_method_id='pm_live' WHERE customer_id=?").run(id);f.store.sql.prepare("INSERT INTO weekly_test_purchases VALUES('first',?,?,?,'{}','cs_live_first','paid',?)").run(id,row.plan.id,'review-44',f.store.clock());f.setTime('2026-11-06T20:00:01Z');const [job]=prepareRecurringTest(f.store,'review-45');assert.ok(job);await assert.rejects(processRecurringTest(f.store,job,{environment:'stripe_test'}),/environment mismatch/);
+ const snapshot=JSON.parse(f.store.sql.prepare('SELECT snapshot FROM weekly_test_recurring WHERE id=?').get(job).snapshot);
+ const adapter={environment:'stripe_live',create:async()=>({intentId:'pi_wrongmode',taxCents:252,totalCents:3402,taxCalculationId:'calc'}),confirm:async()=>{},retrieve:async()=>({id:'pi_wrongmode',livemode:false,customer:'cus_live',payment_method:'pm_live',metadata:{weekly_recurring_id:job,weekly_plan_id:snapshot.planId,tax_calculation:'calc'},currency:'usd',amount:3402,amount_received:3402,status:'succeeded'})};
+ assert.equal((await processRecurringTest(f.store,job,adapter)).status,'review_required');assert.equal(f.store.sql.prepare('SELECT count(*) n FROM weekly_committed_orders').get().n,0);
+ }finally{f.store.close()}
+});
+test('live sheet sender refuses staging destinations before network and live mapper rejects test snapshots',async()=>{
+ const f=fixture();try{await assert.rejects(sendVerifiedLiveOrders(f.store,{spreadsheetId:'1yIAcqcs5jdivSJb1AfAxNiu8b4_MuFzLD0B8SpUY4oE'},{fetchImpl:()=>{throw Error('network must not run')}}),/destination/);assert.throws(()=>buildVerifiedLiveSheetOrder({environment:'stripe_test'},'test@example.test',1));assert.throws(()=>buildVerifiedTestSheetOrder({environment:'stripe_live'},'test@example.test',1));}finally{f.store.close()}
+});
+test('verified live renewal commits once and production email remains queued until enabled',async()=>{
+ const {queueWeeklyEmail,drainWeeklyEmails}=await import('../app/subscriptions/sandbox/email-outbox.mjs');
+ const f=fixture();try{const id=f.session.customer.id;f.store.enroll(id,body,address);const row=f.store.row(id);f.store.saveMapping(id,'cus_live');f.store.sql.prepare("UPDATE weekly_plans SET readiness='staged_ready',payment_method_id='pm_live' WHERE customer_id=?").run(id);f.store.sql.prepare("INSERT INTO weekly_test_purchases VALUES('first',?,?,?,'{}','cs_live_first','paid',?)").run(id,row.plan.id,'review-44',f.store.clock());f.store.sql.prepare("INSERT INTO weekly_welcome_redemptions VALUES(?,'first','review-44','2026-10-21')").run(id);f.setTime('2026-11-06T20:00:01Z');const [job]=prepareRecurringTest(f.store,'review-45');
+ let intent,creates=0;const adapter={environment:'stripe_live',create:async snapshot=>{creates++;intent={id:'pi_livefixture',livemode:true,customer:'cus_live',payment_method:'pm_live',metadata:{weekly_recurring_id:job,weekly_plan_id:snapshot.planId,tax_calculation:'calc'},currency:'usd',amount:3402,amount_received:3402,status:'succeeded'};return {intentId:intent.id,totalCents:3402,taxCents:252,taxCalculationId:'calc'}},confirm:async()=>{},retrieve:async()=>intent,recordTax:async()=> 'tax_live'};
+ assert.equal((await processRecurringTest(f.store,job,adapter)).status,'paid');assert.equal((await processRecurringTest(f.store,job,adapter)).status,'paid');assert.equal(creates,1);const order=JSON.parse(f.store.sql.prepare('SELECT snapshot FROM weekly_committed_orders').get().snapshot);assert.equal(order.environment,'stripe_live');assert.equal(order.quote.freeMealCount,0);const mapped=buildVerifiedLiveSheetOrder({...order,orderId:job,paymentStatus:'paid'},'fixture@example.test',f.store.clock());assert.equal(mapped.stripeMode,'live');assert.doesNotMatch(mapped.notes,/SANDBOX/);
+ queueWeeklyEmail(f.store,{id:'additional',customerId:id,kind:'receipt',details:{deliveryDate:'2026-11-08',totalCents:3402}});let sends=0;const send=async message=>{sends++;assert.doesNotMatch(message.subject,/SANDBOX/);assert.doesNotMatch(message.text,/PREVIEW ONLY/);assert.match(message.text,/https:\/\/weekly.threebyrd.com\/my-plan/);return {messageId:'mail:'+sends}};
+ await drainWeeklyEmails(f.store,{send,baseUrl:origin});assert.equal(sends,0);assert.equal(f.store.sql.prepare("SELECT count(*) n FROM weekly_email_outbox WHERE status='pending'").get().n,2);await drainWeeklyEmails(f.store,{send,baseUrl:origin,customerEmailsEnabled:true});assert.equal(sends,2);
+ }finally{f.store.close()}
+});

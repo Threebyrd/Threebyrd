@@ -703,3 +703,24 @@ h1, h2, h3 { text-wrap: balance; }
 .smsReminderDecision > p { font-size: 0.8rem; line-height: 1.55; }
 .smsReminderDecision .smsPolicyLinks { margin: 0.85rem 0 0; }
 .smsPolicyLinks a { text-decoration: underline; color: inherit; }
+
+/* Opt-in local sandbox UI. Production order-mode selector is disabled by default. */
+.weeklyModeSection { padding-top: 20px; padding-bottom: 12px; }
+.weeklyLocalNotice { color: var(--tb-muted); font-size: .7rem; text-align: center; margin: 0 0 10px; }
+.weeklyModeButtons { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; max-width: 850px; margin: auto; }
+.weeklyModeButton { background: var(--tb-paper); color: var(--tb-red); border: var(--border-ui); border-radius: var(--radius-control); min-height: 82px; padding: 16px; font-family: var(--font-display); font-size: 1.45rem; text-transform: uppercase; cursor: pointer; }
+.weeklyModeButton.isSelected { background: var(--tb-red); color: var(--tb-paper); box-shadow: var(--shadow-hard); }
+.weeklyOfferButton { display: flex; gap: 16px; align-items: center; justify-content: center; }
+.weeklyOfferSticker { display: block; background: var(--tb-gold-soft); color: var(--tb-red); border: 2px solid var(--tb-ink); padding: 8px 10px; transform: rotate(-2deg); font-size: 1rem; line-height: 1.2; }
+.weeklyOfferSticker small { display: block; font-family: var(--font-body); font-size: .6rem; text-transform: none; font-weight: 650; margin-top: 4px; }
+.weeklyModeDetails { max-width: 850px; margin: 24px auto 0; padding: 20px; background: var(--tb-gold-pale); border: var(--border-ui); }
+.weeklyModeDetails strong { font-family: var(--font-display); font-size: 1.5rem; text-transform: uppercase; color: var(--tb-red); }
+.weeklyModeDetails p { margin: 8px 0; font-size: .9rem; }
+.weeklyModeDetails a { text-decoration: underline; font-weight: 800; font-size: .85rem; }
+.weeklyCheckoutNote { color: var(--tb-paper); font-size: .8rem; line-height: 1.6; }
+@media(max-width:600px) { .weeklyModeButtons { grid-template-columns: 1fr 1.35fr; gap: 10px; }.weeklyModeButton { font-size: 1.05rem; padding: 10px; }.weeklyOfferButton { flex-direction: column; gap: 6px; }.weeklyOfferSticker { font-size: .8rem; padding: 5px; }.weeklyOfferSticker small { font-size: .52rem; } }
+
+.weeklyStarList { list-style: none; padding: 0; margin: 14px 0 18px; display: grid; gap: 11px; }
+.weeklyStarList li { position: relative; padding-left: 25px; font-size: .9rem; line-height: 1.55; }
+.weeklyStarList li::before { content: "★"; position: absolute; left: 0; top: .05em; color: var(--tb-gold-dark); font-size: .85rem; }
+.weeklyModeDetails .weeklyModeCutoff { margin: 16px 0; padding-top: 12px; border-top: 1px solid var(--tb-gold-dark); }

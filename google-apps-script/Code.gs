@@ -81,9 +81,24 @@ function doPost(e) {
       validateHeaders(sheet);
       const rows = readOrderRows(sheet);
       const matchingRow = rows.findIndex(function(row) {
-        return String(row[1]) === order.orderId || String(row[16]) === order.stripeSessionId;
+        return String(row[1]) === order.orderId || String(row[16]) === paymentReference(order);
       });
       const destination = getDestinationDiagnostics(spreadsheet, sheet, true);
+      if (order.weeklyRevision !== undefined) {
+        if (!weeklyFeaturesEnabled() || !Number.isSafeInteger(order.weeklyRevision) || order.weeklyRevision < 1 || matchingRow < 0) return json({ ok: false, error: "Weekly revisions require an existing staging order" });
+        const existing = rows[matchingRow];
+        if (String(existing[1]) !== order.orderId || String(existing[16]) !== paymentReference(order)) return json({ ok: false, error: "Revision payment reference mismatch" });
+        const marker = String(existing[21]).match(/\[weekly-revision:(\d+)\]/);
+        const current = marker ? Number(marker[1]) : 0;
+        if (current === order.weeklyRevision) return json({ ok: true, duplicate: true, revision: current, ...destination, matchingRow: matchingRow + 2 });
+        if (current + 1 !== order.weeklyRevision) return json({ ok: false, error: "Weekly revision out of sequence" });
+        const revised = toSheetRow(order);
+        // Preserve contact fields, payment identity and manually managed kitchen status.
+        sheet.getRange(matchingRow + 2, 7, 1, 9).setValues([revised.slice(6, 15)]);
+        sheet.getRange(matchingRow + 2, 18).setValue(revised[17]);
+        sheet.getRange(matchingRow + 2, 22).setValue(safeSheetText(String(existing[21]).replace(/\s*\[weekly-revision:\d+\]/g, "") + " | Revision " + order.weeklyRevision + ": current meal total " + order.totalMeals + "; current paid total " + order.totalPaid + " [weekly-revision:" + order.weeklyRevision + "]"));
+        return json({ ok: true, updated: true, revision: order.weeklyRevision, ...destination, matchingRow: matchingRow + 2 });
+      }
       if (matchingRow >= 0) {
         return json({ ok: true, duplicate: true, ...destination, matchingRow: matchingRow + 2 });
       }
@@ -146,6 +161,7 @@ function getDestinationDiagnostics(spreadsheet, sheet, headersValid) {
     worksheetName: String(sheet.getName()),
     lastRow: sheet.getLastRow(),
     headersValid: headersValid === true,
+    ...(weeklyFeaturesEnabled() ? { spreadsheetId: PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_PROPERTY), supportsWeeklyPaymentIntents: true, supportsWeeklyRevisions: true } : {}),
   };
 }
 
@@ -177,13 +193,15 @@ function readOrderRows(sheet) {
 
 function validateOrder(order) {
   if (!order || typeof order !== "object") return "Missing order";
-  const requiredStrings = ["stripeMode", "orderDateTime", "orderId", "recipientName", "email", "deliveryAddress", "deliveryDate", "stripeSessionId", "mealBreakdown"];
+  const requiredStrings = ["stripeMode", "orderDateTime", "orderId", "recipientName", "email", "deliveryAddress", "deliveryDate", "mealBreakdown"];
   for (let i = 0; i < requiredStrings.length; i += 1) {
     if (typeof order[requiredStrings[i]] !== "string" || !order[requiredStrings[i]].trim()) return "Missing required order field";
   }
 
   if (!/^(test|live)$/.test(order.stripeMode)) return "Invalid Stripe mode";
-  if (!new RegExp("^cs_" + order.stripeMode + "_").test(order.stripeSessionId)) return "Invalid Stripe session";
+  if (order.stripePaymentIntentId) {
+    if (!weeklyFeaturesEnabled() || order.stripeSessionId || !/^pi_[a-zA-Z0-9]+$/.test(order.stripePaymentIntentId)) return "Recurring payments are staging-only";
+  } else if (typeof order.stripeSessionId !== "string" || !new RegExp("^cs_" + order.stripeMode + "_").test(order.stripeSessionId)) return "Invalid Stripe session";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.email)) return "Invalid customer email";
   if (!/^(paid|no_payment_required)$/.test(order.paymentStatus) || order.orderStatus !== "New") return "Invalid order status";
   if (!/^(Yes|No)?$/.test(order.smsConsent || "")) return "Invalid SMS consent";
@@ -220,7 +238,7 @@ function toSheetRow(order) {
     order.salesTax,
     order.totalPaid,
     safeSheetText(order.deliveryDate),
-    safeSheetText(order.stripeSessionId),
+    safeSheetText(paymentReference(order)),
     safeSheetText(order.mealBreakdown),
     safeSheetText(order.paymentStatus),
     safeSheetText(order.orderStatus),
@@ -246,4 +264,14 @@ function secureEqual(left, right) {
 
 function json(data) {
   return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function paymentReference(order) { return order.stripeSessionId || order.stripePaymentIntentId || ""; }
+
+// Existing one-time Checkout exports remain valid regardless of this feature flag.
+function weeklyFeaturesEnabled() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty(SPREADSHEET_ID_PROPERTY);
+  const mode = props.getProperty("GOOGLE_SHEETS_ALLOWED_STRIPE_MODE");
+  return mode === "test" && id === "1yIAcqcs5jdivSJb1AfAxNiu8b4_MuFzLD0B8SpUY4oE" || mode === "live" && id === "1NCVNbcIUnzH5nMhlxvu1qus2xPIOOC-JOx4rHqJ-Or8" && props.getProperty("WEEKLY_EXPORTS_ENABLED") === "true";
 }

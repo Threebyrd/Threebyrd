@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {readFileSync} from 'node:fs';
+import {durableSqlAdapter} from '../app/subscriptions/hosted/sql-storage.mjs';import {WeeklyStore} from '../app/subscriptions/sandbox/store-core.mjs';
+// Exercise adapter semantics with real SQLite, including transaction rollback and RETURNING.
+test('hosted SQL adapter preserves identity, updates and rollback through a fresh service instance',()=>{
+ const db=new DatabaseSync(':memory:');db.exec(readFileSync('app/subscriptions/sandbox/schema.sql','utf8'));
+ const storage={sql:{exec(query,...bindings){const stmt=db.prepare(query);let rows;if(stmt.columns().length)rows=stmt.all(...bindings);else{stmt.run(...bindings);rows=[]}return {toArray:()=>rows,rowsWritten:db.prepare('SELECT changes() n').get().n}}},transactionSync(fn){db.exec('BEGIN');try{const result=fn();db.exec('COMMIT');return result}catch(e){db.exec('ROLLBACK');throw e}}};
+ try{const first=new WeeklyStore(durableSqlAdapter(storage));const link=first.requestLink('luc@threebyrd.com','test');const session=first.verify(link.token);const fresh=new WeeklyStore(durableSqlAdapter(storage));assert.equal(fresh.authenticate(session.session).email,'luc@threebyrd.com');assert.throws(()=>fresh.verify(link.token));assert.throws(()=>fresh.transaction(()=>{fresh.sql.prepare("INSERT INTO weekly_customers VALUES('rollback','rollback@example.test',1)").run();throw new Error('rollback')}));assert.equal(fresh.sql.prepare("SELECT 1 FROM weekly_customers WHERE id='rollback'").get(),undefined);}finally{db.close()}
+});

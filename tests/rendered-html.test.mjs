@@ -29,6 +29,8 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /name="twitter:card" content="summary_large_image"/i);
   assert.match(html, /name="twitter:image" content="https:\/\/threebyrd\.com\/og\/threebyrd-share\.png"/i);
   assert.doesNotMatch(html, /(?:og|twitter)[^>]+https:\/\/threebyrd\.com\/og\.png/i);
+  assert.doesNotMatch(html, /class="weeklyModeSection/);
+  assert.doesNotMatch(html, /Local preview · no payments/);
   assert.match(html, /High-protein<br\s*\/>\s*<em>meal prep\./);
   assert.match(html, /free delivery in Ithaca/i);
   assert.doesNotMatch(html, /Orders open until/);

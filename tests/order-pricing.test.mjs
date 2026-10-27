@@ -67,6 +67,25 @@ test("applies one tier to mixed-product carts", () => {
   assert.equal(mixed.subtotalCents, 4700);
 });
 
+test("cup products count as meals and use their own tier prices", () => {
+  assert.equal(getProduct("chicken-cup")?.servingSize, "8 oz");
+  assert.equal(getProduct("beef-cup")?.servingSize, "6.5 oz");
+  assert.equal(quote(["chicken-cup", 3]).isValid, true);
+  assert.equal(quote(["chicken-cup", 3]).subtotalCents, 2100);
+  assert.equal(quote(["beef-cup", 3]).subtotalCents, 2400);
+  assert.equal(quote(["chicken-cup", 5]).subtotalCents, 3000);
+  assert.equal(quote(["beef-cup", 5]).subtotalCents, 3500);
+  assert.equal(quote(["chicken-cup", 10]).subtotalCents, 5500);
+  assert.equal(quote(["beef-cup", 10]).subtotalCents, 6500);
+  assert.equal(quote(["big-chicken", 2], ["chicken-cup", 1]).isValid, true);
+  const mixed = quote(["big-chicken", 2], ["beef-cup", 3]);
+  assert.equal(mixed.pricingTier, "5-9");
+  assert.equal(mixed.subtotalCents, 1800 + 2100);
+  const saucedCup = quoteOrder([{ productId: "chicken-cup", quantity: 3, sauceId: "bbq" }]);
+  assert.equal(saucedCup.isValid, true);
+  assert.equal(saucedCup.subtotalCents, 2400);
+});
+
 test("prices sauce choices independently for each meal unit", () => {
   const mixedSauces = quoteOrder([
     { productId: "big-chicken", quantity: 1, sauceId: "no-sauce" },
@@ -102,18 +121,24 @@ test("keeps the canonical matrix and all four purchasable product details", () =
     "little-chicken": 800,
     "big-beef": 1100,
     "little-beef": 900,
+    "chicken-cup": 700,
+    "beef-cup": 800,
   });
   assert.deepEqual(CART_PRICING_TIERS["5-9"].prices, {
     "big-chicken": 900,
     "little-chicken": 700,
     "big-beef": 1000,
     "little-beef": 800,
+    "chicken-cup": 600,
+    "beef-cup": 700,
   });
   assert.deepEqual(CART_PRICING_TIERS["10+"].prices, {
     "big-chicken": 850,
     "little-chicken": 700,
     "big-beef": 950,
     "little-beef": 800,
+    "chicken-cup": 550,
+    "beef-cup": 650,
   });
 
   const littleBeef = getProduct("little-beef");

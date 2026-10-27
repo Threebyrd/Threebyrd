@@ -288,7 +288,7 @@ h1, h2, h3 { text-wrap: balance; }
 .mobileCartProgress > span { color: var(--tb-muted); font-size: 0.66rem; }
 .mobileCartProgress button { align-items: center; background: var(--tb-red); border: var(--border-ui); color: var(--tb-paper); display: inline-flex; font-size: 0.68rem; font-weight: 900; gap: 0.35rem; min-height: 40px; padding: 0.5rem 0.6rem; text-transform: uppercase; }
 .mobileCartProgress button:hover { background: var(--tb-gold); color: var(--tb-ink); }
-.pricingExplainer { background: var(--tb-paper); border: var(--border-major); box-shadow: var(--shadow-hard); margin-bottom: 1.2rem; min-width: 0; padding: clamp(1rem, 2.4vw, 1.7rem); }
+.pricingExplainer { background: var(--tb-paper); border: var(--border-major); box-shadow: var(--shadow-hard); margin: 1rem 0 1.2rem; min-width: 0; padding: clamp(1rem, 2.4vw, 1.7rem); }
 .pricingExplainer h3 { color: var(--tb-red); font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 400; line-height: 0.95; margin: 0; min-width: 0; overflow-wrap: anywhere; text-transform: uppercase; }
 .pricingIntro { font-size: 0.82rem; font-weight: 750; margin: 0.55rem 0 0; max-width: 54ch; min-width: 0; overflow-wrap: anywhere; }
 .pricingSteps { display: grid; gap: 0.55rem; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 1rem 0 0.8rem; padding: 0; }
@@ -322,6 +322,7 @@ h1, h2, h3 { text-wrap: balance; }
 .productHeading { align-items: start; display: flex; gap: 0.5rem; justify-content: space-between; }
 .productProtein { color: var(--tb-gold); font-size: 0.65rem; font-weight: 900; letter-spacing: 0.08em; margin: 0 0 0.25rem; text-transform: uppercase; }
 .productHeading h3 { color: var(--tb-red); font-family: var(--font-display); font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 400; line-height: 0.95; margin: 0; text-transform: uppercase; }
+.productServingLabel { color: var(--tb-red); font-size: 0.68rem; font-weight: 900; letter-spacing: 0.04em; margin: 0.35rem 0 0; text-transform: uppercase; }
 .productHeading > strong { color: var(--tb-red); font-family: var(--font-display); font-size: 1.85rem; font-weight: 400; line-height: 1; }
 .productPriceRange { align-items: flex-end; color: var(--tb-red); display: flex; flex-direction: column; flex-shrink: 0; line-height: 1; max-width: 12rem; text-align: right; }
 .productPriceRange strong { font-family: var(--font-display); font-size: clamp(1.25rem, 2.5vw, 2rem); font-weight: 400; white-space: nowrap; }
@@ -405,6 +406,7 @@ h1, h2, h3 { text-wrap: balance; }
 .smsReminderDecision legend { color: var(--tb-paper); font-size: 0.86rem; font-weight: 900; padding: 0 0.25rem; }
 .smsReminderDecision > p { color: rgba(251, 247, 239, 0.72); font-size: 0.65rem; margin: 0 0 0.7rem; }
 .smsReminderOption { align-items: flex-start; background: rgba(251, 247, 239, 0.08); border: 1px solid rgba(251, 247, 239, 0.45); cursor: pointer; display: flex; gap: 0.65rem; margin-top: 0.55rem; min-height: 54px; padding: 0.7rem; }
+.smsReminderOption { background: transparent; border: 0; margin-top: 0.2rem; min-height: 0; padding: 0.25rem 0; }
 .smsReminderOption:has(input:checked) { background: rgba(251, 247, 239, 0.16); border-color: var(--tb-gold-soft); }
 .smsReminderOption:focus-within { outline: 3px solid var(--tb-gold-soft); outline-offset: 2px; }
 .smsReminderOption input { flex: 0 0 auto; margin-top: 0.15rem; }
@@ -412,6 +414,7 @@ h1, h2, h3 { text-wrap: balance; }
 .smsReminderOption strong { color: var(--tb-paper); font-size: 0.7rem; }
 .smsReminderOption small { color: rgba(251, 247, 239, 0.72); font-size: 0.58rem; line-height: 1.45; margin-top: 0.35rem; }
 .smsReminderDecision .smsReminderError { color: #ffd1c7; font-weight: 800; margin: 0.7rem 0 0; }
+.smsReminderFinePrint { color: rgba(251, 247, 239, 0.72); font-size: 0.58rem; line-height: 1.4; margin: 0.45rem 0 0; }
 .checkoutButton { align-items: center; background: var(--tb-gold-soft); border: var(--border-ui); box-shadow: 3px 3px 0 var(--tb-line); color: var(--tb-red); cursor: pointer; display: flex; font-size: 0.73rem; font-weight: 900; justify-content: space-between; min-height: 52px; padding: 0.7rem 0.8rem; text-transform: uppercase; transition: box-shadow 180ms ease, transform 180ms ease; width: 100%; }
 .checkoutButton:disabled { cursor: not-allowed; opacity: 0.55; }
 .checkoutStatus { color: rgba(251, 247, 239, 0.68); font-size: 0.68rem; margin: 0.8rem 0 0; }

@@ -22,6 +22,8 @@ test("creates deterministic mixed-cart Stripe metadata from the server quote", (
     big_chicken_qty: "3",
     little_beef_qty: "0",
     big_beef_qty: "2",
+    chicken_cup_qty: "0",
+    beef_cup_qty: "0",
     total_meals: "5",
     delivery_address: "123 State St, Ithaca, NY 14850, USA",
     delivery_date: "2026-09-27",

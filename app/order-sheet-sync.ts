@@ -11,6 +11,8 @@ export const GOOGLE_SHEETS_HEADERS = [
   "Little Chicken Qty",
   "Big Beef Qty",
   "Little Beef Qty",
+  "Chicken Cup Qty",
+  "Beef Cup Qty",
   "Total Meals",
   "Meal Subtotal",
   "Discount",
@@ -61,6 +63,8 @@ export type GoogleSheetsOrderPayload = {
   littleChickenQty: number;
   bigBeefQty: number;
   littleBeefQty: number;
+  chickenCupQty: number;
+  beefCupQty: number;
   totalMeals: number;
   mealSubtotal: number;
   discount: number;
@@ -172,6 +176,8 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     littleChickenQty: quantityFor("little-chicken"),
     bigBeefQty: quantityFor("big-beef"),
     littleBeefQty: quantityFor("little-beef"),
+    chickenCupQty: quantityFor("chicken-cup"),
+    beefCupQty: quantityFor("beef-cup"),
     totalMeals: mealCount,
     mealSubtotal: Number((order.subtotalCents / 100).toFixed(2)),
     discount: Number((order.discountCents / 100).toFixed(2)),

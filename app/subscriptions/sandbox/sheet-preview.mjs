@@ -6,7 +6,7 @@ export function weeklySheetPreview(order){
  if(order.environment!=='mock'||order.paymentStatus!=='paid')throw new Error('Only paid mock orders belong in this local preview.');
  const q=order.quote;
  if(!q?.isValid||order.totalCents!==q.subtotalBeforeTaxCents+order.taxCents)throw new Error('Order totals do not reconcile.');
- const quantities={'big-chicken':0,'little-chicken':0,'big-beef':0,'little-beef':0};
+ const quantities={'big-chicken':0,'little-chicken':0,'big-beef':0,'little-beef':0,'chicken-cup':0,'beef-cup':0};
  const lines=[...q.paidLines,...(q.welcomeLine?[q.welcomeLine]:[])];
  for(const line of lines){if(!(line.productId in quantities)||!Number.isSafeInteger(line.quantity)||line.quantity<1)throw new Error('Invalid kitchen quantity.');quantities[line.productId]+=line.quantity;}
  const total=Object.values(quantities).reduce((a,b)=>a+b,0);
@@ -15,6 +15,7 @@ export function weeklySheetPreview(order){
  'Order ID':order.orderId,'Customer Name':order.recipientName,
  'Ithaca Delivery Address':[order.address.streetAddress,order.address.city,order.address.state,order.address.zipCode].join(', '),
  'Big Chicken Qty':quantities['big-chicken'],'Little Chicken Qty':quantities['little-chicken'],'Big Beef Qty':quantities['big-beef'],'Little Beef Qty':quantities['little-beef'],
+ 'Chicken Cup Qty':quantities['chicken-cup'],'Beef Cup Qty':quantities['beef-cup'],
  'Total Meals':total,'Meal Subtotal':q.subtotalBeforeDiscountCents/100,'Discount':q.discountCents/100,'Sales Tax':order.taxCents/100,'Total Paid':order.totalCents/100,
  'Delivery Date':order.cycle.deliveryDate,'Meal Breakdown':lines.map(l=>`${l.name} — ${l.sauceName} ×${l.quantity}${l===q.welcomeLine?' (FREE WELCOME BOX)':''}`).join('\n'),
  'Payment Status':'MOCK PAID — NOT A REAL PAYMENT','Order Status':'LOCAL PREVIEW','Name':order.recipientName,

@@ -5,7 +5,7 @@ export const MINIMUM_BOXES = 3;
 export const DEFAULT_CUTOFF_OVERRIDE = "2026-10-17T15:00:00";
 export const ORDERS_OPEN = true;
 
-export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef";
+export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef" | "chicken-cup" | "beef-cup";
 
 export type CartPricingTier = "3-4" | "5-9" | "10+";
 
@@ -30,6 +30,8 @@ export const CART_PRICING_TIERS: Record<CartPricingTier, CartPricingTierDefiniti
       "little-chicken": 800,
       "big-beef": 1100,
       "little-beef": 900,
+      "chicken-cup": 700,
+      "beef-cup": 800,
     },
   },
   "5-9": {
@@ -40,6 +42,8 @@ export const CART_PRICING_TIERS: Record<CartPricingTier, CartPricingTierDefiniti
       "little-chicken": 700,
       "big-beef": 1000,
       "little-beef": 800,
+      "chicken-cup": 600,
+      "beef-cup": 700,
     },
   },
   "10+": {
@@ -49,6 +53,8 @@ export const CART_PRICING_TIERS: Record<CartPricingTier, CartPricingTierDefiniti
       "little-chicken": 700,
       "big-beef": 950,
       "little-beef": 800,
+      "chicken-cup": 550,
+      "beef-cup": 650,
     },
   },
 };
@@ -94,15 +100,18 @@ function amountForProductAtTier(productId: ProductId, tier: CartPricingTier): nu
 
 export type Product = {
   id: ProductId;
-  name: "Little Chicken" | "Big Chicken" | "Little Beef" | "Big Beef";
+  name: "Little Chicken" | "Big Chicken" | "Little Beef" | "Big Beef" | "Chicken Cup" | "Beef Cup";
   protein: "Chicken" | "Beef";
-  size: "Little" | "Big";
+  size: "Little" | "Big" | "Cup";
   image: string;
   alt: string;
   calories?: string;
   proteinGrams?: string;
   carbs?: string;
   fat?: string;
+  servingSize?: string;
+  servingLabel?: string;
+  supportsSauce?: boolean;
   purchasable: boolean;
   description: string;
 };
@@ -163,6 +172,38 @@ export const products: readonly Product[] = [
     fat: "41g",
     purchasable: true,
     description: "Beef, white rice + broccoli",
+  },
+  {
+    id: "chicken-cup",
+    name: "Chicken Cup",
+    protein: "Chicken",
+    size: "Cup",
+    image: "/assets/chicken-cup.png",
+    alt: "Chicken protein cup",
+    calories: "260",
+    proteinGrams: "40g",
+    carbs: "0g",
+    fat: "12g",
+    servingSize: "8 oz",
+    servingLabel: "8 oz Chicken Thighs",
+    purchasable: true,
+    description: "8 oz chicken protein cup",
+  },
+  {
+    id: "beef-cup",
+    name: "Beef Cup",
+    protein: "Beef",
+    size: "Cup",
+    image: "/assets/beef-cup.png",
+    alt: "Beef protein cup",
+    calories: "324",
+    proteinGrams: "38g",
+    carbs: "0g",
+    fat: "28g",
+    servingSize: "6.5 oz",
+    servingLabel: "6.5 oz Ground Beef",
+    purchasable: true,
+    description: "6.5 oz 90/10 ground beef protein cup",
   },
 ];
 
@@ -339,6 +380,11 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
     const sauce = getSauce(item.sauceId);
     if (!sauce) {
       errors.push("That sauce is not available.");
+      continue;
+    }
+
+    if (product.supportsSauce === false && sauce.id !== "no-sauce") {
+      errors.push(`${product.name} does not support sauce choices.`);
       continue;
     }
 

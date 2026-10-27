@@ -20,7 +20,6 @@ import {
   formatCompactMoney,
   formatMoney,
   formatPricingTier,
-  getNextPricingTier,
   MINIMUM_BOXES,
   ORDERS_OPEN,
   priceRangeFor,
@@ -46,6 +45,8 @@ type MealSelection = {
   productId: ProductId;
   sauceId: SauceId;
 };
+
+const CART_STORAGE_KEY = "threebyrd-cart-v1";
 
 export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: OrderBuilderProps) {
   const searchParams = useSearchParams();
@@ -73,6 +74,37 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const [welcomeEligible, setWelcomeEligible] = useState(true);
   const [weeklyMode, setWeeklyMode] = useState(false);
   const [weeklyCutoff, setWeeklyCutoff] = useState<string | null>(null);
+  const [cartHydrated, setCartHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(CART_STORAGE_KEY) ?? "null");
+      if (!Array.isArray(saved)) return;
+      const restored: MealSelection[] = [];
+      for (const item of saved) {
+        if (!item || !products.some((product) => product.id === item.productId && product.purchasable)) continue;
+        if (!SAUCE_OPTIONS.some((sauce) => sauce.id === item.sauceId)) continue;
+        const quantity = Number.isInteger(item.quantity) ? Math.min(Math.max(item.quantity, 0), 99) : 0;
+        for (let n = 0; n < quantity; n++) restored.push({ id: `restored-cart-${restored.length}`, productId: item.productId, sauceId: item.sauceId });
+      }
+      setMealSelections(restored);
+    } catch {
+      window.localStorage.removeItem(CART_STORAGE_KEY);
+    }
+    setCartHydrated(true);
+  }, []);
+  useEffect(() => {
+    if (!cartHydrated) return;
+    const grouped = new Map<string, { productId: ProductId; sauceId: SauceId; quantity: number }>();
+    for (const { productId, sauceId } of mealSelections) {
+      const key = `${productId}:${sauceId}`;
+      const current = grouped.get(key);
+      grouped.set(key, { productId, sauceId, quantity: (current?.quantity ?? 0) + 1 });
+    }
+    try {
+      if (grouped.size) window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify([...grouped.values()]));
+      else window.localStorage.removeItem(CART_STORAGE_KEY);
+    } catch { /* Storage may be unavailable; checkout still works. */ }
+  }, [mealSelections, cartHydrated]);
   useEffect(() => {
     if (!WEEKLY_SANDBOX_ENABLED) return;
     const listener = (event: Event) => { const detail = (event as CustomEvent).detail; setWeeklyMode(detail.weekly === true); setWelcomeEligible(detail.welcomeEligible !== false); setWeeklyCutoff(typeof detail.cutoff === "string" ? detail.cutoff : null); };
@@ -104,13 +136,6 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const saucePickerMeal = saucePickerMealId
     ? mealSelections.find((selection) => selection.id === saucePickerMealId) ?? null
     : null;
-  const nextTier = getNextPricingTier(quote.totalBoxes);
-  const nextTierProducts = nextTier
-    ? products.filter((product) => (
-      !quote.pricingTier
-      || CART_PRICING_TIERS[nextTier.tier].prices[product.id] < CART_PRICING_TIERS[quote.pricingTier].prices[product.id]
-    ))
-    : [];
   const deliveryAddressKey = JSON.stringify(deliveryAddress);
   const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddressKey === checkedDeliveryAddressKey;
   const recipientNameIsValid = normalizeRecipientName(recipientName) !== null;
@@ -119,36 +144,15 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     { value: 5, label: "Lower prices" },
     { value: 10, label: "Best standard prices" },
   ];
-  const funnelCopy = quote.totalBoxes < MINIMUM_BOXES
-    ? {
-      current: quote.totalBoxes === 0 ? "Start your order" : `${quote.totalBoxes} meal${quote.totalBoxes === 1 ? "" : "s"} selected`,
-      prompt: `Add ${MINIMUM_BOXES - quote.totalBoxes} more ${MINIMUM_BOXES - quote.totalBoxes === 1 ? "meal" : "meals"} to start your order`,
-      target: "",
-    }
-    : quote.totalBoxes < 5
-      ? {
-        current: "3-meal minimum met ✓",
-        prompt: `Add ${5 - quote.totalBoxes} more ${5 - quote.totalBoxes === 1 ? "meal" : "meals"}`,
-        target: "to unlock 5-meal pricing",
-      }
-      : quote.totalBoxes < 10
-        ? {
-          current: "5-meal pricing unlocked ✓",
-          prompt: `Add ${10 - quote.totalBoxes} more ${10 - quote.totalBoxes === 1 ? "meal" : "meals"}`,
-          target: "to unlock best standard pricing",
-        }
-        : {
-          current: "Best standard pricing unlocked ✓",
-          prompt: quote.totalBoxes >= 20 ? "Ordering for a group?" : "",
-          target: quote.totalBoxes >= 20 ? "Contact us for custom pricing" : "",
-        };
+  const mealsToMinimum = Math.max(MINIMUM_BOXES - quote.totalBoxes, 0);
+  const funnelCopy = {
+    current: "3 meal minimum",
+    prompt: mealsToMinimum > 0 ? `${mealsToMinimum} to go` : "Minimum reached",
+    target: "",
+  };
   const mobileCartHint = quote.totalBoxes < MINIMUM_BOXES
-    ? `Add ${MINIMUM_BOXES - quote.totalBoxes} more to start`
-    : quote.totalBoxes < 5
-      ? `Add ${5 - quote.totalBoxes} more → better pricing`
-      : quote.totalBoxes < 10
-        ? `Add ${10 - quote.totalBoxes} more → best pricing`
-        : "Best pricing ✓";
+    ? `${mealsToMinimum} to go`
+    : "Minimum reached";
 
   function scrollToSummary() {
     const summary = orderSummaryRef.current;
@@ -172,7 +176,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
     if (quantityForProduct(productId) >= 99) return;
     const id = `meal-${++mealSelectionIdRef.current}`;
     setMealSelections((current) => [...current, { id, productId, sauceId: "no-sauce" }]);
-    setSaucePickerMealId(id);
+    if (products.find((product) => product.id === productId)?.supportsSauce !== false) setSaucePickerMealId(id);
     setLastInteractedProductId(productId);
     setStatusMessage("");
   }
@@ -359,12 +363,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                       <div className="productCardBody">
                         <div className="productHeading">
                           <div>
-                            <p className="productProtein">{product.protein}</p>
                             <h3>{product.name}</h3>
+                            {product.servingLabel && <p className="productServingLabel">{product.servingLabel}</p>}
                           </div>
                           {priceRange ? (
-                            <div className="productPriceRange" aria-label={`${product.name}: ${formatCompactMoney(priceRange.lowestCents)} to ${formatCompactMoney(priceRange.highestCents)} per meal based on total order size`}>
-                              <strong>{formatCompactMoney(priceRange.lowestCents)} → {formatCompactMoney(priceRange.highestCents)}</strong>
+                            <div className="productPriceRange" aria-label={`${product.name}: ${formatCompactMoney(priceRange.highestCents)} to ${formatCompactMoney(priceRange.lowestCents)} per meal based on total order size`}>
+                              <strong>{formatCompactMoney(priceRange.highestCents)} → {formatCompactMoney(priceRange.lowestCents)}</strong>
                               <span>/ meal</span>
                               <small>based on total order size</small>
                             </div>
@@ -471,18 +475,12 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                 })}
               </div>
             ) : (
-              <p className="summaryEmpty">Your mix of Chicken and Beef will show up here.</p>
+              <p className="summaryEmpty">Your cart is empty.</p>
             )}
             <div className="cartUpsell" role="status" aria-live="polite">
               <strong>{funnelCopy.current}</strong>
               {funnelCopy.prompt && <p>{funnelCopy.prompt} {funnelCopy.target}</p>}
-              {nextTier && quote.totalBoxes >= MINIMUM_BOXES && nextTierProducts.length > 0 && <div className="cartUpsellPrices">
-                {nextTierProducts.map((product) => (
-                  <span key={product.id}><small>{product.name}</small><b>{formatCompactMoney(CART_PRICING_TIERS[nextTier.tier].prices[product.id])}</b></span>
-                ))}
-              </div>}
               {quote.totalBoxes < MINIMUM_BOXES && <button type="button" className="cartBuildButton" onClick={scrollToProducts}>Choose meals <span aria-hidden="true">↓</span></button>}
-              {quote.totalBoxes >= 20 && <a className="cartGroupLink" href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">Contact us for group pricing →</a>}
             </div>
             <div className="summaryTotal">
               <div className="summaryTotalRow"><span>Meal subtotal</span><strong>{formatMoney(weeklyMode ? weeklyPricing.subtotalBeforeDiscountCents : quote.subtotalCents)}</strong></div>
@@ -507,16 +505,17 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             />
             <p className="deliveryNote"><span aria-hidden="true">✦</span> FREE DELIVERY IN ITHACA</p>
             <fieldset className="smsReminderDecision" aria-describedby="sms-reminder-help">
-              <legend>Optional text messages from ThreeByrd Meal Prep</legend>
-              <p id="sms-reminder-help">Choose either, both, or neither. Consent is not a condition of purchase.</p>
+              <legend>Optional texts</legend>
+              <p id="sms-reminder-help">Choose either, both, or neither. Not required to buy.</p>
               <label className="smsReminderOption" htmlFor="sms-reminder-yes" aria-label="Text me about my order">
                 <input id="sms-reminder-yes" type="checkbox" name="smsReminderDecision" checked={smsReminderDecision === "yes"} onChange={(event) => setSmsReminderDecision(event.target.checked ? "yes" : "no")} />
-                <span><strong>Text me about my order</strong><small>I agree to receive automated ThreeByrd Meal Prep order and delivery updates at the mobile number I provide during secure checkout. Message frequency varies by order. Message and data rates may apply. Reply STOP to unsubscribe or HELP for help.</small></span>
+                <span><strong>Order updates</strong><small>Automated order and delivery texts to the number provided at checkout.</small></span>
               </label>
               <label className="smsReminderOption" htmlFor="sms-marketing-yes" aria-label="Text me menus and special offers">
                 <input id="sms-marketing-yes" type="checkbox" name="smsMarketingDecision" checked={smsMarketingDecision === "yes"} onChange={(event) => setSmsMarketingDecision(event.target.checked ? "yes" : "no")} />
-                <span><strong>Text me menus and special offers</strong><small>I agree to receive recurring automated promotional texts from ThreeByrd Meal Prep at the mobile number I provide during secure checkout. Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe or HELP for help.</small></span>
+                <span><strong>Menus and offers</strong><small>Recurring promotional texts to the number provided at checkout.</small></span>
               </label>
+              <p className="smsReminderFinePrint">Msg &amp; data rates may apply. Reply STOP to unsubscribe or HELP for help.</p>
               <p className="smsPolicyLinks">Read our <a href={withBasePath("/privacy")}>Privacy Policy</a> and <a href={withBasePath("/terms")}>Terms &amp; Conditions</a>. Help: <a href="mailto:luc@threebyrd.com">luc@threebyrd.com</a>.</p>
             </fieldset>
             </>}
@@ -528,7 +527,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
           </aside>
         </div>
       </div>
-      {saucePickerMeal && (
+      {saucePickerMeal && products.find((product) => product.id === saucePickerMeal.productId)?.supportsSauce !== false && (
         <div className="sauceDialogBackdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setSaucePickerMealId(null);
         }}>

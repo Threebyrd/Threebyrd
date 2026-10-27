@@ -199,7 +199,7 @@ export const products: readonly Product[] = [
     calories: "324",
     proteinGrams: "38g",
     carbs: "0g",
-    fat: "28g",
+    fat: "20g",
     servingSize: "6.5 oz",
     servingLabel: "6.5 oz Ground Beef",
     purchasable: true,

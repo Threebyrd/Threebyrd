@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 import {
+  GOOGLE_SHEETS_HEADERS,
   buildGoogleSheetsRequestBody,
   buildGoogleSheetsDiagnosticRequestBody,
   buildOrderSheetPayload,
@@ -79,6 +80,8 @@ test("builds the exact validated mixed-cart Sheets row payload", () => {
     littleChickenQty: 0,
     bigBeefQty: 2,
     littleBeefQty: 0,
+    chickenCupQty: 0,
+    beefCupQty: 0,
     totalMeals: 5,
     mealSubtotal: 47,
     discount: 0,
@@ -144,6 +147,29 @@ test("exports historical Stripe-confirmed pricing without repricing against the 
   assert.equal(payload.bigBeefQty, 1);
   assert.equal(payload.littleChickenQty, 1);
   assert.equal(payload.littleBeefQty, 1);
+});
+
+test("exports cup quantities and breakdown for the production 25-column sheet without repricing", () => {
+  const cupOrder = {
+    ...mixedOrder,
+    items: JSON.stringify([
+      { productId: "chicken-cup", quantity: 2, sauceId: "bbq" },
+      { productId: "beef-cup", quantity: 1 },
+    ]),
+    amountCents: 2_100,
+    subtotalCents: 2_100,
+  };
+  const payload = buildOrderSheetPayload(cupOrder, "test");
+  assert.equal(payload.chickenCupQty, 2);
+  assert.equal(payload.beefCupQty, 1);
+  assert.equal(payload.totalMeals, 3);
+  assert.equal(payload.mealSubtotal, 21);
+  assert.equal(payload.totalPaid, 21);
+  assert.equal(payload.mealBreakdown, "Chicken Cup — BBQ ×2\nBeef Cup — No Sauce ×1");
+  assert.deepEqual(GOOGLE_SHEETS_HEADERS.slice(6, 13), [
+    "Big Chicken Qty", "Little Chicken Qty", "Big Beef Qty", "Little Beef Qty",
+    "Chicken Cup Qty", "Beef Cup Qty", "Total Meals",
+  ]);
 });
 
 test("rejects unknown products and malformed quantities in confirmed order data", () => {

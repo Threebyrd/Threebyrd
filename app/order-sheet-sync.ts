@@ -11,6 +11,8 @@ export const GOOGLE_SHEETS_HEADERS = [
   "Little Chicken Qty",
   "Big Beef Qty",
   "Little Beef Qty",
+  "Chicken Cup Qty",
+  "Beef Cup Qty",
   "Total Meals",
   "Meal Subtotal",
   "Discount",
@@ -61,6 +63,8 @@ export type GoogleSheetsOrderPayload = {
   littleChickenQty: number;
   bigBeefQty: number;
   littleBeefQty: number;
+  chickenCupQty: number;
+  beefCupQty: number;
   totalMeals: number;
   mealSubtotal: number;
   discount: number;
@@ -98,11 +102,18 @@ const retryMaxSeconds = 6 * 60 * 60;
 
 export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode: "test" | "live"): GoogleSheetsOrderPayload {
   const items = parseItems(order.items);
+  // Cups were added after the original Worker catalog. Recognize them here
+  // for export only; this does not affect checkout availability or pricing.
+  const sheetProductName = (productId: string) => productId === "chicken-cup"
+    ? "Chicken Cup"
+    : productId === "beef-cup"
+      ? "Beef Cup"
+      : getProduct(productId)?.name;
   // D1 holds the Stripe-reconciled amount paid at checkout. Historical orders
   // must not be re-priced against today's catalog when they are exported.
   const mealCount = items.reduce((total, item) => {
     if (
-      !getProduct(item.productId) ||
+      !sheetProductName(item.productId) ||
       !Number.isSafeInteger(item.quantity) ||
       item.quantity <= 0 ||
       !getSauce(item.sauceId)
@@ -153,9 +164,8 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     .reduce((total, item) => total + item.quantity, 0);
   const mealBreakdown = items
     .map((item) => {
-      const product = getProduct(item.productId)!;
       const sauce = getSauce(item.sauceId)!;
-      return `${product.name} — ${sauce.name} ×${item.quantity}`;
+      return `${sheetProductName(item.productId)} — ${sauce.name} ×${item.quantity}`;
     })
     .join("\n");
 
@@ -172,6 +182,8 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     littleChickenQty: quantityFor("little-chicken"),
     bigBeefQty: quantityFor("big-beef"),
     littleBeefQty: quantityFor("little-beef"),
+    chickenCupQty: quantityFor("chicken-cup"),
+    beefCupQty: quantityFor("beef-cup"),
     totalMeals: mealCount,
     mealSubtotal: Number((order.subtotalCents / 100).toFixed(2)),
     discount: Number((order.discountCents / 100).toFixed(2)),

@@ -67,6 +67,8 @@ test("exports Stripe-reconciled discounted subtotal, tax, and final total", () =
     littleChickenQty: 0,
     bigBeefQty: 0,
     littleBeefQty: 0,
+    chickenCupQty: 0,
+    beefCupQty: 0,
     totalMeals: 3,
     mealSubtotal: 30,
     discount: 3,

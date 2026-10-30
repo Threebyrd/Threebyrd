@@ -77,7 +77,7 @@ export type GoogleSheetsOrderPayload = {
 
 export type GoogleSheetsSyncResult =
   | { ok: true; duplicate: boolean; diagnostics?: GoogleSheetsDestinationDiagnostics }
-  | { ok: false; reason: "not_configured" | "timeout" | "network_error" | "malformed_response" | "endpoint_rejected" | "endpoint_unauthorized" | "endpoint_wrong_mode" | "spreadsheet_not_configured" | "spreadsheet_unavailable" | "orders_worksheet_unavailable" | "orders_worksheet_missing" | `http_${number}` };
+  | { ok: false; reason: "not_configured" | "timeout" | "network_error" | "malformed_response" | "endpoint_rejected" | "endpoint_unauthorized" | "endpoint_wrong_mode" | "spreadsheet_not_configured" | "spreadsheet_unavailable" | "orders_worksheet_unavailable" | "orders_worksheet_missing" | `http_${number}`; endpointError?: string };
 
 export type GoogleSheetsDestinationDiagnostics = {
   spreadsheetName: string;
@@ -280,18 +280,37 @@ export async function sendOrderToGoogleSheets(
     );
 
     if (!response.ok) {
-      return { ok: false, reason: `http_${response.status}` };
+      let errorBody: unknown;
+      try {
+        errorBody = await response.json();
+      } catch {
+        errorBody = "non-JSON response";
+      }
+      console.log("Google Sheets order export response", JSON.stringify({ orderId: payload.orderId, status: response.status, response: errorBody }));
+      const endpointError = getSafeEndpointError(errorBody);
+      return {
+        ok: false,
+        reason: `http_${response.status}`,
+        ...(endpointError ? { endpointError } : {}),
+      };
     }
 
     let body: unknown;
     try {
       body = await response.json();
     } catch {
+      console.log("Google Sheets order export response", JSON.stringify({ orderId: payload.orderId, status: response.status, response: "non-JSON response" }));
       return { ok: false, reason: "malformed_response" };
     }
 
+    console.log("Google Sheets order export response", JSON.stringify({ orderId: payload.orderId, status: response.status, response: body }));
     if (!isGoogleSheetsResponse(body)) {
-      return { ok: false, reason: getSafeEndpointRejectionReason(body) };
+      const endpointError = getSafeEndpointError(body);
+      return {
+        ok: false,
+        reason: getSafeEndpointRejectionReason(body),
+        ...(endpointError ? { endpointError } : {}),
+      };
     }
 
     const diagnostics = getDestinationDiagnostics(body);
@@ -385,9 +404,9 @@ function isGoogleSheetsResponse(value: unknown): value is { ok: true; inserted?:
     return false;
   }
 
-  const inserted = (value as { inserted?: unknown }).inserted === true;
-  const duplicate = (value as { duplicate?: unknown }).duplicate === true;
-  return inserted !== duplicate;
+  const resultFlags = ["inserted", "duplicate", "updated"]
+    .filter((key) => (value as Record<string, unknown>)[key] === true);
+  return resultFlags.length === 1;
 }
 
 function isGoogleSheetsDiagnosticResponse(value: unknown): value is { ok: true; diagnostic: true; [key: string]: unknown } {
@@ -444,6 +463,14 @@ function getSafeEndpointRejectionReason(value: unknown): Extract<GoogleSheetsSyn
     default:
       return "endpoint_rejected";
   }
+}
+
+function getSafeEndpointError(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null || typeof (value as { error?: unknown }).error !== "string") {
+    return undefined;
+  }
+  const error = (value as { error: string }).error;
+  return /^[A-Za-z0-9 .,_-]{1,120}$/.test(error) ? error : undefined;
 }
 
 function isAllowedGoogleAppsScriptUrl(value: string): boolean {

@@ -200,7 +200,7 @@ test("keeps Sheets failures retryable and never turns them into fulfillment fail
   }, async () => {
     assert.deepEqual(await sendOrderToGoogleSheets(payload, {
       fetchImpl: async () => response({ error: "temporary" }, { ok: false, status: 503 }),
-    }), { ok: false, reason: "http_503" });
+    }), { ok: false, reason: "http_503", endpointError: "temporary" });
     assert.deepEqual(await sendOrderToGoogleSheets(payload, {
       fetchImpl: async () => response(new Error("not-json")),
     }), { ok: false, reason: "malformed_response" });
@@ -209,10 +209,10 @@ test("keeps Sheets failures retryable and never turns them into fulfillment fail
     }), { ok: false, reason: "endpoint_rejected" });
     assert.deepEqual(await sendOrderToGoogleSheets(payload, {
       fetchImpl: async () => response({ ok: false, error: "Spreadsheet destination is not configured." }),
-    }), { ok: false, reason: "spreadsheet_not_configured" });
+    }), { ok: false, reason: "spreadsheet_not_configured", endpointError: "Spreadsheet destination is not configured." });
     assert.deepEqual(await sendOrderToGoogleSheets(payload, {
       fetchImpl: async () => response({ ok: false, error: "Configured spreadsheet could not be opened." }),
-    }), { ok: false, reason: "spreadsheet_unavailable" });
+    }), { ok: false, reason: "spreadsheet_unavailable", endpointError: "Configured spreadsheet could not be opened." });
     assert.deepEqual(await sendOrderToGoogleSheets(payload, {
       fetchImpl: async () => { throw new Error("network down"); },
     }), { ok: false, reason: "network_error" });
@@ -226,6 +226,25 @@ test("keeps Sheets failures retryable and never turns them into fulfillment fail
       fetchImpl: async () => { throw new Error("must not be called"); },
     })), { ok: false, reason: "not_configured" });
   });
+});
+
+test("logs the full Apps Script reply without logging the sync secret", async () => {
+  const logs = [];
+  const originalLog = console.log;
+  console.log = (...values) => logs.push(values.join(" "));
+  try {
+    await withEnvironment({
+      GOOGLE_SHEETS_WEB_APP_URL: "https://script.google.com/macros/s/example/exec",
+      GOOGLE_SHEETS_SYNC_SECRET: "never-log-this-secret",
+    }, () => sendOrderToGoogleSheets(buildOrderSheetPayload(mixedOrder, "test"), {
+      fetchImpl: async () => response({ ok: false, error: "Missing required order field" }),
+    }));
+  } finally {
+    console.log = originalLog;
+  }
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /Missing required order field/);
+  assert.doesNotMatch(logs[0], /never-log-this-secret/);
 });
 
 function loadAppsScript(allowedMode = "test", spreadsheetId = "staging-spreadsheet-id", options = {}) {
@@ -453,6 +472,9 @@ test("generic ok responses, malformed success, and doGet-shaped responses stay r
     assert.deepEqual(await sendOrderToGoogleSheets(payload, {
       fetchImpl: async () => response({ ok: true, duplicate: true }),
     }), { ok: true, duplicate: true });
+    assert.deepEqual(await sendOrderToGoogleSheets(payload, {
+      fetchImpl: async () => response({ ok: true, updated: true }),
+    }), { ok: true, duplicate: false });
   });
 });
 

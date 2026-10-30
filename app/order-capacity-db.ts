@@ -473,8 +473,11 @@ export async function processPendingOrderSheetExports(
     let result: Awaited<ReturnType<typeof sendOrderToGoogleSheets>>;
     try {
       result = await send(buildOrderSheetPayload(item.order, getConfiguredStripeMode()));
-    } catch {
-      result = { ok: false, reason: "endpoint_rejected" };
+    } catch (error) {
+      const endpointError = error instanceof Error && /^[A-Za-z0-9 .,_-]{1,120}$/.test(error.message)
+        ? error.message
+        : undefined;
+      result = { ok: false, reason: "endpoint_rejected", ...(endpointError ? { endpointError } : {}) };
     }
 
     if (result.ok && typeof result.duplicate === "boolean") {
@@ -484,8 +487,9 @@ export async function processPendingOrderSheetExports(
       await markOrderSheetExportSynced(database, item.order.id, item.claimToken, now);
     } else {
       const reason = result.ok ? "endpoint_rejected" : result.reason;
-      console.error("Google Sheets order export failed", reason);
-      await markOrderSheetExportPending(database, item.order.id, item.claimToken, item.attempts, reason, now);
+      const visibleError = !result.ok && result.endpointError ? result.endpointError : reason;
+      console.error("Google Sheets order export failed", JSON.stringify({ orderId: item.order.id, reason, error: visibleError }));
+      await markOrderSheetExportPending(database, item.order.id, item.claimToken, item.attempts, visibleError, now);
     }
   }
 }

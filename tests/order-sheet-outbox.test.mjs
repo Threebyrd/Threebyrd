@@ -154,6 +154,26 @@ test("a generic ok response cannot mark an export synced", async () => {
   assert.equal(database.exportRow.attempts, 1);
 });
 
+test("a structured Apps Script rejection stays pending with the exact safe endpoint error", async () => {
+  const database = new FakeOutboxD1();
+  const previousMode = process.env.STRIPE_MODE;
+  process.env.STRIPE_MODE = "test";
+  try {
+    await processPendingOrderSheetExports(database, 1_000, 10, async () => ({
+      ok: false,
+      reason: "endpoint_rejected",
+      endpointError: "Missing required order field",
+    }));
+  } finally {
+    if (previousMode === undefined) delete process.env.STRIPE_MODE;
+    else process.env.STRIPE_MODE = previousMode;
+  }
+
+  assert.equal(database.exportRow.status, "pending");
+  assert.equal(database.exportRow.last_error, "Missing required order field");
+  assert.equal(database.exportRow.attempts, 1);
+});
+
 test("a stale worker cannot mark a reclaimed export synced", async () => {
   const database = new FakeOutboxD1();
   const previousMode = process.env.STRIPE_MODE;

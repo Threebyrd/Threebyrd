@@ -13,12 +13,12 @@ This integration replaces the unfinished Zapier export. The verified Stripe webh
 Open the existing `ThreeByrd Weekly Orders` spreadsheet and select the `Orders` worksheet. Row 1 must contain these headers, in this exact order:
 
 ```text
-Order Date/Time | Order ID | Customer Name | Phone | Email | Ithaca Delivery Address | Big Chicken Qty | Little Chicken Qty | Big Beef Qty | Little Beef Qty | Total Meals | Meal Subtotal | Discount | Sales Tax | Total Paid | Delivery Date | Stripe Session ID | Meal Breakdown | Payment Status | Order Status | Name | Notes | SMS Consent — Orders + Promotions
+Order Date/Time | Order ID | Customer Name | Phone | Email | Ithaca Delivery Address | Big Chicken Qty | Little Chicken Qty | Big Beef Qty | Little Beef Qty | Chicken Cup Qty | Beef Cup Qty | Total Meals | Meal Subtotal | Discount | Sales Tax | Total Paid | Delivery Date | Stripe Session ID | Meal Breakdown | Payment Status | Order Status | Name | Notes | SMS Consent — Orders + Promotions
 ```
 
 Keep the existing Weekly Summary worksheet unchanged. `Meal Subtotal`, `Discount`, `Sales Tax`, and `Total Paid` are written as numeric dollar values, so the sheet can format them as currency.
 
-For an existing non-empty `Orders` worksheet, insert three new columns immediately after `Total Meals` before entering the new headers. This shifts historical `Total Paid` and later values to the right instead of relabeling old data.
+For an existing non-empty `Orders` worksheet, insert two new columns immediately before `Total Meals` before entering the new headers. This shifts historical totals and later values to the right instead of relabeling old data.
 
 ## Apps Script deployment
 

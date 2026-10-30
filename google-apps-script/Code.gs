@@ -12,6 +12,8 @@ const ORDER_HEADERS = [
   "Little Chicken Qty",
   "Big Beef Qty",
   "Little Beef Qty",
+  "Chicken Cup Qty",
+  "Beef Cup Qty",
   "Total Meals",
   "Meal Subtotal",
   "Discount",
@@ -81,22 +83,22 @@ function doPost(e) {
       validateHeaders(sheet);
       const rows = readOrderRows(sheet);
       const matchingRow = rows.findIndex(function(row) {
-        return String(row[1]) === order.orderId || String(row[16]) === paymentReference(order);
+        return String(row[1]) === order.orderId || String(row[18]) === paymentReference(order);
       });
       const destination = getDestinationDiagnostics(spreadsheet, sheet, true);
       if (order.weeklyRevision !== undefined) {
         if (!weeklyFeaturesEnabled() || !Number.isSafeInteger(order.weeklyRevision) || order.weeklyRevision < 1 || matchingRow < 0) return json({ ok: false, error: "Weekly revisions require an existing staging order" });
         const existing = rows[matchingRow];
-        if (String(existing[1]) !== order.orderId || String(existing[16]) !== paymentReference(order)) return json({ ok: false, error: "Revision payment reference mismatch" });
-        const marker = String(existing[21]).match(/\[weekly-revision:(\d+)\]/);
+        if (String(existing[1]) !== order.orderId || String(existing[18]) !== paymentReference(order)) return json({ ok: false, error: "Revision payment reference mismatch" });
+        const marker = String(existing[23]).match(/\[weekly-revision:(\d+)\]/);
         const current = marker ? Number(marker[1]) : 0;
         if (current === order.weeklyRevision) return json({ ok: true, duplicate: true, revision: current, ...destination, matchingRow: matchingRow + 2 });
         if (current + 1 !== order.weeklyRevision) return json({ ok: false, error: "Weekly revision out of sequence" });
         const revised = toSheetRow(order);
         // Preserve contact fields, payment identity and manually managed kitchen status.
-        sheet.getRange(matchingRow + 2, 7, 1, 9).setValues([revised.slice(6, 15)]);
-        sheet.getRange(matchingRow + 2, 18).setValue(revised[17]);
-        sheet.getRange(matchingRow + 2, 22).setValue(safeSheetText(String(existing[21]).replace(/\s*\[weekly-revision:\d+\]/g, "") + " | Revision " + order.weeklyRevision + ": current meal total " + order.totalMeals + "; current paid total " + order.totalPaid + " [weekly-revision:" + order.weeklyRevision + "]"));
+        sheet.getRange(matchingRow + 2, 7, 1, 11).setValues([revised.slice(6, 17)]);
+        sheet.getRange(matchingRow + 2, 20).setValue(revised[19]);
+        sheet.getRange(matchingRow + 2, 24).setValue(safeSheetText(String(existing[23]).replace(/\s*\[weekly-revision:\d+\]/g, "") + " | Revision " + order.weeklyRevision + ": current meal total " + order.totalMeals + "; current paid total " + order.totalPaid + " [weekly-revision:" + order.weeklyRevision + "]"));
         return json({ ok: true, updated: true, revision: order.weeklyRevision, ...destination, matchingRow: matchingRow + 2 });
       }
       if (matchingRow >= 0) {
@@ -206,8 +208,8 @@ function validateOrder(order) {
   if (!/^(paid|no_payment_required)$/.test(order.paymentStatus) || order.orderStatus !== "New") return "Invalid order status";
   if (!/^(Yes|No)?$/.test(order.smsConsent || "")) return "Invalid SMS consent";
 
-  const quantities = ["bigChickenQty", "littleChickenQty", "bigBeefQty", "littleBeefQty"].map(function(key) {
-    return order[key];
+  const quantities = ["bigChickenQty", "littleChickenQty", "bigBeefQty", "littleBeefQty", "chickenCupQty", "beefCupQty"].map(function(key) {
+    return order[key] === undefined ? 0 : order[key];
   });
   if (!quantities.every(function(value) { return Number.isInteger(value) && value >= 0; })) return "Invalid meal quantities";
   if (!Number.isInteger(order.totalMeals) || order.totalMeals < 3) return "Invalid meal total";
@@ -232,6 +234,8 @@ function toSheetRow(order) {
     order.littleChickenQty,
     order.bigBeefQty,
     order.littleBeefQty,
+    order.chickenCupQty === undefined ? 0 : order.chickenCupQty,
+    order.beefCupQty === undefined ? 0 : order.beefCupQty,
     order.totalMeals,
     order.mealSubtotal,
     order.discount,

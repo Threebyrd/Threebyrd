@@ -278,7 +278,7 @@ function loadAppsScript(allowedMode = "test", spreadsheetId = "staging-spreadshe
   const secret = "test-script-secret";
   const rows = [[
     "Order Date/Time", "Order ID", "Customer Name", "Phone", "Email", "Ithaca Delivery Address",
-    "Big Chicken Qty", "Little Chicken Qty", "Big Beef Qty", "Little Beef Qty", "Total Meals", "Meal Subtotal", "Discount", "Sales Tax", "Total Paid",
+    "Big Chicken Qty", "Little Chicken Qty", "Big Beef Qty", "Little Beef Qty", "Chicken Cup Qty", "Beef Cup Qty", "Total Meals", "Meal Subtotal", "Discount", "Sales Tax", "Total Paid",
     "Delivery Date", "Stripe Session ID", "Meal Breakdown", "Payment Status", "Order Status", "Name", "Notes", "SMS Consent — Orders + Promotions",
   ]];
   const sheet = {
@@ -334,17 +334,17 @@ test("Apps Script authenticates, opens the configured spreadsheet, appends one r
   });
   assert.equal(rows.length, 2);
   assert.equal(rows[1][1], "order-123");
-  assert.equal(rows[1][10], 5);
-  assert.equal(rows[1][11], 47);
-  assert.equal(rows[1][12], 0);
-  assert.equal(rows[1][13], 0);
-  assert.equal(rows[1][14], 47);
-  assert.equal(rows[1][16], "cs_test_123");
-  assert.equal(rows[1][17], "Big Chicken — No Sauce ×3\nBig Beef — No Sauce ×2");
-  assert.equal(rows[1][18], "paid");
-  assert.equal(rows[1][19], "New");
-  assert.equal(rows[1][20], "John Smith");
-  assert.equal(rows[1][22], "Yes");
+  assert.equal(rows[1][12], 5);
+  assert.equal(rows[1][13], 47);
+  assert.equal(rows[1][14], 0);
+  assert.equal(rows[1][15], 0);
+  assert.equal(rows[1][16], 47);
+  assert.equal(rows[1][18], "cs_test_123");
+  assert.equal(rows[1][19], "Big Chicken — No Sauce ×3\nBig Beef — No Sauce ×2");
+  assert.equal(rows[1][20], "paid");
+  assert.equal(rows[1][21], "New");
+  assert.equal(rows[1][22], "John Smith");
+  assert.equal(rows[1][24], "Yes");
   assert.deepEqual(openedSpreadsheetIds, ["staging-spreadsheet-id"]);
 
   const duplicate = JSON.parse(context.doPost(request).value);
@@ -436,8 +436,8 @@ test("Apps Script stores formula-like customer text as literal text", () => {
   });
   assert.equal(rows[1][2], "'=HYPERLINK(\"https://example.com\")");
   assert.equal(rows[1][5], "'+not-a-formula-command");
-  assert.equal(rows[1][20], "John Smith");
-  assert.equal(rows[1][21], "'@literal");
+  assert.equal(rows[1][22], "John Smith");
+  assert.equal(rows[1][23], "'@literal");
 });
 
 test("the Apps Script source contains no credential material", () => {
@@ -627,7 +627,7 @@ test('PaymentIntent order references are accepted only in the pinned test workbo
     const request={postData:{contents:JSON.stringify({secret,order:{...payload,stripeMode:mode}})}};
     const result=JSON.parse(context.doPost(request).value);
     assert.equal(result.ok,allowed);
-    if(allowed){assert.equal(rows[1][16],payload.stripePaymentIntentId);assert.equal(JSON.parse(context.doPost(request).value).duplicate,true);assert.equal(rows.length,2);}
+    if(allowed){assert.equal(rows[1][18],payload.stripePaymentIntentId);assert.equal(JSON.parse(context.doPost(request).value).duplicate,true);assert.equal(rows.length,2);}
     else assert.equal(rows.length,1);
   }
 });
@@ -635,10 +635,10 @@ test('PaymentIntent order references are accepted only in the pinned test workbo
 test('staging weekly revisions update one kitchen row in order and preserve operator status', () => {
  const {context,rows,secret}=loadAppsScript('test','1yIAcqcs5jdivSJb1AfAxNiu8b4_MuFzLD0B8SpUY4oE');
  const payload=buildOrderSheetPayload(mixedOrder,'test');const post=order=>JSON.parse(context.doPost({postData:{contents:JSON.stringify({secret,order})}}).value);
- assert.equal(post(payload).inserted,true);rows[1][19]='Packed';rows[1][21]='Operator note';
+ assert.equal(post(payload).inserted,true);rows[1][21]='Packed';rows[1][23]='Operator note';
  const revision={...payload,bigChickenQty:payload.bigChickenQty+1,totalMeals:payload.totalMeals+1,mealSubtotal:payload.mealSubtotal+10,totalPaid:payload.totalPaid+10,weeklyRevision:1};
- assert.equal(post({...revision,weeklyRevision:2}).ok,false);assert.equal(rows[1][10],payload.totalMeals);
- assert.equal(post(revision).updated,true);assert.equal(rows.length,2);assert.equal(rows[1][10],revision.totalMeals);assert.equal(rows[1][19],'Packed');assert.match(rows[1][21],/Operator note/);assert.match(rows[1][21],/weekly-revision:1/);
+ assert.equal(post({...revision,weeklyRevision:2}).ok,false);assert.equal(rows[1][12],payload.totalMeals);
+ assert.equal(post(revision).updated,true);assert.equal(rows.length,2);assert.equal(rows[1][12],revision.totalMeals);assert.equal(rows[1][21],'Packed');assert.match(rows[1][23],/Operator note/);assert.match(rows[1][23],/weekly-revision:1/);
  assert.equal(post(revision).duplicate,true);assert.equal(post({...revision,orderId:'different'}).ok,false);
 });
 

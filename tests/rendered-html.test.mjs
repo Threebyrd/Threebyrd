@@ -44,7 +44,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.doesNotMatch(html, /Orders are currently closed|Orders close|Order window closed|Closing soon|Ordering is currently closed|Sold out for this week|Check back for the next ordering window/);
   assert.match(html, /Continue to secure checkout|Check delivery address/);
   assert.match(html, /<fieldset[^>]*class="smsReminderDecision/);
-  assert.match(html, /Optional text messages from ThreeByrd Meal Prep/);
+  assert.match(html, /Optional texts/);
   for (const name of ["smsReminderDecision", "smsMarketingDecision"]) {
     assert.match(html, new RegExp(`type="checkbox" name="${name}"`));
     assert.doesNotMatch(html, new RegExp(`name="${name}"[^>]*(?:checked|required)`));
@@ -81,7 +81,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.match(html, /785/);
   assert.match(html, /46g/);
   assert.match(html, /More meals = lower prices/);
-  assert.match(html, /aria-label="Big Chicken: \$8\.50 to \$10 per meal based on total order size"/);
+  assert.match(html, /aria-label="Big Chicken: \$10 to \$8\.50 per meal based on total order size"/);
   assert.match(html, /aria-label="Big Beef: \$9\.50 to \$11 per meal based on total order size"/);
   assert.match(html, /aria-label="Little Chicken: \$7 to \$8 per meal based on total order size"/);
   assert.match(html, /aria-label="Little Beef: \$8 to \$9 per meal based on total order size"/);
@@ -171,7 +171,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
     assert.match(html, new RegExp(product));
   }
   const productCardOrder = [...html.matchAll(/<article class="productCard[^>]*>[\s\S]*?<h3>([^<]+)<\/h3>/g)].map((match) => match[1]);
-  assert.deepEqual(productCardOrder, ["Big Chicken", "Big Beef", "Little Chicken", "Little Beef"]);
+  assert.deepEqual(productCardOrder, ["Big Chicken", "Big Beef", "Little Chicken", "Little Beef", "Chicken Cup", "Beef Cup"]);
   assert.doesNotMatch(html, /Coming soon|Not available for purchase yet/i);
   assert.match(html, /\$8/);
   assert.match(html, /\$10/);
@@ -181,7 +181,7 @@ test("server-renders the updated ThreeByrd ordering experience", async () => {
   assert.doesNotMatch(html, /threebyrd-wordmark-wide\.png/);
   assert.doesNotMatch(html, /id="menu"|id="menu-title"|href="#menu"|class="menuCard|macroStrip/i);
   assert.equal((html.match(/<h1\b/g) ?? []).length, 1);
-  assert.equal((html.match(/class="productCard productCard/g) ?? []).length, 4);
+  assert.equal((html.match(/class="productCard productCard/g) ?? []).length, 6);
   assert.equal((html.match(/class="founderCard/g) ?? []).length, 0);
 });
 

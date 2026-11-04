@@ -1,3 +1,4 @@
+import OrderMinimum from "./components/OrderMinimum";
 import Image from "next/image";
 import WeeklyPlanMode from "./components/WeeklyPlanMode";
 import CountUpTotal from "./components/CountUpTotal";
@@ -69,7 +70,7 @@ export default function Home() {
     <>
       <a className="announcementBar" href="#order">
         <span>Free delivery in Ithaca</span>
-        <strong>Build your order · 3 meal minimum</strong>
+        <strong>Build your order · <OrderMinimum /></strong>
         <span aria-hidden="true">→</span>
       </a>
 
@@ -103,7 +104,7 @@ export default function Home() {
               </div>
               <dl className="heroProof" aria-label="ThreeByrd at a glance">
                 <div><dt>Delivery</dt><dd>Free in Ithaca</dd></div>
-                <div><dt>Minimum</dt><dd>3 meals</dd></div>
+                <div><dt>Minimum</dt><dd><OrderMinimum original="3 meals" /></dd></div>
                 <div><dt>Cook + delivery</dt><dd>{deliveryDay.replace(/,.*/, "")}</dd></div>
               </dl>
             </div>

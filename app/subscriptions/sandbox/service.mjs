@@ -14,11 +14,11 @@ import { quoteWeeklyPlan } from '../quote.ts';
 import { Problem,equal,hash } from './store-core.mjs';
 
 export function createSandboxService({store,baseUrl,payments,checkAddress,devKey,staticRoot,assetRoot,siteRoot,firstPayments,sendLogin,hostedOrigin,assetFetch,allowedEmail,paidEdits,operatorEmail,recoveryAdapter,requestBackgroundCheck,productionOrigin,billingAllowed=()=>true}){
- const base=new URL(baseUrl);if(!(base.hostname==='localhost'&&base.protocol==='http:')&&!(productionOrigin==='https://weekly.threebyrd.com'&&base.origin===productionOrigin&&payments.environment==='stripe_live')&&!(hostedOrigin==='https://threebyrd-weekly-staging.thorbwag.workers.dev'&&base.origin===hostedOrigin))throw new Error('This review server is local-only. Use http://localhost and an isolated database.');
+ const base=new URL(baseUrl);const localOrigins=new Set([base.origin,`http://127.0.0.1:${base.port}`]);if(!(base.hostname==='localhost'&&base.protocol==='http:')&&!(productionOrigin==='https://weekly.threebyrd.com'&&base.origin===productionOrigin&&payments.environment==='stripe_live')&&!(hostedOrigin==='https://threebyrd-weekly-staging.thorbwag.workers.dev'&&base.origin===hostedOrigin))throw new Error('This review server is local-only. Use http://localhost and an isolated database.');
  const mailbox=[];
  const response=(data,status=200,headers={})=>Response.json(data,{status,headers:{'cache-control':'no-store','referrer-policy':'no-referrer','x-content-type-options':'nosniff',...headers}});
  const cookie=request=>request.headers.get('cookie')?.split(';').map(c=>c.trim()).find(c=>c.startsWith('weekly_sandbox='))?.slice('weekly_sandbox='.length);
- const requireOrigin=request=>{if(request.headers.get('origin')!==base.origin)throw new Problem(403,'Request origin is not allowed.')};
+ const requireOrigin=request=>{if(!localOrigins.has(request.headers.get('origin')??''))throw new Problem(403,'Request origin is not allowed.')};
  const auth=(request,mutation=false)=>{
   const session=store.authenticate(cookie(request));if(!session)throw new Problem(401,'Use your email link to sign in.');
   if(mutation){requireOrigin(request);if(!equal(request.headers.get('x-csrf-token'),session.csrf))throw new Problem(403,'Refresh your session and try again.')}
@@ -28,7 +28,7 @@ export function createSandboxService({store,baseUrl,payments,checkAddress,devKey
  async function address(input){const normalized=normalizeDeliveryAddressFields(input);if(!normalized)throw new Problem(400,'Enter a complete delivery address.');await checkAddress(normalized);return normalized}
  return {mailbox,async fetch(request){
   try{
-   const url=new URL(request.url);if(url.origin!==base.origin)throw new Problem(403,'Invalid local host.');
+   const url=new URL(request.url);if(!localOrigins.has(url.origin))throw new Problem(403,'Invalid local host.');
    const path=url.pathname;
    if(productionOrigin&&request.method==='POST'&&['/api/enroll','/api/purchase','/api/paid-edit/save','/api/setup'].includes(path)&&!billingAllowed())throw new Problem(503,'Weekly plan signup and billing are temporarily paused. Existing plans can still be managed.');
    if(assetFetch&&request.method==='GET'&&!path.startsWith('/api/'))return assetFetch(request);

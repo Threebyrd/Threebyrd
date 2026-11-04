@@ -5,6 +5,11 @@ import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/source-serif-4/wght.css";
 import "./globals.css";
 import { siteUrl, withBasePath } from "./site-paths";
+import { PROMOTIONAL_MINIMUM_COPY, WEEKLY_MINIMUM_PROMOTION } from "./order-config";
+
+const minimumDescription = WEEKLY_MINIMUM_PROMOTION
+  ? `${PROMOTIONAL_MINIMUM_COPY}.`
+  : "Mix and match a minimum of 3 meals.";
 
 export const metadata: Metadata = {
   title: "ThreeByrd Meal Prep | Chicken + Beef, Delivered",
@@ -12,7 +17,7 @@ export const metadata: Metadata = {
     canonical: siteUrl("/"),
   },
   description:
-    "High-protein Chicken or Beef meal prep delivered free in Ithaca. Mix and match a minimum of 3 meals.",
+    `High-protein Chicken or Beef meal prep delivered free in Ithaca. ${minimumDescription}`,
   openGraph: {
     title: "ThreeByrd Meal Prep | Chicken + Beef, Delivered",
     description:
@@ -32,7 +37,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ThreeByrd Meal Prep | Chicken + Beef, Delivered",
     description:
-      "Build a one-time Chicken or Beef meal-prep order. Minimum 3 meals, delivered free in Ithaca.",
+      `Build a one-time Chicken or Beef meal-prep order. ${WEEKLY_MINIMUM_PROMOTION ? minimumDescription : "Minimum 3 meals, delivered free in Ithaca."}`,
     images: [siteUrl("/og/threebyrd-share.png")],
   },
   icons: {

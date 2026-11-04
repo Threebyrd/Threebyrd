@@ -21,6 +21,8 @@ export class WeeklyReview extends DurableObject{
   // PRAGMA foreign_keys is managed by the platform; schema is additive and isolated.
   database.exec(schema.replace('PRAGMA foreign_keys = ON;',''));
   this.stripeEnabled=env.REVIEW_STRIPE_TEST==='true';
+  // Staging-only one-box/two-cup promotion. Production never imports this worker.
+  globalThis.__THREEBYRD_WEEKLY_MINIMUM_PROMOTION=env.WEEKLY_MINIMUM_PROMOTION==='true';
   if(this.stripeEnabled&&!/^sk_test_/.test(env.WEEKLY_STRIPE_TEST_KEY??''))throw new Error('Stripe test key required.');
   const stripe=this.stripeEnabled?new Stripe(env.WEEKLY_STRIPE_TEST_KEY,{httpClient:Stripe.createFetchHttpClient()}):undefined;
   this.stripe=stripe;

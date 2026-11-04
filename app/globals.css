@@ -727,3 +727,7 @@ h1, h2, h3 { text-wrap: balance; }
 .weeklyStarList li { position: relative; padding-left: 25px; font-size: .9rem; line-height: 1.55; }
 .weeklyStarList li::before { content: "★"; position: absolute; left: 0; top: .05em; color: var(--tb-gold-dark); font-size: .85rem; }
 .weeklyModeDetails .weeklyModeCutoff { margin: 16px 0; padding-top: 12px; border-top: 1px solid var(--tb-gold-dark); }
+
+.minimumPromotion { display: inline-flex; flex-direction: column; gap: .25rem; }
+.minimumPromotion s { font-size: .65em; opacity: .7; text-decoration-thickness: 2px; }
+.minimumPromotion > span { font-size: clamp(.9rem, 1.8vw, 1.4rem); line-height: 1.2; }

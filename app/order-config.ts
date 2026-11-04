@@ -1,7 +1,20 @@
 import { SMS_REMINDER_DISCLOSURE_VERSION, SMS_REMINDER_SOURCE } from "./reminder-consent.ts";
 
+declare global {
+  var __THREEBYRD_WEEKLY_MINIMUM_PROMOTION: boolean | undefined;
+}
+
 export const BUSINESS_TIME_ZONE = "America/New_York";
 export const MINIMUM_BOXES = 3;
+// Sandbox-first promotion. Leave disabled in production until reviewed.
+export const WEEKLY_MINIMUM_PROMOTION = process.env.NEXT_PUBLIC_WEEKLY_MINIMUM_PROMOTION === "true";
+export const PROMOTIONAL_MINIMUM_COPY = "1 box or 2 cup minimum — this week only";
+
+function weeklyMinimumPromotionEnabled(): boolean {
+  return WEEKLY_MINIMUM_PROMOTION
+    || process.env.WEEKLY_MINIMUM_PROMOTION === "true"
+    || globalThis.__THREEBYRD_WEEKLY_MINIMUM_PROMOTION === true;
+}
 export const DEFAULT_CUTOFF_OVERRIDE = "2026-10-17T15:00:00";
 export const ORDERS_OPEN = true;
 
@@ -60,9 +73,11 @@ export const CART_PRICING_TIERS: Record<CartPricingTier, CartPricingTierDefiniti
 };
 
 export function getCartPricingTier(totalMeals: number): CartPricingTier | undefined {
-  if (!Number.isInteger(totalMeals) || totalMeals < CART_PRICING_TIERS["3-4"].minTotalMeals) {
+  if (!Number.isInteger(totalMeals) || totalMeals < (weeklyMinimumPromotionEnabled() ? 1 : CART_PRICING_TIERS["3-4"].minTotalMeals)) {
     return undefined;
   }
+
+  if (weeklyMinimumPromotionEnabled() && totalMeals < 3) return "3-4";
 
   for (const tier of CART_PRICING_TIER_ORDER) {
     const definition = CART_PRICING_TIERS[tier];
@@ -209,11 +224,11 @@ export const products: readonly Product[] = [
 
 const productMap = new Map(products.map((product) => [product.id, product]));
 
-export type SauceId = "no-sauce" | "franks-redhot" | "bbq";
+export type SauceId = "no-sauce" | "franks-redhot" | "bbq" | "teriyaki";
 
 export type SauceOption = {
   id: SauceId;
-  name: "No Sauce" | "Franks' RedHot" | "BBQ";
+  name: "No Sauce" | "Franks' RedHot" | "BBQ" | "Teriyaki";
   surchargeCents: number;
 };
 
@@ -221,6 +236,7 @@ export const SAUCE_OPTIONS: readonly SauceOption[] = [
   { id: "no-sauce", name: "No Sauce", surchargeCents: 0 },
   { id: "franks-redhot", name: "Franks' RedHot", surchargeCents: 100 },
   { id: "bbq", name: "BBQ", surchargeCents: 100 },
+  { id: "teriyaki", name: "Teriyaki", surchargeCents: 100 },
 ];
 
 export type CartItemInput = {
@@ -438,7 +454,14 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
     }
   }
 
-  if (totalBoxes < MINIMUM_BOXES) {
+  const cupCount = lines.reduce((total, line) => total + (getProduct(line.productId)?.size === "Cup" ? line.quantity : 0), 0);
+  const boxCount = totalBoxes - cupCount;
+  const hasMinimum = weeklyMinimumPromotionEnabled()
+    ? boxCount >= 1 || cupCount >= 2
+    : totalBoxes >= MINIMUM_BOXES;
+  if (!hasMinimum && weeklyMinimumPromotionEnabled()) {
+    errors.push("Add 1 box or at least 2 cups to order this week.");
+  } else if (!hasMinimum) {
     const remaining = MINIMUM_BOXES - totalBoxes;
     errors.push(`Add ${remaining} more ${remaining === 1 ? "box" : "boxes"} to reach the ${MINIMUM_BOXES}-box minimum.`);
   }
@@ -449,7 +472,7 @@ export function quoteOrder(items: readonly CartItemInput[]): OrderQuote {
     subtotalCents,
     pricingTier: pricingTier ?? null,
     errors,
-    isValid: errors.length === 0 && totalBoxes >= MINIMUM_BOXES,
+    isValid: errors.length === 0 && hasMinimum,
   };
 }
 

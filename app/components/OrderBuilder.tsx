@@ -1,5 +1,6 @@
 "use client";
 
+import OrderMinimum from "./OrderMinimum";
 import Image from "next/image";
 import { WEEKLY_SANDBOX_ENABLED, WEEKLY_PRODUCTION_ORIGIN } from "./WeeklyPlanMode";
 import { splitWelcomeCart } from "../subscriptions/welcome-cart";
@@ -15,12 +16,12 @@ import { normalizeRecipientName } from "../recipient-name";
 import { withBasePath } from "../site-paths";
 import type { SmsReminderDecision } from "../reminder-consent";
 import {
-  CART_PRICING_TIERS,
   CART_PRICING_TIER_ORDER,
   formatCompactMoney,
   formatMoney,
   formatPricingTier,
   MINIMUM_BOXES,
+  WEEKLY_MINIMUM_PROMOTION,
   ORDERS_OPEN,
   priceRangeFor,
   products,
@@ -140,18 +141,21 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddressKey === checkedDeliveryAddressKey;
   const recipientNameIsValid = normalizeRecipientName(recipientName) !== null;
   const pricingMilestones = [
-    { value: 3, label: "Minimum" },
+    { value: WEEKLY_MINIMUM_PROMOTION ? 1 : 3, label: WEEKLY_MINIMUM_PROMOTION ? "box or 2 cups · this week" : "Minimum" },
     { value: 5, label: "Lower prices" },
     { value: 10, label: "Best standard prices" },
   ];
-  const mealsToMinimum = Math.max(MINIMUM_BOXES - quote.totalBoxes, 0);
+  const cupCount = quote.lines.reduce((total, line) => total + (products.find((product) => product.id === line.productId)?.size === "Cup" ? line.quantity : 0), 0);
+  const boxCount = quote.totalBoxes - cupCount;
+  const meetsMinimum = weeklyMode ? quote.totalBoxes >= MINIMUM_BOXES : WEEKLY_MINIMUM_PROMOTION ? boxCount >= 1 || cupCount >= 2 : quote.totalBoxes >= MINIMUM_BOXES;
+  const mealsToMinimum = Math.max((WEEKLY_MINIMUM_PROMOTION && !weeklyMode ? 2 : MINIMUM_BOXES) - quote.totalBoxes, 0);
   const funnelCopy = {
-    current: "3 meal minimum",
-    prompt: mealsToMinimum > 0 ? `${mealsToMinimum} to go` : "Minimum reached",
+    current: <OrderMinimum />,
+    prompt: !meetsMinimum ? WEEKLY_MINIMUM_PROMOTION && !weeklyMode ? "Choose 1 box or 2 cups" : `${mealsToMinimum} to go` : "Minimum reached",
     target: "",
   };
-  const mobileCartHint = quote.totalBoxes < MINIMUM_BOXES
-    ? `${mealsToMinimum} to go`
+  const mobileCartHint = !meetsMinimum
+    ? WEEKLY_MINIMUM_PROMOTION && !weeklyMode ? "Choose 1 box or 2 cups" : `${mealsToMinimum} to go`
     : "Minimum reached";
 
   function scrollToSummary() {
@@ -319,7 +323,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
           </div>
           <div className="orderFunnelMilestones">
             {pricingMilestones.map((milestone) => {
-              const complete = quote.totalBoxes >= milestone.value;
+              const complete = milestone.value === 1 ? meetsMinimum : quote.totalBoxes >= milestone.value;
               const next = !complete && pricingMilestones.find((item) => quote.totalBoxes < item.value)?.value === milestone.value;
               return (
                 <div className={`funnelMilestone${milestone.value === 5 ? " funnelMilestoneGold" : ""}${complete ? " isComplete" : ""}${next ? " isNext" : ""}`} key={milestone.value}>
@@ -390,11 +394,11 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
                       <div className="mobileCartProgress" role="status" aria-live="polite">
                         <strong>{funnelCopy.current}</strong>
                         {funnelCopy.prompt && <span>{funnelCopy.prompt} {funnelCopy.target}</span>}
-                        {quote.totalBoxes >= MINIMUM_BOXES && ORDERS_OPEN && (
+                        {meetsMinimum && ORDERS_OPEN && (
                           <button type="button" onClick={scrollToSummary}>Review &amp; checkout <span aria-hidden="true">→</span></button>
                         )}
-                        {quote.totalBoxes >= MINIMUM_BOXES && !ORDERS_OPEN && <span>Checkout is temporarily unavailable. Please try again later.</span>}
-                        {quote.totalBoxes > 0 && quote.totalBoxes < MINIMUM_BOXES && <button type="button" onClick={scrollToProducts}>Keep building <span aria-hidden="true">↓</span></button>}
+                        {meetsMinimum && !ORDERS_OPEN && <span>Checkout is temporarily unavailable. Please try again later.</span>}
+                        {quote.totalBoxes > 0 && !meetsMinimum && <button type="button" onClick={scrollToProducts}>Keep building <span aria-hidden="true">↓</span></button>}
                       </div>
                     )}
                   </Fragment>
@@ -407,7 +411,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               <h3 id="pricing-explainer-title">More meals = lower prices.</h3>
               <p className="pricingIntro">One cart. One tier. Mix and match freely.</p>
               <ol className="pricingSteps" aria-label="Cart pricing milestones">
-                <li><strong>3 meals</strong><span>start here</span></li>
+                <li><strong><OrderMinimum original="3 meals" /></strong><span>start here</span></li>
                 <li><strong>5 meals</strong><span>lower prices</span></li>
                 <li><strong>10 meals</strong><span>best standard prices</span></li>
                 <li><strong>20+</strong><span><a href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">group order?</a></span></li>
@@ -480,7 +484,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
             <div className="cartUpsell" role="status" aria-live="polite">
               <strong>{funnelCopy.current}</strong>
               {funnelCopy.prompt && <p>{funnelCopy.prompt} {funnelCopy.target}</p>}
-              {quote.totalBoxes < MINIMUM_BOXES && <button type="button" className="cartBuildButton" onClick={scrollToProducts}>Choose meals <span aria-hidden="true">↓</span></button>}
+              {!meetsMinimum && <button type="button" className="cartBuildButton" onClick={scrollToProducts}>Choose meals <span aria-hidden="true">↓</span></button>}
             </div>
             <div className="summaryTotal">
               <div className="summaryTotalRow"><span>Meal subtotal</span><strong>{formatMoney(weeklyMode ? weeklyPricing.subtotalBeforeDiscountCents : quote.subtotalCents)}</strong></div>

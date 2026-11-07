@@ -212,7 +212,7 @@ function validateOrder(order) {
     return order[key] === undefined ? 0 : order[key];
   });
   if (!quantities.every(function(value) { return Number.isInteger(value) && value >= 0; })) return "Invalid meal quantities";
-  if (!Number.isInteger(order.totalMeals) || order.totalMeals < 3) return "Invalid meal total";
+  if (!Number.isInteger(order.totalMeals) || order.totalMeals < 1) return "Invalid meal total";
   if (quantities.reduce(function(total, value) { return total + value; }, 0) !== order.totalMeals) return "Meal total does not match quantities";
   const moneyFields = ["mealSubtotal", "discount", "salesTax", "totalPaid"];
   if (!moneyFields.every(function(key) {

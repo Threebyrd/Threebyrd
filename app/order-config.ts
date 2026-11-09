@@ -8,7 +8,7 @@ export const BUSINESS_TIME_ZONE = "America/New_York";
 export const MINIMUM_BOXES = 3;
 // Sandbox-first promotion. Leave disabled in production until reviewed.
 export const WEEKLY_MINIMUM_PROMOTION = process.env.NEXT_PUBLIC_WEEKLY_MINIMUM_PROMOTION === "true";
-export const PROMOTIONAL_MINIMUM_COPY = "1 box or 2 cup minimum — this week only";
+export const PROMOTIONAL_MINIMUM_COPY = "1 box or 2 cups — this week only";
 
 function weeklyMinimumPromotionEnabled(): boolean {
   return WEEKLY_MINIMUM_PROMOTION

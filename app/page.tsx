@@ -68,12 +68,6 @@ const deliveryDay = getDeliveryDayForCutoff(cutoff);
 export default function Home() {
   return (
     <>
-      <a className="announcementBar" href="#order">
-        <span>Free delivery in Ithaca</span>
-        <strong>Build your order · <OrderMinimum /></strong>
-        <span aria-hidden="true">→</span>
-      </a>
-
       <header className="siteHeader" aria-label="ThreeByrd Meal Prep">
         <a className="brandLockup" href="#top" aria-label="ThreeByrd Meal Prep home">
           <Image

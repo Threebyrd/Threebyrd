@@ -141,9 +141,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
   const deliveryEligible = deliveryCheckState === "eligible" && deliveryAddressKey === checkedDeliveryAddressKey;
   const recipientNameIsValid = normalizeRecipientName(recipientName) !== null;
   const pricingMilestones = [
-    { value: WEEKLY_MINIMUM_PROMOTION ? 1 : 3, label: WEEKLY_MINIMUM_PROMOTION ? "box or 2 cups · this week" : "Minimum" },
-    { value: 5, label: "Lower prices" },
-    { value: 10, label: "Best standard prices" },
+    { value: WEEKLY_MINIMUM_PROMOTION ? 1 : 3, displayValue: 3, label: "Standard pricing" },
+    { value: 5, displayValue: 5, label: "Lower prices" },
+    { value: 10, displayValue: 10, label: "Best prices" },
   ];
   const cupCount = quote.lines.reduce((total, line) => total + (products.find((product) => product.id === line.productId)?.size === "Cup" ? line.quantity : 0), 0);
   const boxCount = quote.totalBoxes - cupCount;
@@ -327,7 +327,7 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               const next = !complete && pricingMilestones.find((item) => quote.totalBoxes < item.value)?.value === milestone.value;
               return (
                 <div className={`funnelMilestone${milestone.value === 5 ? " funnelMilestoneGold" : ""}${complete ? " isComplete" : ""}${next ? " isNext" : ""}`} key={milestone.value}>
-                  <strong>{milestone.value}</strong>
+                  <strong>{milestone.displayValue}</strong>
                   <span>{milestone.label}</span>
                 </div>
               );
@@ -411,9 +411,9 @@ export default function OrderBuilder({ initialCutoffIso, checkoutMessage }: Orde
               <h3 id="pricing-explainer-title">More meals = lower prices.</h3>
               <p className="pricingIntro">One cart. One tier. Mix and match freely.</p>
               <ol className="pricingSteps" aria-label="Cart pricing milestones">
-                <li><strong><OrderMinimum original="3 meals" /></strong><span>start here</span></li>
+                <li><strong>3 meals</strong><span>start here</span></li>
                 <li><strong>5 meals</strong><span>lower prices</span></li>
-                <li><strong>10 meals</strong><span>best standard prices</span></li>
+                <li><strong>10 meals</strong><span>best prices</span></li>
                 <li><strong>20+</strong><span><a href="mailto:thor@threebyrd.com?subject=20%2B%20Meal%20Custom%20Pricing">group order?</a></span></li>
               </ol>
               <details className="pricingDisclosure">

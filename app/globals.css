@@ -729,5 +729,5 @@ h1, h2, h3 { text-wrap: balance; }
 .weeklyModeDetails .weeklyModeCutoff { margin: 16px 0; padding-top: 12px; border-top: 1px solid var(--tb-gold-dark); }
 
 .minimumPromotion { display: inline-flex; flex-direction: column; gap: .25rem; }
-.minimumPromotion s { font-size: .65em; opacity: .7; text-decoration-thickness: 2px; }
+.minimumPromotion s { font-size: 1em; opacity: .7; text-decoration-thickness: 2px; }
 .minimumPromotion > span { font-size: clamp(.9rem, 1.8vw, 1.4rem); line-height: 1.2; }

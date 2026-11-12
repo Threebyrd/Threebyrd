@@ -88,3 +88,64 @@ test("rejects malformed discounted totals before an order can be exported", () =
   assert.throws(() => buildOrderSheetPayload({ ...discountedIthacaOrder, amountCents: 3_216 }, "test"), /failed Google Sheets export validation/);
   assert.throws(() => buildOrderSheetPayload({ ...discountedIthacaOrder, discountCents: 3_001 }, "test"), /failed Google Sheets export validation/);
 });
+
+function withWeeklyMinimumPromotion(run) {
+  const previous = process.env.WEEKLY_MINIMUM_PROMOTION;
+  process.env.WEEKLY_MINIMUM_PROMOTION = "true";
+  try {
+    return run();
+  } finally {
+    if (previous === undefined) delete process.env.WEEKLY_MINIMUM_PROMOTION;
+    else process.env.WEEKLY_MINIMUM_PROMOTION = previous;
+  }
+}
+
+test("exports one box during the weekly minimum promotion", () => {
+  withWeeklyMinimumPromotion(() => {
+    const payload = buildOrderSheetPayload({
+      ...discountedIthacaOrder,
+      id: "order-one-box",
+      stripeSessionId: "cs_test_one_box",
+      items: JSON.stringify([{ productId: "big-chicken", quantity: 1 }]),
+      subtotalCents: 1_000,
+      discountCents: 0,
+      taxCents: 80,
+      amountCents: 1_080,
+      totalMeals: undefined,
+    }, "test");
+    assert.equal(payload.totalMeals, 1);
+    assert.equal(payload.bigChickenQty, 1);
+  });
+});
+
+test("exports two cups during the weekly minimum promotion", () => {
+  withWeeklyMinimumPromotion(() => {
+    const payload = buildOrderSheetPayload({
+      ...discountedIthacaOrder,
+      id: "order-two-cups",
+      stripeSessionId: "cs_test_two_cups",
+      items: JSON.stringify([{ productId: "chicken-cup", quantity: 2 }]),
+      subtotalCents: 1_400,
+      discountCents: 0,
+      taxCents: 112,
+      amountCents: 1_512,
+    }, "test");
+    assert.equal(payload.totalMeals, 2);
+    assert.equal(payload.chickenCupQty, 2);
+  });
+});
+
+test("still rejects one cup because the promotion minimum is one box or two cups", () => {
+  withWeeklyMinimumPromotion(() => {
+    assert.throws(() => buildOrderSheetPayload({
+      ...discountedIthacaOrder,
+      id: "order-one-cup",
+      stripeSessionId: "cs_test_one_cup",
+      items: JSON.stringify([{ productId: "chicken-cup", quantity: 1 }]),
+      subtotalCents: 700,
+      discountCents: 0,
+      taxCents: 56,
+      amountCents: 756,
+    }, "test"), /failed Google Sheets export validation/);
+  });
+});

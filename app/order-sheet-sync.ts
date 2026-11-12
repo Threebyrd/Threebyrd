@@ -1,4 +1,4 @@
-import { getDeliveryDateIso, getProduct, getSauce, type CartItemInput } from "./order-config.ts";
+import { getDeliveryDateIso, getProduct, getSauce, weeklyMinimumPromotionEnabled, type CartItemInput } from "./order-config.ts";
 
 export const GOOGLE_SHEETS_HEADERS = [
   "Order Date/Time",
@@ -126,12 +126,17 @@ export function buildOrderSheetPayload(order: ConfirmedOrderForSheet, stripeMode
     }
     return nextTotal;
   }, 0);
+  const cupCount = items.reduce((total, item) => total + (getProduct(item.productId)?.size === "Cup" ? item.quantity : 0), 0);
+  const boxCount = mealCount - cupCount;
+  const minimumSatisfied = weeklyMinimumPromotionEnabled()
+    ? boxCount >= 1 || cupCount >= 2
+    : mealCount >= 3;
   if (
     order.status !== "confirmed" ||
     !/^(test|live)$/.test(stripeMode) ||
     !new RegExp(`^cs_${stripeMode}_`).test(order.stripeSessionId) ||
     !Number.isSafeInteger(order.createdAt) ||
-    mealCount < 3 ||
+    !minimumSatisfied ||
     !Number.isSafeInteger(order.subtotalCents) ||
     order.subtotalCents < 0 ||
     !Number.isSafeInteger(order.discountCents) ||

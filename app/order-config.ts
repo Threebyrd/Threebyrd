@@ -10,7 +10,7 @@ export const MINIMUM_BOXES = 3;
 export const WEEKLY_MINIMUM_PROMOTION = process.env.NEXT_PUBLIC_WEEKLY_MINIMUM_PROMOTION === "true";
 export const PROMOTIONAL_MINIMUM_COPY = "1 box or 2 cups — this week only";
 
-function weeklyMinimumPromotionEnabled(): boolean {
+export function weeklyMinimumPromotionEnabled(): boolean {
   return WEEKLY_MINIMUM_PROMOTION
     || process.env.WEEKLY_MINIMUM_PROMOTION === "true"
     || globalThis.__THREEBYRD_WEEKLY_MINIMUM_PROMOTION === true;

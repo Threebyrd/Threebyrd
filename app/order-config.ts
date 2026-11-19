@@ -15,7 +15,7 @@ export function weeklyMinimumPromotionEnabled(): boolean {
     || process.env.WEEKLY_MINIMUM_PROMOTION === "true"
     || globalThis.__THREEBYRD_WEEKLY_MINIMUM_PROMOTION === true;
 }
-export const DEFAULT_CUTOFF_OVERRIDE = "2026-10-17T15:00:00";
+export const DEFAULT_CUTOFF_OVERRIDE = "2026-11-19T17:00:00";
 export const ORDERS_OPEN = true;
 
 export type ProductId = "little-chicken" | "big-chicken" | "little-beef" | "big-beef" | "chicken-cup" | "beef-cup";
